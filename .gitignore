@@ -4,6 +4,7 @@ build/
 __pycache__
 
 .obj/
+.idea/
 
 src/lockserver/client-main
 src/lockserver/server-main
