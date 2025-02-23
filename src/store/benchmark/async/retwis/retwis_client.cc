@@ -33,14 +33,14 @@ RetwisClient::~RetwisClient() {
 }
 
 AsyncTransaction *RetwisClient::GetNextTransaction() {
-    int ttype = GetRand()() % 100;
-    if (ttype < 50) {
+//    int ttype = GetRand()() % 100;
+//    if (ttype < 50) {
         lastOp = "one_shot_writes";
         return new OneShotWrites(keySelector, GetRand());
-    } else {
-        lastOp = "one_shot_reads";
-        return new OneShotReads(keySelector, GetRand());
-    }
+//    } else {
+//        lastOp = "one_shot_reads";
+//        return new OneShotReads(keySelector, GetRand());
+//    }
 //    if (ttype < 5) {
 //        lastOp = "add_user";
 //        return new AddUser(keySelector, GetRand());

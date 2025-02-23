@@ -25,8 +25,11 @@
   "replica_config_format_str": "replica-%d.config",
   "network_config": "network.json",
   "fault_tolerance": 0,
-  "num_shards": 1,
+  "num_shards": 2,
   "shards": [
+    [
+      "us-east-1-0"
+    ],
     [
       "us-east-1-0"
     ]

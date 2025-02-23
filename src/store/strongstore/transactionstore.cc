@@ -77,16 +77,16 @@ namespace strongstore
             ASSERT(coordinator_ == coordinator);
         }
 
-        std::size_t n = participants_.size();
-        std::size_t ok = ok_participants_.size();
-        if (ok == n - 1)
-        {
+//        std::size_t n = participants_.size();
+//        std::size_t ok = ok_participants_.size();
+//        if (ok == n - 1)
+//        {
             state_ = PREPARING;
-        }
-        else
-        {
-            state_ = WAIT_PARTICIPANTS;
-        }
+//        }
+//        else
+//        {
+//            state_ = WAIT_PARTICIPANTS;
+//        }
     }
 
     void TransactionStore::PendingRWTransaction::FinishCoordinatorPrepare(const Timestamp &prepare_ts)

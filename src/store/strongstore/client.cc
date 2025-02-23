@@ -551,26 +551,32 @@ namespace strongstore
         ASSERT(session.executing());
 
         // Contact the appropriate shard to set the value.
-        int i = (*part_)(key, nshards_, -1, session.participants());
+//        int i = (*part_)(key, nshards_, -1, session.participants());
 
-        session.set_putting(i);
+        for (int i = 0; i < nshards_; i++) {
 
-        // Add this shard to set of participants
-        session.add_participant(i);
+            session.set_putting(i);
 
-        auto pcb1 = [pcb, session = std::ref(session)](int s, const std::string &k, const std::string &v)
-        {
-            session.get().set_executing();
-            pcb(s, k, v);
-        };
+            // Add this shard to set of participants
+            session.add_participant(i);
+        }
 
-        auto ptcb1 = [ptcb, session = std::ref(session)](int s, const std::string &k, const std::string &v)
-        {
-            session.get().set_executing();
-            ptcb(s, k, v);
-        };
+            auto pcb1 = [pcb, session = std::ref(session)](int s, const std::string &k, const std::string &v)
+            {
+                session.get().set_executing();
+                pcb(s, k, v);
+            };
 
-        sclients_[i]->Put(tid, key, value, pcb1, ptcb1, timeout);
+            auto ptcb1 = [ptcb, session = std::ref(session)](int s, const std::string &k, const std::string &v)
+            {
+                session.get().set_executing();
+                ptcb(s, k, v);
+            };
+
+        for (int i = 0; i < nshards_; i++) {
+
+            sclients_[i]->Put(tid, key, value, pcb1, ptcb1, timeout);
+        }
     }
 
     /* Attempts to commit the ongoing transaction. */
@@ -610,7 +616,7 @@ namespace strongstore
 
         req->outstandingPrepares = 0;
 
-        int coordinator_shard = ChooseCoordinator(session);
+        // int coordinator_shard = ChooseCoordinator(session);
 
         Timestamp nonblock_timestamp = Timestamp();
         if (consistency_ == Consistency::RSS)
@@ -622,22 +628,22 @@ namespace strongstore
                               std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
         auto cctcb = [](int) {};
 
-        auto pccb = [transaction_id = tid](int status)
-        {
-            Debug("[%lu] PREPARE callback status %d", transaction_id, status);
-        };
-        auto pctcb = [](int) {};
+        // auto pccb = [transaction_id = tid](int status)
+        // {
+        //     Debug("[%lu] PREPARE callback status %d", transaction_id, status);
+        // };
+        // auto pctcb = [](int) {};
 
         for (auto p : participants)
         {
-            if (p == coordinator_shard)
-            {
+            // if (p == coordinator_shard)
+            // {
                 sclients_[p]->RWCommitCoordinator(tid, participants, nonblock_timestamp, cccb, cctcb, timeout);
-            }
-            else
-            {
-                sclients_[p]->RWCommitParticipant(tid, coordinator_shard, nonblock_timestamp, pccb, pctcb, timeout);
-            }
+            // }
+            // else
+            // {
+            //     sclients_[p]->RWCommitParticipant(tid, coordinator_shard, nonblock_timestamp, pccb, pctcb, timeout);
+            // }
         }
     }
 
@@ -663,6 +669,7 @@ namespace strongstore
             break;
         default:
             // abort!
+            // ^ bro i couldn't tell
             Debug("[%lu] COMMIT ABORT", tid);
             tstatus = ABORTED_SYSTEM;
             break;
