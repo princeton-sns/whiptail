@@ -37,6 +37,7 @@
 #include "lib/transport.h"
 #include "lib/udptransport.h"
 #include "store/common/partitioner.h"
+#include "store/strongstore/2pl_server.h"
 #include "store/strongstore/server.h"
 
 enum protocol_t
@@ -330,7 +331,7 @@ int main(int argc, char **argv)
     {
     case PROTO_STRONG:
     {
-        server = new strongstore::Server(consistency, shard_config,
+        server = new strongstore::TwoPLServer(consistency, shard_config,
                                          replica_config, FLAGS_server_id,
                                          FLAGS_group_idx, FLAGS_replica_idx,
                                          tport, tt, FLAGS_debug_stats);
