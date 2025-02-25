@@ -5,7 +5,7 @@ __pycache__
 
 .obj/
 .idea/
-
+.cache
 src/lockserver/client-main
 src/lockserver/server-main
 src/lockserver/lockserver-repl
@@ -22,7 +22,9 @@ src/replication/vr/tests/vr-test
 src/store/common/backend/tests/kvstore-test
 src/store/common/backend/tests/lockserver-test
 src/store/common/backend/tests/versionstore-test
+src/bin/
 
+experiments/results/
 ################################################################################
 # vim
 ################################################################################
