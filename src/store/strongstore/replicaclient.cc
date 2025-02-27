@@ -135,31 +135,40 @@ namespace strongstore
         request.set_op(Request::COMMIT);
         request.set_txnid(transaction_id);
 
-        auto prepare = request.mutable_prepare();
-
-        transaction.serialize(prepare->mutable_txn());
-        start_ts.serialize(prepare->mutable_timestamp());
-        prepare->set_coordinator(coordinator);
-        nonblock_ts.serialize(prepare->mutable_nonblock_ts());
-        for (int p : participants)
-        {
-            prepare->add_participants(p);
-        }
+        // auto prepare = request.mutable_prepare();
+        // Debug("[shard %i] create commit request: %lu", shard_idx_, transaction_id);
+        //
+        // transaction.serialize(prepare->mutable_txn());
+        // Debug("[shard %i] serialize mutable txn: %lu", shard_idx_, transaction_id);
+        // start_ts.serialize(prepare->mutable_timestamp());
+        // Debug("[shard %i] serialize timestamp: %lu", shard_idx_, transaction_id);
+        // prepare->set_coordinator(coordinator);
+        // nonblock_ts.serialize(prepare->mutable_nonblock_ts());
+        // Debug("[shard %i] serialize nonblock ts: %lu", shard_idx_, transaction_id);
+        // for (int p : participants)
+        // {
+        //     prepare->add_participants(p);
+        // }
 
         commit_ts.serialize(request.mutable_commit()->mutable_commit_timestamp());
+        Debug("[shard %i] serialize commit: %lu", shard_idx_, transaction_id);
 
         request.SerializeToString(&request_str);
+        Debug("[shard %i] serialize to string : %lu", shard_idx_, transaction_id);
 
         uint64_t reqId = lastReqId++;
         PendingCommit *pendingCommit = new PendingCommit(reqId);
         pendingCommits[reqId] = pendingCommit;
         pendingCommit->ccb = ccb;
         pendingCommit->ctcb = ctcb;
+        Debug("[shard %i] pendingCommits: %lu", shard_idx_, transaction_id);
 
         client->Invoke(
             request_str,
             bind(&ReplicaClient::CommitCallback, this, pendingCommit->reqId,
                  std::placeholders::_1, std::placeholders::_2));
+
+        Debug("[shard %i] request_str %s for tid %lu", shard_idx_, request_str.c_str(), transaction_id);
     }
 
     void ReplicaClient::Commit(uint64_t transaction_id, Timestamp &commit_timestamp,

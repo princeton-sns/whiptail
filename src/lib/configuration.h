@@ -58,6 +58,10 @@ namespace transport
         {
             return !(*this == other);
         }
+
+        std::string to_string() const {
+            return host + ":" + port;
+        }
     };
 
     class Configuration
@@ -87,6 +91,19 @@ namespace transport
         }
         int replicaHost(int group, int idx) const;
         bool IsLowestGroupOnHost(int group, int idx) const;
+
+        std::string to_string() const {
+            std::string result = "";
+            for (const std::pair<int, std::vector<ReplicaAddress>> kv : replicas) {
+                result += kv.first + "-->";
+                for (const ReplicaAddress& replica : kv.second) {
+                    result  += replica.to_string();
+                }
+
+                result += "\n";
+            }
+            return result;
+        }
 
     public:
         int g; // number of groups

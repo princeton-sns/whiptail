@@ -340,6 +340,8 @@ namespace strongstore
         double nb_time_alpha_;
 
         bool debug_stats_;
+
+        int repl_factor_;
     };
 
 } // namespace strongstore

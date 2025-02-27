@@ -159,9 +159,9 @@ namespace replication
                 ReplyMessage reply;
                 Execute(lastCommitted, entry->request, reply);
 
-                reply.set_view(entry->viewstamp.view);
-                reply.set_opnum(entry->viewstamp.opnum);
-                reply.set_clientreqid(entry->request.clientreqid());
+                // reply.set_view(entry->viewstamp.view);
+                // reply.set_opnum(entry->viewstamp.opnum);
+                // reply.set_clientreqid(entry->request.clientreqid());
 
                 /* Mark it as committed */
                 log.SetStatus(lastCommitted, LOG_STATE_COMMITTED);

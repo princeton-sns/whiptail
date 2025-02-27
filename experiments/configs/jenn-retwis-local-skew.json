@@ -25,8 +25,20 @@
   "replica_config_format_str": "replica-%d.config",
   "network_config": "network.json",
   "fault_tolerance": 0,
-  "num_shards": 2,
+  "num_shards": 6,
   "shards": [
+    [
+      "us-east-1-0"
+    ],
+    [
+      "us-east-1-0"
+    ],
+    [
+      "us-east-1-0"
+    ],
+    [
+      "us-east-1-0"
+    ],
     [
       "us-east-1-0"
     ],
@@ -185,7 +197,7 @@
   "plot_tput_lat_y_label": "Latency (ms)",
   "input_latency_scale": 1000000000,
   "output_latency_scale": 1000,
-  "src_commit_hash": "one_shot_txns",
+  "src_commit_hash": "partition_one_shots",
   "stats_file_name": "stats.json",
   "base_local_exp_directory": "/home/jennifer/whiptail/experiments/results",
   "base_mounted_fs_path": "/mnt/extra",

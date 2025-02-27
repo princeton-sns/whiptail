@@ -44,6 +44,7 @@
 
 #include <set>
 #include <vector>
+#include <store/common/truetime.h>
 
 #include "lib/assert.h"
 #include "lib/latency.h"
@@ -231,6 +232,8 @@ namespace strongstore
         std::unordered_map<uint64_t, PendingPrepareAbort *> pendingPrepareAborts;
         std::unordered_map<uint64_t, PendingAbort *> pendingAborts;
         std::unordered_map<uint64_t, PendingROCommit *> pendingROCommits;
+
+        const TrueTime& tt_;
 
         proto::Get get_;
         proto::RWCommitCoordinator rw_commit_c_;

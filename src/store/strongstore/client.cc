@@ -64,7 +64,8 @@ namespace strongstore
           next_transaction_id_{client_id_ << 26},
           consistency_{consistency},
           nb_time_alpha_{nb_time_alpha},
-          debug_stats_{debug_stats}
+          debug_stats_{debug_stats},
+          repl_factor_(3) // TODO jenndebug don't hardcode this
     {
         Debug("Initializing StrongStore client with id [%lu]", client_id_);
 
@@ -84,6 +85,8 @@ namespace strongstore
             _Latency_Init(&op_lat_, "op_lat");
             _Latency_Init(&commit_lat_, "commit_lat");
         }
+
+        std::cerr << "jenndebug " << config_.to_string() << std::endl;
 
         CalculateCoordinatorChoices();
 
@@ -551,31 +554,31 @@ namespace strongstore
         ASSERT(session.executing());
 
         // Contact the appropriate shard to set the value.
-//        int i = (*part_)(key, nshards_, -1, session.participants());
+        int i = (*part_)(key, nshards_, -1, session.participants());
 
-        for (int i = 0; i < nshards_; i++) {
+        for (int repl = 0; repl < repl_factor_; repl++) {
 
-            session.set_putting(i);
+            session.set_putting((i + repl) % nshards_);
 
             // Add this shard to set of participants
-            session.add_participant(i);
+            session.add_participant((i + repl) % nshards_);
         }
 
-            auto pcb1 = [pcb, session = std::ref(session)](int s, const std::string &k, const std::string &v)
-            {
-                session.get().set_executing();
-                pcb(s, k, v);
-            };
+        auto pcb1 = [pcb, session = std::ref(session)](int s, const std::string &k, const std::string &v)
+        {
+            session.get().set_executing();
+            pcb(s, k, v);
+        };
 
-            auto ptcb1 = [ptcb, session = std::ref(session)](int s, const std::string &k, const std::string &v)
-            {
-                session.get().set_executing();
-                ptcb(s, k, v);
-            };
+        auto ptcb1 = [ptcb, session = std::ref(session)](int s, const std::string &k, const std::string &v)
+        {
+            session.get().set_executing();
+            ptcb(s, k, v);
+        };
 
-        for (int i = 0; i < nshards_; i++) {
+        for (int repl = 0; repl < repl_factor_; repl++) {
 
-            sclients_[i]->Put(tid, key, value, pcb1, ptcb1, timeout);
+            sclients_[(i + repl) % nshards_]->Put(tid, key, value, pcb1, ptcb1, timeout);
         }
     }
 

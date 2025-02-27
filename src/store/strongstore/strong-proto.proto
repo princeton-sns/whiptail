@@ -35,6 +35,7 @@ message RWCommitCoordinator {
     required TransactionMessage transaction = 3;
     required TimestampMessage nonblock_timestamp = 4;
     repeated int32 participants = 5;
+    required TimestampMessage start_timestamp = 6;
 }
 
 message RWCommitCoordinatorReply {

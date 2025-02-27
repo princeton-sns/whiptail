@@ -27,6 +27,8 @@
  **********************************************************************/
 #include "store/strongstore/shardclient.h"
 
+#include <store/common/truetime.h>
+
 #include "lib/configuration.h"
 
 namespace strongstore
@@ -43,7 +45,8 @@ namespace strongstore
           transport_{transport},
           client_id_{client_id},
           shard_idx_{shard},
-          wcb_{wcb}
+          wcb_{wcb},
+          tt_{0}
     {
         transport_->Register(this, config_, -1, -1);
 
@@ -388,10 +391,16 @@ namespace strongstore
         t.serialize(rw_commit_c_.mutable_transaction());
         nonblock_timestamp.serialize((rw_commit_c_.mutable_nonblock_timestamp()));
 
+        const TrueTimeInterval now = tt_.Now();
+        const Timestamp start_ts{now.latest(), client_id_};
+
+        start_ts.serialize(rw_commit_c_.mutable_start_timestamp());
+
         for (int p : participants)
         {
             rw_commit_c_.add_participants(p);
         }
+
 
         transport_->SendMessageToReplica(this, shard_idx_, replica_, rw_commit_c_);
     }
