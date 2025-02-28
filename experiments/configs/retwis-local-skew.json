@@ -84,7 +84,7 @@
   "server_preload_keys": true,
   "client_abort_backoff": 1,
   "client_retry_aborted": true,
-  "client_max_attempts": -1,
+  "client_max_attempts": 10,
   "client_max_backoff": 2500,
   "client_message_timeout": 60000,
   "run_locally": true,

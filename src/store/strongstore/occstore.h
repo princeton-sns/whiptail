@@ -55,12 +55,9 @@ namespace strongstore
 
         virtual int Get(uint64_t id, const std::string &key,
                         std::pair<Timestamp, std::string> &value) override;
-        virtual int Prepare(uint64_t id, const Transaction &txn,
-                            std::unordered_map<uint64_t, int> &statuses) override;
-        virtual bool Commit(uint64_t id, const Timestamp &ts,
-                            std::unordered_map<uint64_t, int> &statuses) override;
-        virtual void Abort(uint64_t id,
-                           std::unordered_map<uint64_t, int> &statuses) override;
+        virtual int Prepare(uint64_t id, const Transaction &txn) override;
+        virtual bool Commit(uint64_t id, const Timestamp &ts) override;
+        virtual void Abort(uint64_t id) override;
         virtual void Load(const std::string &key, const std::string &value,
                           const Timestamp &timestamp) override;
 

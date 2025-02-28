@@ -66,19 +66,15 @@ public:
 
     // check whether we can commit this transaction (and lock the read/write
     // set)
-    virtual int Prepare(uint64_t id, const Transaction &txn,
-                        std::unordered_map<uint64_t, int> &statuses);
-
+    virtual int Prepare(uint64_t id, const Transaction &txn);
     virtual int Prepare(uint64_t id, const Transaction &txn,
                         const Timestamp &timestamp, Timestamp &proposed);
 
     // commit the transaction
-    virtual bool Commit(uint64_t id, const Timestamp &ts,
-                        std::unordered_map<uint64_t, int> &statuses);
+    virtual bool Commit(uint64_t id, const Timestamp &ts);
 
     // abort a running transaction
-    virtual void Abort(uint64_t id,
-                       std::unordered_map<uint64_t, int> &statuses);
+    virtual void Abort(uint64_t id);
 
     // load keys
     virtual void Load(const std::string &key, const std::string &value,

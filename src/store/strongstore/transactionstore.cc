@@ -53,6 +53,11 @@ namespace strongstore
         }
     }
 
+    void TransactionStore::PendingRWTransaction::RecordGet(const std::string &key, const Timestamp &ts)
+    {
+        transaction_.addVersionedReadSet(key, ts);
+    }
+
     void TransactionStore::PendingRWTransaction::StartCoordinatorPrepare(const Timestamp &start_ts, int coordinator,
                                                                          const std::unordered_set<int> participants,
                                                                          const Transaction &transaction,
@@ -180,6 +185,14 @@ namespace strongstore
         ASSERT(pt.state() == READING);
 
         pt.StartGet(remote, key, for_update);
+    }
+
+    void TransactionStore::RecordGet(uint64_t transaction_id, const std::string &key, const Timestamp &ts)
+    {
+        PendingRWTransaction &pt = pending_rw_[transaction_id];
+        ASSERT(pt.state() == READING);
+
+        pt.RecordGet(key, ts);
     }
 
     void TransactionStore::FinishGet(uint64_t transaction_id, const std::string &key)

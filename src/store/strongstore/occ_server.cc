@@ -30,7 +30,10 @@
  *
  **********************************************************************/
  #include "store/strongstore/occ_server.h"
-
+ #include "store/common/frontend/client.h"
+#include "store/common/transaction.h"
+#include "store/strongstore/transactionstore.h"
+ 
  #include <algorithm>
  #include <functional>
  #include <memory>
@@ -47,7 +50,7 @@
                     const transport::Configuration &shard_config,
                     const transport::Configuration &replica_config,
                     uint64_t server_id, int shard_idx, int replica_idx,
-                    Transport *transport, const TrueTime &tt, bool debug_stats)
+                    Transport *transport, const TrueTime &tt, bool debug_stats, bool enable_replica)
          : PingServer(transport),
            tt_{tt},
            transactions_{shard_idx, consistency, tt_},
@@ -59,10 +62,12 @@
            shard_idx_{shard_idx},
            replica_idx_{replica_idx},
            consistency_{consistency},
-           debug_stats_{debug_stats}
+           debug_stats_{debug_stats},
+           enable_replica(enable_replica)
      {
          transport_->Register(this, shard_config_, shard_idx_, replica_idx_);
  
+         occstore_ = new OCCStore();
          for (int i = 0; i < shard_config_.g; i++)
          {
              shard_clients_.push_back(new ShardClient(shard_config_, transport, server_id_, i));
@@ -87,6 +92,7 @@
              delete s;
          }
  
+         delete occstore_;
          if (enable_replica){
              delete replica_client_;
          }
@@ -169,130 +175,32 @@
          const std::string &key = msg.key();
          const Timestamp timestamp{msg.timestamp()};
  
-         bool for_update = msg.has_for_update() && msg.for_update();
+         //  do not process TODO
+         bool for_update = false;
  
          Debug("[%lu] Received GET request: %s %d", transaction_id, key.c_str(), for_update);
  
          transactions_.StartGet(transaction_id, remote, key, for_update);
- 
-         LockAcquireResult r;
-         if (for_update)
-         {
-             r = locks_.AcquireReadWriteLock(transaction_id, timestamp, key);
-         }
-         else
-         {
-             r = locks_.AcquireReadLock(transaction_id, timestamp, key);
-         }
- 
-         if (r.status == LockStatus::ACQUIRED)
-         {
-             ASSERT(r.wound_rws.size() == 0);
- 
-             std::pair<TimestampID, std::string> value;
-             ASSERT(store_.get(key, value));
- 
-             get_reply_.Clear();
-             get_reply_.mutable_rid()->CopyFrom(msg.rid());
-             get_reply_.set_status(REPLY_OK);
-             get_reply_.set_key(msg.key());
- 
-             get_reply_.set_val(value.second);
-             value.first.timestamp.serialize(get_reply_.mutable_timestamp());
- 
-             transport_->SendMessage(this, remote, get_reply_);
- 
-             transactions_.FinishGet(transaction_id, key);
-         }
-         else if (r.status == LockStatus::FAIL)
-         {
-             ASSERT(r.wound_rws.size() == 0);
- 
-             get_reply_.Clear();
-             get_reply_.mutable_rid()->CopyFrom(msg.rid());
-             get_reply_.set_status(REPLY_FAIL);
-             get_reply_.set_key(msg.key());
- 
-             transport_->SendMessage(this, remote, get_reply_);
- 
-             const Transaction &transaction = transactions_.GetTransaction(transaction_id);
- 
-             LockReleaseResult rr = locks_.ReleaseLocks(transaction_id, transaction);
-             transactions_.AbortGet(transaction_id, key);
- 
-             NotifyPendingRWs(transaction_id, rr.notify_rws);
-         }
-         else if (r.status == LockStatus::WAITING)
-         {
-             auto reply = new PendingGetReply(client_id, client_req_id, remote.clone());
-             reply->key = key;
- 
-             pending_get_replies_[msg.transaction_id()] = reply;
- 
-             transactions_.PauseGet(transaction_id, key);
- 
-             WoundPendingRWs(transaction_id, r.wound_rws);
-         }
-         else
-         {
-             NOT_REACHABLE();
-         }
+        std::pair<Timestamp, std::string> value;
+        int res = occstore_->Get(transaction_id, key, value);
+        transactions_.RecordGet(transaction_id, key, value.first);
+
+        ASSERT(res==REPLY_OK);
+
+        get_reply_.Clear();
+        get_reply_.mutable_rid()->CopyFrom(msg.rid());
+        get_reply_.set_status(REPLY_OK);
+        get_reply_.set_key(msg.key());
+
+        get_reply_.set_val(value.second);
+        value.first.serialize(get_reply_.mutable_timestamp());
+
+        transport_->SendMessage(this, remote, get_reply_);
+
+        transactions_.FinishGet(transaction_id, key);
+       
      }
  
-     void OCCServer::ContinueGet(uint64_t transaction_id)
-     {
-         auto search = pending_get_replies_.find(transaction_id);
-         if (search == pending_get_replies_.end())
-         {
-             return;
-         }
- 
-         PendingGetReply *reply = search->second;
- 
-         uint64_t client_id = reply->rid.client_id();
-         uint64_t client_req_id = reply->rid.client_req_id();
-         const TransportAddress *remote = reply->rid.addr();
- 
-         const std::string &key = reply->key;
- 
-         Debug("[%lu] Continuing GET request %s", transaction_id, key.c_str());
- 
-         get_reply_.Clear();
-         get_reply_.mutable_rid()->set_client_id(client_id);
-         get_reply_.mutable_rid()->set_client_req_id(client_req_id);
-         get_reply_.set_key(key);
- 
-         TransactionState s = transactions_.ContinueGet(transaction_id, key);
-         if (s == READING)
-         {
-             ASSERT(locks_.HasReadLock(transaction_id, key));
- 
-             std::pair<TimestampID, std::string> value;
-             ASSERT(store_.get(key, value));
- 
-             get_reply_.set_status(REPLY_OK);
-             get_reply_.set_val(value.second);
- 
-             value.first.timestamp.serialize(get_reply_.mutable_timestamp());
- 
-             transport_->SendMessage(this, *remote, get_reply_);
- 
-             transactions_.FinishGet(transaction_id, key);
-         }
-         else if (s == ABORTED)
-         { // Already aborted
-             get_reply_.set_status(REPLY_FAIL);
-             transport_->SendMessage(this, *remote, get_reply_);
-         }
-         else
-         {
-             NOT_REACHABLE();
-         }
- 
-         delete remote;
-         delete reply;
-         pending_get_replies_.erase(search);
-     }
  
      const Timestamp OCCServer::GetPrepareTimestamp(uint64_t client_id)
      {
@@ -344,7 +252,6 @@
              if (transaction_id != waiting_rw)
              {
                  Debug("[%lu] continuing %lu", transaction_id, waiting_rw);
-                 ContinueGet(waiting_rw);
                  ContinueCoordinatorPrepare(waiting_rw);
                  ContinueParticipantPrepare(waiting_rw);
              }
@@ -362,57 +269,56 @@
      void OCCServer::NotifySlowPathROs(const std::unordered_set<uint64_t> &ros, uint64_t rw_transaction_id,
                                     bool is_commit, const Timestamp &commit_ts)
      {
-         for (uint64_t ro : ros)
-         {
-             SendROSlowPath(ro, rw_transaction_id, is_commit, commit_ts);
-         }
+        //  for (uint64_t ro : ros)
+        //  {
+        //      SendROSlowPath(ro, rw_transaction_id, is_commit, commit_ts);
+        //  }
      }
  
      void OCCServer::SendROSlowPath(uint64_t ro_transaction_id, uint64_t rw_transaction_id,
-                                 bool is_commit, const Timestamp &commit_ts)
-     {
-         ASSERT(consistency_ == RSS);
-         auto search = pending_ro_commit_replies_.find(ro_transaction_id);
-         ASSERT(search != pending_ro_commit_replies_.end());
+                                 bool is_commit, const Timestamp &commit_ts){
+        //  ASSERT(consistency_ == RSS);
+        //  auto search = pending_ro_commit_replies_.find(ro_transaction_id);
+        //  ASSERT(search != pending_ro_commit_replies_.end());
  
-         // Debug("[%lu] Sending slow path reply for %lu", ro_transaction_id, rw_transaction_id);
+        //  // Debug("[%lu] Sending slow path reply for %lu", ro_transaction_id, rw_transaction_id);
  
-         PendingROCommitReply *reply = search->second;
-         ASSERT(reply->n_slow_path_replies > 0);
+        //  PendingROCommitReply *reply = search->second;
+        //  ASSERT(reply->n_slow_path_replies > 0);
  
-         if (transactions_.GetROTransactionState(ro_transaction_id) != SLOW_PATH)
-         {
-             // Debug("[%lu] Fast path reply not yet sent", ro_transaction_id);
-             // Debug("s: %d", static_cast<int>(transactions_.GetROTransactionState(ro_transaction_id)));
-             reply->n_slow_path_replies -= 1;
-             return;
-         }
+        //  if (transactions_.GetROTransactionState(ro_transaction_id) != SLOW_PATH)
+        //  {
+        //      // Debug("[%lu] Fast path reply not yet sent", ro_transaction_id);
+        //      // Debug("s: %d", static_cast<int>(transactions_.GetROTransactionState(ro_transaction_id)));
+        //      reply->n_slow_path_replies -= 1;
+        //      return;
+        //  }
  
-         uint64_t client_id = reply->rid.client_id();
-         uint64_t client_req_id = reply->rid.client_req_id();
-         const TransportAddress *remote = reply->rid.addr();
+        //  uint64_t client_id = reply->rid.client_id();
+        //  uint64_t client_req_id = reply->rid.client_req_id();
+        //  const TransportAddress *remote = reply->rid.addr();
  
-         ro_commit_slow_reply_.mutable_rid()->set_client_id(client_id);
-         ro_commit_slow_reply_.mutable_rid()->set_client_req_id(client_req_id);
-         ro_commit_slow_reply_.set_transaction_id(rw_transaction_id);
-         ro_commit_slow_reply_.set_is_commit(is_commit);
-         commit_ts.serialize(ro_commit_slow_reply_.mutable_commit_timestamp());
+        //  ro_commit_slow_reply_.mutable_rid()->set_client_id(client_id);
+        //  ro_commit_slow_reply_.mutable_rid()->set_client_req_id(client_req_id);
+        //  ro_commit_slow_reply_.set_transaction_id(rw_transaction_id);
+        //  ro_commit_slow_reply_.set_is_commit(is_commit);
+        //  commit_ts.serialize(ro_commit_slow_reply_.mutable_commit_timestamp());
  
-         transport_->SendMessage(this, *remote, ro_commit_slow_reply_);
+        //  transport_->SendMessage(this, *remote, ro_commit_slow_reply_);
  
-         uint64_t n_slow_path_replies = reply->n_slow_path_replies - 1;
-         if (n_slow_path_replies == 0)
-         {
-             delete remote;
-             delete reply;
-             pending_ro_commit_replies_.erase(search);
+        //  uint64_t n_slow_path_replies = reply->n_slow_path_replies - 1;
+        //  if (n_slow_path_replies == 0)
+        //  {
+        //      delete remote;
+        //      delete reply;
+        //      pending_ro_commit_replies_.erase(search);
  
-             transactions_.FinishROSlowPath(ro_transaction_id);
-         }
-         else
-         {
-             reply->n_slow_path_replies = n_slow_path_replies;
-         }
+        //      transactions_.FinishROSlowPath(ro_transaction_id);
+        //  }
+        //  else
+        //  {
+        //      reply->n_slow_path_replies = n_slow_path_replies;
+        //  }
      }
  
      void OCCServer::HandleROCommit(const TransportAddress &remote, proto::ROCommit &msg)
@@ -451,43 +357,24 @@
          ro_commit_reply_.mutable_rid()->set_client_req_id(client_req_id);
          ro_commit_reply_.set_transaction_id(transaction_id);
  
-         std::pair<TimestampID, std::string> value;
+         std::pair<Timestamp, std::string> value;
          for (auto &k : keys)
          {
-             ASSERT(store_.get(k, {commit_ts, transaction_id}, value));
+             int ret = occstore_->Get(transaction_id, k, value);
+             ASSERT(ret==0);
              proto::ReadReply *rreply = ro_commit_reply_.add_values();
-             rreply->set_transaction_id(value.first.transaction_id);
-             value.first.timestamp.serialize(rreply->mutable_timestamp());
+             rreply->set_transaction_id(transaction_id);
+             value.first.serialize(rreply->mutable_timestamp());
              rreply->set_key(k.c_str());
              rreply->set_val(value.second.c_str());
          }
  
-         if (consistency_ == RSS && transactions_.GetRONumberSkipped(transaction_id) > 0)
-         {
-             const std::vector<PreparedTransaction> skipped_prepares = transactions_.GetROSkippedRWTransactions(transaction_id);
- 
-             // Add for slow replies
-             auto reply = new PendingROCommitReply(client_id, client_req_id, remote.clone());
-             reply->n_slow_path_replies = skipped_prepares.size();
-             pending_ro_commit_replies_[transaction_id] = reply;
- 
-             for (auto &pt : skipped_prepares)
-             {
-                 // Debug("[%lu] replying with skipped prepare: %lu", transaction_id, pt.transaction_id());
-                 proto::PreparedTransactionMessage *ptm = ro_commit_reply_.add_prepares();
-                 pt.serialize(ptm);
-             }
- 
-             transport_->SendMessage(this, remote, ro_commit_reply_);
- 
-             transactions_.StartROSlowPath(transaction_id);
-         }
-         else
-         {
-             transport_->SendMessage(this, remote, ro_commit_reply_);
- 
-             transactions_.CommitRO(transaction_id);
-         }
+         
+       
+        transport_->SendMessage(this, remote, ro_commit_reply_);
+
+        transactions_.CommitRO(transaction_id);
+         
      }
  
      void OCCServer::ContinueROCommit(uint64_t transaction_id)
@@ -513,44 +400,26 @@
          ro_commit_reply_.mutable_rid()->set_client_req_id(client_req_id);
          ro_commit_reply_.set_transaction_id(transaction_id);
  
-         std::pair<TimestampID, std::string> value;
+         std::pair<Timestamp, std::string> value;
          for (auto &k : keys)
          {
-             ASSERT(store_.get(k, {commit_ts, transaction_id}, value));
+             int ret = occstore_->Get(transaction_id, k, value);
+             ASSERT(ret==0);
              proto::ReadReply *rreply = ro_commit_reply_.add_values();
-             rreply->set_transaction_id(value.first.transaction_id);
-             value.first.timestamp.serialize(rreply->mutable_timestamp());
+             rreply->set_transaction_id(transaction_id);
+             value.first.serialize(rreply->mutable_timestamp());
              rreply->set_key(k.c_str());
              rreply->set_val(value.second.c_str());
          }
  
-         if (consistency_ == RSS && transactions_.GetRONumberSkipped(transaction_id) > 0)
-         {
-             const std::vector<PreparedTransaction> skipped_prepares = transactions_.GetROSkippedRWTransactions(transaction_id);
-             // Add for slow replies
-             reply->n_slow_path_replies = skipped_prepares.size();
- 
-             for (auto &pt : skipped_prepares)
-             {
-                 // Debug("[%lu] replying with skipped prepare: %lu", transaction_id, pt.transaction_id());
-                 proto::PreparedTransactionMessage *ptm = ro_commit_reply_.add_prepares();
-                 pt.serialize(ptm);
-             }
- 
-             transport_->SendMessage(this, *remote, ro_commit_reply_);
- 
-             transactions_.StartROSlowPath(transaction_id);
-         }
-         else
-         {
-             transport_->SendMessage(this, *remote, ro_commit_reply_);
- 
-             delete remote;
-             delete reply;
-             pending_ro_commit_replies_.erase(search);
- 
-             transactions_.CommitRO(transaction_id);
-         }
+        transport_->SendMessage(this, *remote, ro_commit_reply_);
+
+        delete remote;
+        delete reply;
+        pending_ro_commit_replies_.erase(search);
+
+        transactions_.CommitRO(transaction_id);
+         
      }
  
      void OCCServer::HandleRWCommitCoordinator(const TransportAddress &remote, proto::RWCommitCoordinator &msg)
@@ -573,62 +442,39 @@
          TransactionState s = transactions_.StartCoordinatorPrepare(transaction_id, start_ts, shard_idx_,
                                                                     participants, transaction, nonblock_ts);
  
-         if (s == PREPARING)
-         {
-             Debug("[%lu] Coordinator preparing", transaction_id);
+        if (s == PREPARING) {
+            int ret = occstore_->Prepare(transaction_id, transaction);
+            bool checkResult = ret == REPLY_OK;
+
+            if (checkResult){
+                const Timestamp prepare_ts = GetPrepareTimestamp(client_id);
+                transactions_.FinishCoordinatorPrepare(transaction_id, prepare_ts);
+                const Timestamp &commit_ts = transactions_.GetRWCommitTimestamp(transaction_id);
+
+                auto *reply = new PendingRWCommitCoordinatorReply(client_id, client_req_id, remote.clone());
+                pending_rw_commit_c_replies_[transaction_id] = reply;
+
+                // TODO: Handle timeout
+                if (enable_replica) {
+                    replica_client_->CoordinatorCommit(
+                        transaction_id, start_ts, shard_idx_,
+                        participants, transaction, nonblock_ts, commit_ts,
+                        std::bind(&OCCServer::CommitCoordinatorCallback, this,
+                                    transaction_id, std::placeholders::_1),
+                        []() {}, COMMIT_TIMEOUT);
+                } else {
+                    CoordinatorCommitTransaction(transaction_id, commit_ts);
+                    CommitCoordinatorCallback(transaction_id, transaction_status_t::COMMITTED);
+                }
+            } else {
+                SendRWCommmitCoordinatorReplyFail(remote, client_id, client_req_id);
  
-             LockAcquireResult ar = locks_.AcquireLocks(transaction_id, transaction);
-             if (ar.status == LockStatus::ACQUIRED)
-             {
-                 ASSERT(ar.wound_rws.size() == 0);
-                 const Timestamp prepare_ts = GetPrepareTimestamp(client_id);
-                 transactions_.FinishCoordinatorPrepare(transaction_id, prepare_ts);
-                 const Timestamp &commit_ts = transactions_.GetRWCommitTimestamp(transaction_id);
- 
-                 auto *reply = new PendingRWCommitCoordinatorReply(client_id, client_req_id, remote.clone());
-                 pending_rw_commit_c_replies_[transaction_id] = reply;
- 
-                 // TODO: Handle timeout
-                 if (enable_replica) {
-                     replica_client_->CoordinatorCommit(
-                         transaction_id, start_ts, shard_idx_,
-                         participants, transaction, nonblock_ts, commit_ts,
-                         std::bind(&OCCServer::CommitCoordinatorCallback, this,
-                                     transaction_id, std::placeholders::_1),
-                         []() {}, COMMIT_TIMEOUT);
-                 }
-             }
-             else if (ar.status == LockStatus::FAIL)
-             {
-                 ASSERT(ar.wound_rws.size() == 0);
-                 // Debug("[%lu] Coordinator prepare failed", transaction_id);
-                 LockReleaseResult rr = locks_.ReleaseLocks(transaction_id, transaction);
- 
-                 SendRWCommmitCoordinatorReplyFail(remote, client_id, client_req_id);
- 
-                 NotifyPendingRWs(transaction_id, rr.notify_rws);
- 
-                 transactions_.AbortPrepare(transaction_id);
-             }
-             else if (ar.status == LockStatus::WAITING)
-             {
-                 Debug("[%lu] Waiting", transaction_id);
- 
-                 auto reply = new PendingRWCommitCoordinatorReply(client_id, client_req_id, remote.clone());
-                 pending_rw_commit_c_replies_[transaction_id] = reply;
- 
-                 transactions_.PausePrepare(transaction_id);
- 
-                 WoundPendingRWs(transaction_id, ar.wound_rws);
-             }
-             else
-             {
-                 NOT_REACHABLE();
-             }
+                transactions_.AbortPrepare(transaction_id);
+            }
          }
          else if (s == ABORTED)
          {
-             // Debug("[%lu] Already aborted", transaction_id);
+             Debug("[%lu] Already aborted", transaction_id);
  
              SendRWCommmitCoordinatorReplyFail(remote, client_id, client_req_id);
  
@@ -636,7 +482,7 @@
          }
          else if (s == WAIT_PARTICIPANTS)
          {
-             // Debug("[%lu] Waiting for other participants", transaction_id);
+             Debug("[%lu] Waiting for other participants", transaction_id);
  
              auto reply = new PendingRWCommitCoordinatorReply(client_id, client_req_id, remote.clone());
              pending_rw_commit_c_replies_[transaction_id] = reply;
@@ -662,59 +508,46 @@
          uint64_t client_req_id = reply->rid.client_req_id();
          const TransportAddress *remote = reply->rid.addr();
  
+
+         
          TransactionState s = transactions_.ContinuePrepare(transaction_id);
+         Transaction transaction = transactions_.GetTransaction(transaction_id);
+         const Timestamp nonblock_ts = transactions_.GetNonBlockTimestamp(transaction_id);
+         const std::unordered_set<int> &participants = transactions_.GetParticipants(transaction_id);
+         const TrueTimeInterval now = tt_.Now();
+
+         const Timestamp start_ts{now.latest(), client_id};
+
          if (s == PREPARING)
          {
-             const Transaction &transaction = transactions_.GetTransaction(transaction_id);
-             LockAcquireResult ar = locks_.AcquireLocks(transaction_id, transaction);
-             if (ar.status == LockStatus::ACQUIRED)
-             {
-                 ASSERT(ar.wound_rws.size() == 0);
-                 const Timestamp prepare_ts = GetPrepareTimestamp(client_id);
-                 transactions_.FinishCoordinatorPrepare(transaction_id, prepare_ts);
-                 const Timestamp &commit_ts = transactions_.GetRWCommitTimestamp(transaction_id);
+            int ret = occstore_->Prepare(transaction_id, transaction);
+            bool checkResult = ret == REPLY_OK;
+
+            if (checkResult){
+                const Timestamp prepare_ts = GetPrepareTimestamp(client_id);
+                transactions_.FinishCoordinatorPrepare(transaction_id, prepare_ts);
+                const Timestamp &commit_ts = transactions_.GetRWCommitTimestamp(transaction_id);
+
+                auto *reply = new PendingRWCommitCoordinatorReply(client_id, client_req_id, remote->clone());
+                pending_rw_commit_c_replies_[transaction_id] = reply;
+
+                // TODO: Handle timeout
+                if (enable_replica) {
+                    replica_client_->CoordinatorCommit(
+                        transaction_id, start_ts, shard_idx_,
+                        participants, transaction, nonblock_ts, commit_ts,
+                        std::bind(&OCCServer::CommitCoordinatorCallback, this,
+                                    transaction_id, std::placeholders::_1),
+                        []() {}, COMMIT_TIMEOUT);
+                } else {
+                    CoordinatorCommitTransaction(transaction_id, commit_ts);
+                    CommitCoordinatorCallback(transaction_id, transaction_status_t::COMMITTED);
+                }
+            } else {
+                SendRWCommmitCoordinatorReplyFail(*remote, client_id, client_req_id);
  
-                 const Timestamp &start_ts = transactions_.GetStartTimestamp(transaction_id);
-                 const std::unordered_set<int> &participants = transactions_.GetParticipants(transaction_id);
-                 const Timestamp &nonblock_ts = transactions_.GetNonBlockTimestamp(transaction_id);
- 
-                 // TODO: Handle timeout
-                 if (enable_replica) {
-                 replica_client_->CoordinatorCommit(
-                     transaction_id, start_ts, shard_idx_,
-                     participants, transaction, nonblock_ts, commit_ts,
-                     std::bind(&OCCServer::CommitCoordinatorCallback, this,
-                               transaction_id, std::placeholders::_1),
-                     []() {}, COMMIT_TIMEOUT);
-                 }
-             }
-             else if (ar.status == LockStatus::FAIL)
-             {
-                 ASSERT(ar.wound_rws.size() == 0);
-                 // Debug("[%lu] Coordinator prepare failed", transaction_id);
-                 LockReleaseResult rr = locks_.ReleaseLocks(transaction_id, transaction);
- 
-                 SendRWCommmitCoordinatorReplyFail(*remote, client_id, client_req_id);
-                 delete remote;
-                 delete reply;
-                 pending_rw_commit_c_replies_.erase(search);
- 
-                 NotifyPendingRWs(transaction_id, rr.notify_rws);
- 
-                 transactions_.AbortPrepare(transaction_id);
-             }
-             else if (ar.status == LockStatus::WAITING)
-             {
-                 Debug("[%lu] Waiting", transaction_id);
- 
-                 transactions_.PausePrepare(transaction_id);
- 
-                 WoundPendingRWs(transaction_id, ar.wound_rws);
-             }
-             else
-             {
-                 NOT_REACHABLE();
-             }
+                transactions_.AbortPrepare(transaction_id);
+            }
          }
          else if (s == PREPARED || s == COMMITTING || s == COMMITTED)
          {
@@ -826,7 +659,7 @@
      {
          ASSERT(status == REPLY_OK);
  
-         // Debug("[%lu] COMMIT callback: %d", transaction_id, status);
+         Debug("[%lu] COMMIT callback: %d", transaction_id, status);
      }
  
      void OCCServer::SendRWCommmitParticipantReplyOK(uint64_t transaction_id)
@@ -900,10 +733,10 @@
          TransactionState s = transactions_.StartParticipantPrepare(transaction_id, coordinator, transaction, nonblock_ts);
          if (s == PREPARING)
          {
-             LockAcquireResult ar = locks_.AcquireLocks(transaction_id, transaction);
-             if (ar.status == LockStatus::ACQUIRED)
+            int ret = occstore_->Prepare(transaction_id, transaction);
+            bool checkResult = ret == REPLY_OK;
+             if (checkResult)
              {
-                 ASSERT(ar.wound_rws.size() == 0);
                  const Timestamp prepare_ts = GetPrepareTimestamp(client_id);
  
                  transactions_.SetParticipantPrepareTimestamp(transaction_id, prepare_ts);
@@ -919,14 +752,12 @@
                      std::bind(&OCCServer::PrepareCallback, this, transaction_id,
                                std::placeholders::_1, std::placeholders::_2),
                      [](int, Timestamp) {}, PREPARE_TIMEOUT);
+                 } else{
+                     PrepareCallback(transaction_id, 0, prepare_ts);
                  }
              }
-             else if (ar.status == LockStatus::FAIL)
+             else 
              {
-                 ASSERT(ar.wound_rws.size() == 0);
-                 // Debug("[%lu] Participant prepare failed", transaction_id);
-                 LockReleaseResult rr = locks_.ReleaseLocks(transaction_id, transaction);
- 
                  // TODO: Handle timeout
                  shard_clients_[coordinator]->PrepareAbort(
                      transaction_id, shard_idx_,
@@ -937,24 +768,9 @@
                  // Reply to client
                  SendRWCommmitParticipantReplyFail(remote, client_id, client_req_id);
  
-                 NotifyPendingRWs(transaction_id, rr.notify_rws);
+                //  NotifyPendingRWs(transaction_id, rr.notify_rws);
  
                  transactions_.AbortPrepare(transaction_id);
-             }
-             else if (ar.status == LockStatus::WAITING)
-             {
-                 Debug("[%lu] Waiting", transaction_id);
- 
-                 auto reply = new PendingRWCommitParticipantReply(client_id, client_req_id, remote.clone());
-                 pending_rw_commit_p_replies_[transaction_id] = reply;
- 
-                 transactions_.PausePrepare(transaction_id);
- 
-                 WoundPendingRWs(transaction_id, ar.wound_rws);
-             }
-             else
-             {
-                 NOT_REACHABLE();
              }
          }
          else if (s == ABORTED)
@@ -991,10 +807,10 @@
              const int coordinator = transactions_.GetCoordinator(transaction_id);
              const Transaction &transaction = transactions_.GetTransaction(transaction_id);
  
-             LockAcquireResult ar = locks_.AcquireLocks(transaction_id, transaction);
-             if (ar.status == LockStatus::ACQUIRED)
+             int ret = occstore_->Prepare(transaction_id, transaction);
+             bool checkResult = ret == REPLY_OK;
+             if (checkResult)
              {
-                 ASSERT(ar.wound_rws.size() == 0);
                  const Timestamp prepare_ts = GetPrepareTimestamp(client_id);
  
                  transactions_.SetParticipantPrepareTimestamp(transaction_id, prepare_ts);
@@ -1009,14 +825,15 @@
                      std::bind(&OCCServer::PrepareCallback, this, transaction_id,
                                std::placeholders::_1, std::placeholders::_2),
                      [](int, Timestamp) {}, PREPARE_TIMEOUT);
+                 } else {
+                     PrepareCallback(transaction_id, 0, prepare_ts);
                  }
              }
-             else if (ar.status == LockStatus::FAIL)
+             else 
              {
-                 ASSERT(ar.wound_rws.size() == 0);
-                 // Debug("[%lu] Participant prepare failed", transaction_id);
-                 LockReleaseResult rr = locks_.ReleaseLocks(transaction_id, transaction);
- 
+                 Debug("[%lu] Participant prepare failed", transaction_id);
+             //  LockReleaseResult rr = locks_.ReleaseLocks(transaction_id, transaction);
+                occstore_->Abort(transaction_id);
                  // TODO: Handle timeout
                  shard_clients_[coordinator]->PrepareAbort(
                      transaction_id, shard_idx_,
@@ -1030,30 +847,19 @@
                  delete reply;
                  pending_rw_commit_p_replies_.erase(search);
  
-                 NotifyPendingRWs(transaction_id, rr.notify_rws);
+                //  NotifyPendingRWs(transaction_id, rr.notify_rws);
  
                  transactions_.AbortPrepare(transaction_id);
              }
-             else if (ar.status == LockStatus::WAITING)
-             {
-                 Debug("[%lu] Waiting", transaction_id);
- 
-                 transactions_.PausePrepare(transaction_id);
- 
-                 WoundPendingRWs(transaction_id, ar.wound_rws);
-             }
-             else
-             {
-                 NOT_REACHABLE();
-             }
+           
          }
          else if (s == PREPARED || s == COMMITTING || s == COMMITTED)
          {
-             // Debug("[%lu] Already prepared", transaction_id);
+             Debug("[%lu] Already prepared", transaction_id);
          }
          else if (s == ABORTED)
          { // Already aborted
-             // Debug("[%lu] Already aborted", transaction_id);
+             Debug("[%lu] Already aborted", transaction_id);
          }
          else
          {
@@ -1105,6 +911,8 @@
                  transaction_id, commit_ts,
                  std::bind(&OCCServer::CommitParticipantCallback, this, transaction_id, std::placeholders::_1),
                  []() {}, COMMIT_TIMEOUT);
+             } else {
+                 CommitParticipantCallback(transaction_id, transaction_status_t::COMMITTED);
              }
          }
          else if (status == REPLY_FAIL)
@@ -1120,18 +928,20 @@
  
              const Transaction &transaction = transactions_.GetTransaction(transaction_id);
  
-             LockReleaseResult rr = locks_.ReleaseLocks(transaction_id, transaction);
+            //  LockReleaseResult rr = locks_.ReleaseLocks(transaction_id, transaction);
              TransactionFinishResult fr = transactions_.Abort(transaction_id);
- 
+             occstore_->Abort(transaction_id);
              // TODO: Handle timeout
              if (enable_replica) {
              replica_client_->Abort(
                  transaction_id,
                  std::bind(&OCCServer::AbortParticipantCallback, this, transaction_id),
                  []() {}, ABORT_TIMEOUT);
+             } else {
+                 AbortParticipantCallback(transaction_id);
              }
  
-             NotifyPendingRWs(transaction_id, rr.notify_rws);
+            //  NotifyPendingRWs(transaction_id, rr.notify_rws);
              NotifyPendingROs(fr.notify_ros);
              NotifySlowPathROs(fr.notify_slow_path_ros, transaction_id, false);
          }
@@ -1146,19 +956,19 @@
      {
          ASSERT(status == REPLY_OK);
  
-         // Debug("[%lu] Received PREPARE_ABORT callback: %d %d", transaction_id, shard_idx_, status);
+         Debug("[%lu] Received PREPARE_ABORT callback: %d %d", transaction_id, shard_idx_, status);
      }
  
      void OCCServer::CommitParticipantCallback(uint64_t transaction_id, transaction_status_t status)
      {
          ASSERT(status == REPLY_OK);
  
-         // Debug("[%lu] Received COMMIT participant callback: %d %d", transaction_id, status, shard_idx_);
+         Debug("[%lu] Received COMMIT participant callback: %d %d", transaction_id, status, shard_idx_);
      }
  
      void OCCServer::AbortParticipantCallback(uint64_t transaction_id)
      {
-         // Debug("[%lu] Received ABORT participant callback: %d", transaction_id, shard_idx_);
+         Debug("[%lu] Received ABORT participant callback: %d", transaction_id, shard_idx_);
      }
  
      void OCCServer::HandlePrepareOK(const TransportAddress &remote, proto::PrepareOK &msg)
@@ -1172,7 +982,7 @@
          const Timestamp prepare_ts{msg.prepare_timestamp()};
          const Timestamp nonblock_ts{msg.nonblock_timestamp()};
  
-         // Debug("[%lu] Received Prepare OK", transaction_id);
+         Debug("[%lu] Received Prepare OK", transaction_id);
  
          PendingPrepareOKReply *reply = nullptr;
          auto search = pending_prepare_ok_replies_.find(transaction_id);
@@ -1195,15 +1005,15 @@
          TransactionState s = transactions_.CoordinatorReceivePrepareOK(transaction_id, participant_shard, prepare_ts, nonblock_ts);
          if (s == PREPARING)
          {
-             // Debug("[%lu] Coordinator preparing", transaction_id);
+             Debug("[%lu] Coordinator preparing", transaction_id);
  
              const std::unordered_set<int> &participants = transactions_.GetParticipants(transaction_id);
              const Transaction &transaction = transactions_.GetTransaction(transaction_id);
  
-             LockAcquireResult ar = locks_.AcquireLocks(transaction_id, transaction);
-             if (ar.status == LockStatus::ACQUIRED)
+             int ret = occstore_->Prepare(transaction_id, transaction);
+             bool checkResult = ret == REPLY_OK;
+            if (checkResult)
              {
-                 ASSERT(ar.wound_rws.size() == 0);
                  const Timestamp prepare_ts = GetPrepareTimestamp(client_id);
                  transactions_.FinishCoordinatorPrepare(transaction_id, prepare_ts);
  
@@ -1219,14 +1029,17 @@
                      std::bind(&OCCServer::CommitCoordinatorCallback, this,
                                transaction_id, std::placeholders::_1),
                      []() {}, COMMIT_TIMEOUT);
+                 } else {
+                     CoordinatorCommitTransaction(transaction_id, commit_ts);
+                     CommitCoordinatorCallback(transaction_id, transaction_status_t::COMMITTED);
                  }
              }
-             else if (ar.status == FAIL)
+             else
              {
-                 ASSERT(ar.wound_rws.size() == 0);
-                 // Debug("[%lu] Coordinator prepare failed", transaction_id);
-                 LockReleaseResult rr = locks_.ReleaseLocks(transaction_id, transaction);
- 
+                 Debug("[%lu] Coordinator prepare failed", transaction_id);
+                //  LockReleaseResult rr = locks_.ReleaseLocks(transaction_id, transaction);
+                occstore_->Abort(transaction_id);
+
                  // Reply to participants
                  SendPrepareOKRepliesFail(reply);
                  delete reply;
@@ -1246,22 +1059,11 @@
                  pending_rw_commit_c_replies_.erase(transaction_id);
  
                  // Notify waiting RW transactions
-                 NotifyPendingRWs(transaction_id, rr.notify_rws);
+                //  NotifyPendingRWs(transaction_id, rr.notify_rws);
  
                  transactions_.AbortPrepare(transaction_id);
              }
-             else if (ar.status == WAITING)
-             {
-                 Debug("[%lu] Waiting", transaction_id);
- 
-                 transactions_.PausePrepare(transaction_id);
- 
-                 WoundPendingRWs(transaction_id, ar.wound_rws);
-             }
-             else
-             {
-                 NOT_REACHABLE();
-             }
+          
          }
          else if (s == ABORTED)
          { // Already aborted
@@ -1274,7 +1076,7 @@
          }
          else if (s == WAIT_PARTICIPANTS)
          {
-             // Debug("[%lu] Waiting for other participants", transaction_id);
+             Debug("[%lu] Waiting for other participants", transaction_id);
          }
          else
          {
@@ -1317,8 +1119,9 @@
  
          // Release locks acquired during GETs
          const Transaction &transaction = transactions_.GetTransaction(transaction_id);
-         LockReleaseResult rr = locks_.ReleaseLocks(transaction_id, transaction);
- 
+        //  LockReleaseResult rr = locks_.ReleaseLocks(transaction_id, transaction);
+        occstore_->Abort(transaction_id);
+
          // Reply to client
          auto search = pending_rw_commit_c_replies_.find(transaction_id);
          if (search != pending_rw_commit_c_replies_.end())
@@ -1354,7 +1157,7 @@
          prepare_abort_reply_.set_status(REPLY_OK);
          transport_->SendMessage(this, remote, prepare_abort_reply_);
  
-         NotifyPendingRWs(transaction_id, rr.notify_rws);
+        //  NotifyPendingRWs(transaction_id, rr.notify_rws);
  
          transactions_.Abort(transaction_id);
      }
@@ -1425,7 +1228,8 @@
          if (state != NOT_FOUND)
          {
              const Transaction &transaction = transactions_.GetTransaction(transaction_id);
-             rr = locks_.ReleaseLocks(transaction_id, transaction);
+            //  rr = locks_.ReleaseLocks(transaction_id, transaction);
+            occstore_->Abort(transaction_id);
          }
  
          fr = transactions_.Abort(transaction_id);
@@ -1469,7 +1273,8 @@
          if (state != NOT_FOUND)
          {
              const Transaction &transaction = transactions_.GetTransaction(transaction_id);
-             rr = locks_.ReleaseLocks(transaction_id, transaction);
+            //  rr = locks_.ReleaseLocks(transaction_id, transaction);
+            occstore_->Abort(transaction_id);
          }
  
          fr = transactions_.Abort(transaction_id);
@@ -1482,6 +1287,8 @@
                  transaction_id,
                  std::bind(&OCCServer::AbortParticipantCallback, this, transaction_id),
                  []() {}, ABORT_TIMEOUT);
+             } else {
+                 AbortParticipantCallback(transaction_id);
              }
          }
  
@@ -1489,7 +1296,7 @@
          transport_->SendMessage(this, remote, abort_reply_);
  
          // Reply to client for any ongoing GETs
-         ContinueGet(transaction_id);
+        //  ContinueGet(transaction_id);
  
          NotifyPendingRWs(transaction_id, rr.notify_rws);
          NotifyPendingROs(fr.notify_ros);
@@ -1513,23 +1320,20 @@
  
      void OCCServer::CoordinatorCommitTransaction(uint64_t transaction_id, const Timestamp commit_ts)
      {
-         // Debug("[%lu] Commiting", transaction_id);
+         Debug("[%lu] Commiting", transaction_id);
  
          const Timestamp nonblock_ts = transactions_.GetNonBlockTimestamp(transaction_id);
  
          // Commit writes
          const Transaction &transaction = transactions_.GetTransaction(transaction_id);
-         for (auto &write : transaction.getWriteSet())
-         {
-             store_.put(write.first, write.second, {commit_ts, transaction_id});
-         }
+         occstore_->Commit(transaction_id, commit_ts);
  
-         if (transaction.getWriteSet().size() > 0)
-         {
-             min_prepare_timestamp_ = std::max(min_prepare_timestamp_, commit_ts);
-         }
+        //  if (transaction.getWriteSet().size() > 0)
+        //  {
+        //      min_prepare_timestamp_ = std::max(min_prepare_timestamp_, commit_ts);
+        //  }
  
-         LockReleaseResult rr = locks_.ReleaseLocks(transaction_id, transaction);
+        //  LockReleaseResult rr = locks_.ReleaseLocks(transaction_id, transaction);
          TransactionFinishResult fr = transactions_.Commit(transaction_id);
  
          // Reply to client
@@ -1539,7 +1343,7 @@
          SendPrepareOKRepliesOK(transaction_id, commit_ts);
  
          // Continue waiting RW transactions
-         NotifyPendingRWs(transaction_id, rr.notify_rws);
+        //  NotifyPendingRWs(transaction_id, rr.notify_rws);
  
          // Continue waiting RO transactions
          NotifyPendingROs(fr.notify_ros);
@@ -1548,25 +1352,23 @@
  
      void OCCServer::ParticipantCommitTransaction(uint64_t transaction_id, const Timestamp commit_ts)
      {
-         // Debug("[%lu] Commiting", transaction_id);
+         Debug("[%lu] Commiting", transaction_id);
  
          // Commit writes
          const Transaction &transaction = transactions_.GetTransaction(transaction_id);
-         for (auto &write : transaction.getWriteSet())
-         {
-             store_.put(write.first, write.second, {commit_ts, transaction_id});
-         }
+         occstore_->Commit(transaction_id, commit_ts);
+
  
          if (transaction.getWriteSet().size() > 0)
          {
              min_prepare_timestamp_ = std::max(min_prepare_timestamp_, commit_ts);
          }
  
-         LockReleaseResult rr = locks_.ReleaseLocks(transaction_id, transaction);
+        //  LockReleaseResult rr = locks_.ReleaseLocks(transaction_id, transaction);
          TransactionFinishResult fr = transactions_.Commit(transaction_id);
  
          // Continue waiting RW transactions
-         NotifyPendingRWs(transaction_id, rr.notify_rws);
+        //  NotifyPendingRWs(transaction_id, rr.notify_rws);
  
          // Continue waiting RO transactions
          NotifyPendingROs(fr.notify_ros);
@@ -1632,8 +1434,8 @@
                  s = transactions_.StartParticipantPrepare(transaction_id, coordinator, transaction, nonblock_ts);
                  ASSERT(s == PREPARING);
  
-                 LockAcquireResult ar = locks_.AcquireLocks(transaction_id, transaction);
-                 ASSERT(ar.status == LockStatus::ACQUIRED);
+                 int ret = occstore_->Prepare(transaction_id, transaction);
+                 ASSERT(ret == REPLY_OK);
  
                  transactions_.SetParticipantPrepareTimestamp(transaction_id, prepare_ts);
  
@@ -1680,8 +1482,8 @@
                      }
                      ASSERT(s == PREPARING);
  
-                     LockAcquireResult ar = locks_.AcquireLocks(transaction_id, transaction);
-                     ASSERT(ar.status == LockStatus::ACQUIRED);
+                     int ret = occstore_->Prepare(transaction_id, transaction);
+                     ASSERT(ret == REPLY_OK);
  
                      transactions_.FinishCoordinatorPrepare(transaction_id, commit_ts);
                  }
@@ -1713,10 +1515,11 @@
              { // replica abort
                  const Transaction &transaction = transactions_.GetTransaction(transaction_id);
  
-                 LockReleaseResult rr = locks_.ReleaseLocks(transaction_id, transaction);
+                //  LockReleaseResult rr = locks_.ReleaseLocks(transaction_id, transaction);
+                occstore_->Abort(transaction_id);
                  TransactionFinishResult fr = transactions_.Abort(transaction_id);
  
-                 NotifyPendingRWs(transaction_id, rr.notify_rws);
+                //  NotifyPendingRWs(transaction_id, rr.notify_rws);
                  NotifyPendingROs(fr.notify_ros);
                  NotifySlowPathROs(fr.notify_slow_path_ros, transaction_id, false);
              }
@@ -1738,7 +1541,7 @@
      void OCCServer::Load(const string &key, const string &value,
                        const Timestamp timestamp)
      {
-         store_.put(key, value, {timestamp, 0});
+         occstore_->Load(key, value, timestamp);
      }
  
  } // namespace strongstore

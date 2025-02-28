@@ -31,6 +31,10 @@ const unordered_map<string, Timestamp> &Transaction::getReadSet() const {
     return readSet;
 }
 
+const unordered_map<string, Timestamp> &Transaction::getVersionedReadSet() const {
+    return versionedReadSet;
+}
+
 const unordered_map<string, string> &Transaction::getWriteSet() const {
     return writeSet;
 }
@@ -45,6 +49,10 @@ void Transaction::set_start_time(const Timestamp &ts) { start_time_ = ts; }
 
 void Transaction::addReadSet(const string &key, const Timestamp &readTime) {
     readSet[key] = readTime;
+}
+
+void Transaction::addVersionedReadSet(const string &key, const Timestamp &readTime) {
+    versionedReadSet[key] = readTime;
 }
 
 void Transaction::addWriteSet(const string &key, const string &value) {

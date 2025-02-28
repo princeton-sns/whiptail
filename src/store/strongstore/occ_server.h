@@ -49,52 +49,11 @@
  #include "store/strongstore/locktable.h"
  #include "store/strongstore/occstore.h"
  #include "store/strongstore/replicaclient.h"
+#include "store/strongstore/server.h"
  #include "store/strongstore/shardclient.h"
  #include "store/strongstore/strong-proto.pb.h"
  #include "store/strongstore/transactionstore.h"
  
- namespace strongstore
- {
- 
-     class RequestID
-     {
-     public:
-         RequestID(uint64_t client_id, uint64_t client_req_id,
-                   TransportAddress *addr)
-             : client_id_{client_id}, client_req_id_{client_req_id}, addr_{addr} {}
-         ~RequestID() {}
- 
-         const uint64_t client_id() const { return client_id_; }
-         const uint64_t client_req_id() const { return client_req_id_; }
-         const TransportAddress *addr() const { return addr_; }
- 
-     private:
-         uint64_t client_id_;
-         uint64_t client_req_id_;
-         TransportAddress *addr_;
-     };
- 
-     inline bool operator==(const strongstore::RequestID &lhs,
-                            const strongstore::RequestID &rhs)
-     {
-         return lhs.client_id() == rhs.client_id() &&
-                lhs.client_req_id() == rhs.client_req_id();
-     }
- } // namespace strongstore
- 
- namespace std
- {
-     template <>
-     struct hash<strongstore::RequestID>
-     {
-         std::size_t operator()(strongstore::RequestID const &rid) const noexcept
-         {
-             std::size_t h1 = std::hash<std::uint64_t>{}(rid.client_id());
-             std::size_t h2 = std::hash<std::uint64_t>{}(rid.client_req_id());
-             return h1 ^ (h2 << 1); // or use boost::hash_combine
-         }
-     };
- } // namespace std
  
  namespace strongstore
  {
@@ -109,7 +68,7 @@
                 const transport::Configuration &shard_config,
                 const transport::Configuration &replica_config, uint64_t server_id,
                 int groupIdx, int idx, Transport *transport, const TrueTime &tt,
-                bool debug_stats);
+                bool debug_stats, bool enable_replica);
          ~OCCServer();
  
          // Override TransportReceiver
@@ -245,7 +204,6 @@
          void WoundPendingRWs(uint64_t transaction_id, const std::unordered_set<uint64_t> &rws);
  
          void NotifyPendingRWs(uint64_t transaction_id, const std::unordered_set<uint64_t> &rws);
-         void ContinueGet(uint64_t transaction_id);
          void ContinueCoordinatorPrepare(uint64_t transaction_id);
          void ContinueParticipantPrepare(uint64_t transaction_id);
  
@@ -263,8 +221,7 @@
  
          const TrueTime &tt_;
          TransactionStore transactions_;
-         LockTable locks_;
-         VersionedKVStore<TimestampID, std::string> store_;
+        //  VersionedKVStore<TimestampID, std::string> store_;
  
          const transport::Configuration &shard_config_;
          const transport::Configuration &replica_config_;
@@ -311,7 +268,9 @@
          Consistency consistency_;
          bool debug_stats_;
  
-         bool enable_replica = false;
+         OCCStore* occstore_;
+
+         bool enable_replica = true;
      };
  
  } // namespace strongstore

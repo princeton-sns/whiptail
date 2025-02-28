@@ -68,8 +68,7 @@ int TxnStore::Put(uint64_t id, const string &key, const string &value,
     return 0;
 }
 
-int TxnStore::Prepare(uint64_t id, const Transaction &txn,
-                      std::unordered_map<uint64_t, int> &statuses)
+int TxnStore::Prepare(uint64_t id, const Transaction &txn)
 {
     Panic("Unimplemented PREPARE");
     return 0;
@@ -82,13 +81,12 @@ int TxnStore::Prepare(uint64_t id, const Transaction &txn,
     return 0;
 }
 
-bool TxnStore::Commit(uint64_t id, const Timestamp &ts,
-                      std::unordered_map<uint64_t, int> &statuses)
+bool TxnStore::Commit(uint64_t id, const Timestamp &ts)
 {
     Panic("Unimplemented COMMIT");
 }
 
-void TxnStore::Abort(uint64_t id, std::unordered_map<uint64_t, int> &statuses)
+void TxnStore::Abort(uint64_t id)
 {
     Panic("Unimplemented ABORT");
 }

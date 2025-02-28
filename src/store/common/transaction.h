@@ -33,6 +33,8 @@ class Transaction {
     // which the read happened and how
     // many times this key has been read
     std::unordered_map<std::string, Timestamp> readSet;
+    // record the timestamp read by the transaction
+    std::unordered_map<std::string, Timestamp> versionedReadSet;
 
     // map between key and value(s)
     std::unordered_map<std::string, std::string> writeSet;
@@ -47,11 +49,13 @@ class Transaction {
 
     const Timestamp &start_time() const;
     const std::unordered_map<std::string, Timestamp> &getReadSet() const;
+    const std::unordered_map<std::string, Timestamp> &getVersionedReadSet() const;
     const std::unordered_map<std::string, std::string> &getWriteSet() const;
     std::unordered_map<std::string, std::string> &getWriteSet();
     void serialize(TransactionMessage *msg) const;
 
     void addReadSet(const std::string &key, const Timestamp &readTime);
+    void addVersionedReadSet(const std::string &key, const Timestamp &readTime);
     void addWriteSet(const std::string &key, const std::string &value);
     void set_start_time(const Timestamp &ts);
 

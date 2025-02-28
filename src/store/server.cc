@@ -37,6 +37,7 @@
 #include "lib/transport.h"
 #include "lib/udptransport.h"
 #include "store/common/partitioner.h"
+#include "store/strongstore/occ_server.h"
 #include "store/strongstore/server.h"
 
 enum protocol_t
@@ -55,7 +56,7 @@ enum transmode_t
 /**
  * System settings.
  */
-DEFINE_bool(enable_replica, false, "enable replica");
+DEFINE_bool(enable_replica, true, "enable replica");
 DEFINE_uint64(server_id, 0, "unique identifier for server");
 DEFINE_string(replica_config_path, "",
               "path to replication configuration file");
@@ -331,7 +332,7 @@ int main(int argc, char **argv)
     {
     case PROTO_STRONG:
     {
-        server = new strongstore::Server(consistency, shard_config,
+        server = new strongstore::OCCServer(consistency, shard_config,
                                          replica_config, FLAGS_server_id,
                                          FLAGS_group_idx, FLAGS_replica_idx,
                                          tport, tt, FLAGS_debug_stats, FLAGS_enable_replica);

@@ -39,6 +39,7 @@
 #include "lib/message.h"
 #include "lib/transport.h"
 #include "store/common/stats.h"
+#include "store/common/timestamp.h"
 #include "store/common/transaction.h"
 #include "store/common/truetime.h"
 #include "store/strongstore/common.h"
@@ -102,6 +103,7 @@ namespace strongstore
         uint64_t GetRONumberSkipped(uint64_t transaction_id);
 
         void StartGet(uint64_t transaction_id, const TransportAddress &remote, const std::string &key, bool for_update);
+        void RecordGet(uint64_t transaction_id, const std::string &key, const Timestamp &ts);
         void FinishGet(uint64_t transaction_id, const std::string &key);
         void AbortGet(uint64_t transaction_id, const std::string &key);
         void PauseGet(uint64_t transaction_id, const std::string &key);
@@ -171,6 +173,7 @@ namespace strongstore
             void set_wait_start(uint64_t w) { wait_start_ = w; }
 
             void StartGet(const TransportAddress &remote, const std::string &key, bool for_update);
+            void RecordGet(const std::string &key, const Timestamp &ts);
 
             void StartCoordinatorPrepare(const Timestamp &start_ts, int coordinator,
                                          const std::unordered_set<int> participants,
