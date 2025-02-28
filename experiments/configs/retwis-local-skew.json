@@ -18,7 +18,7 @@
     "ap-northeast-1-2"
   ],
   "consistency": [
-    "rss"
+    "ss"
   ],
   "num_instances": 2,
   "shard_config_format_str": "shard-%d.config",
@@ -193,11 +193,11 @@
   "plot_tput_lat_y_label": "Latency (ms)",
   "input_latency_scale": 1000000000,
   "output_latency_scale": 1000,
-  "src_commit_hash": "composition",
+  "src_commit_hash": "HEAD",
   "stats_file_name": "stats.json",
-  "base_local_exp_directory": "/home/jhelt/git/rss/tapir/experiments/results",
+  "base_local_exp_directory": "/workspaces/whiptail/experiments/results",
   "base_mounted_fs_path": "/mnt/extra",
-  "base_remote_bin_directory_nfs": "/home/jhelt/git/rss/tapir",
+  "base_remote_bin_directory_nfs": "/workspaces/whiptail",
   "base_remote_exp_directory": "/mnt/extra/experiments",
   "bin_directory_name": "bin",
   "client_bin_name": "benchmark",
@@ -209,7 +209,7 @@
   "num_experiment_runs": 1,
   "out_directory_name": "out",
   "server_bin_name": "server",
-  "src_directory": "/home/jhelt/git/rss/tapir/src",
+  "src_directory": "/workspaces/whiptail/src",
   "make_collect_bins": [
     "store/benchmark/async/benchmark",
     "store/server"

@@ -4,7 +4,11 @@ build/
 __pycache__
 
 .obj/
+.cache
+latency
+experiments/results/
 
+src/bin/
 src/lockserver/client-main
 src/lockserver/server-main
 src/lockserver/lockserver-repl

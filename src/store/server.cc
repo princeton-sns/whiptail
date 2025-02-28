@@ -55,6 +55,7 @@ enum transmode_t
 /**
  * System settings.
  */
+DEFINE_bool(enable_replica, false, "enable replica");
 DEFINE_uint64(server_id, 0, "unique identifier for server");
 DEFINE_string(replica_config_path, "",
               "path to replication configuration file");
@@ -333,7 +334,7 @@ int main(int argc, char **argv)
         server = new strongstore::Server(consistency, shard_config,
                                          replica_config, FLAGS_server_id,
                                          FLAGS_group_idx, FLAGS_replica_idx,
-                                         tport, tt, FLAGS_debug_stats);
+                                         tport, tt, FLAGS_debug_stats, FLAGS_enable_replica);
         break;
     }
     default:
@@ -454,10 +455,13 @@ int main(int argc, char **argv)
     {
     case PROTO_STRONG:
     {
-        replica = new replication::vr::VRReplica(
-            replica_config, FLAGS_group_idx, FLAGS_replica_idx, tport, 1,
-            dynamic_cast<replication::AppReplica *>(server),
-            FLAGS_debug_stats);
+        if (FLAGS_enable_replica) {
+            replica = new replication::vr::VRReplica(
+                replica_config, FLAGS_group_idx, FLAGS_replica_idx, tport, 1,
+                dynamic_cast<replication::AppReplica *>(server),
+                FLAGS_debug_stats);
+        }
+       
         break;
     }
     default:
@@ -465,7 +469,7 @@ int main(int argc, char **argv)
         NOT_REACHABLE();
     }
     }
-    Debug("Created replica");
+    Debug("Created replica???");
 
     std::signal(SIGKILL, Cleanup);
     std::signal(SIGTERM, Cleanup);
