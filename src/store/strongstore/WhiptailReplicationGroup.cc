@@ -2,7 +2,7 @@
 // Created by jennifer on 2/28/25.
 //
 
-#include "WhiptailReplicationGroup.h"
+#include "store/strongstore/WhiptailReplicationGroup.h"
 
 namespace strongstore {
 } // strongstore

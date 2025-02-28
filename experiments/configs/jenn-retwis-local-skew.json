@@ -24,26 +24,23 @@
   "shard_config_format_str": "shard-%d.config",
   "replica_config_format_str": "replica-%d.config",
   "network_config": "network.json",
-  "fault_tolerance": 0,
-  "num_shards": 6,
+  "fault_tolerance": 1,
+  "num_shards": 3,
   "shards": [
     [
-      "us-east-1-0"
+      "us-east-1-0",
+      "eu-west-1-0",
+      "ap-northeast-1-0"
     ],
     [
-      "us-east-1-0"
+      "us-east-1-0",
+      "eu-west-1-0",
+      "ap-northeast-1-0"
     ],
     [
-      "us-east-1-0"
-    ],
-    [
-      "us-east-1-0"
-    ],
-    [
-      "us-east-1-0"
-    ],
-    [
-      "us-east-1-0"
+      "us-east-1-0",
+      "eu-west-1-0",
+      "ap-northeast-1-0"
     ]
   ],
   "client_total": 1,
@@ -197,7 +194,7 @@
   "plot_tput_lat_y_label": "Latency (ms)",
   "input_latency_scale": 1000000000,
   "output_latency_scale": 1000,
-  "src_commit_hash": "partition_one_shots",
+  "src_commit_hash": "one_shot_txns",
   "stats_file_name": "stats.json",
   "base_local_exp_directory": "/home/jennifer/whiptail/experiments/results",
   "base_mounted_fs_path": "/mnt/extra",

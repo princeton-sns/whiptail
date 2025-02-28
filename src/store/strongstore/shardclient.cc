@@ -39,19 +39,20 @@ namespace strongstore
 
     ShardClient::ShardClient(const transport::Configuration &config,
                              Transport *transport, uint64_t client_id, int shard,
-                             wound_callback wcb)
+                             wound_callback wcb, int replica)
         : last_req_id_{0},
           config_{config},
           transport_{transport},
           client_id_{client_id},
           shard_idx_{shard},
           wcb_{wcb},
+          replica_(replica),
           tt_{0}
     {
         transport_->Register(this, config_, -1, -1);
 
         // TODO: Remove hardcoding
-        replica_ = 0;
+//        replica_ = 0;
     }
 
     ShardClient::~ShardClient() {}
@@ -102,8 +103,8 @@ namespace strongstore
         }
         else if (type == wound_.GetTypeName())
         {
-            wound_.ParseFromString(data);
-            HandleWound(wound_);
+//            wound_.ParseFromString(data);
+//            HandleWound(wound_);
         }
         else
         {

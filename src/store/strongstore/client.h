@@ -50,115 +50,11 @@
 #include "store/strongstore/preparedtransaction.h"
 #include "store/strongstore/shardclient.h"
 #include "store/strongstore/strong-proto.pb.h"
+#include "store/strongstore/WhiptailReplicationGroup.h"
+#include "store/strongstore/StrongSession.h"
 
 namespace strongstore
 {
-
-    class StrongSession : public ::Session
-    {
-    public:
-        StrongSession()
-            : ::Session(), transaction_id_{static_cast<uint64_t>(-1)}, start_ts_{0, 0}, min_read_ts_{0, 0}, participants_{}, prepares_{}, values_{}, snapshot_ts_{}, current_participant_{-1}, state_{EXECUTING} {}
-
-        StrongSession(rss::Session &&rss_session)
-            : ::Session(std::move(rss_session)), transaction_id_{static_cast<uint64_t>(-1)}, start_ts_{0, 0}, min_read_ts_{0, 0}, participants_{}, prepares_{}, values_{}, snapshot_ts_{}, current_participant_{-1}, state_{EXECUTING} {}
-
-        uint64_t transaction_id() const { return transaction_id_; }
-        const Timestamp &start_ts() const { return start_ts_; }
-
-        const Timestamp &min_read_ts() const { return min_read_ts_; }
-        void advance_min_read_ts(const Timestamp &ts) { min_read_ts_ = std::max(min_read_ts_, ts); }
-
-        const std::set<int> &participants() const { return participants_; }
-        const std::unordered_map<uint64_t, PreparedTransaction> prepares() const { return prepares_; }
-
-        const Timestamp &snapshot_ts() const { return snapshot_ts_; }
-
-    protected:
-        friend class Client;
-
-        void start_transaction(uint64_t transaction_id, const Timestamp &start_ts)
-        {
-            transaction_id_ = transaction_id;
-            start_ts_ = start_ts;
-            participants_.clear();
-            prepares_.clear();
-            values_.clear();
-            snapshot_ts_ = Timestamp();
-            current_participant_ = -1;
-            state_ = EXECUTING;
-        }
-
-        void retry_transaction(uint64_t transaction_id)
-        {
-            transaction_id_ = transaction_id;
-            participants_.clear();
-            prepares_.clear();
-            values_.clear();
-            snapshot_ts_ = Timestamp();
-            current_participant_ = -1;
-            state_ = EXECUTING;
-        }
-
-        enum State
-        {
-            EXECUTING = 0,
-            GETTING,
-            PUTTING,
-            COMMITTING,
-            NEEDS_ABORT,
-            ABORTING
-        };
-
-        State state() const { return state_; }
-
-        bool executing() const { return (state_ == EXECUTING); }
-        bool needs_aborts() const { return (state_ == NEEDS_ABORT); }
-
-        int current_participant() const { return current_participant_; }
-
-        void set_executing()
-        {
-            current_participant_ = -1;
-            state_ = EXECUTING;
-        }
-
-        void set_getting(int p)
-        {
-            current_participant_ = p;
-            state_ = GETTING;
-        }
-
-        void set_putting(int p)
-        {
-            current_participant_ = p;
-            state_ = PUTTING;
-        }
-
-        void set_committing() { state_ = COMMITTING; }
-        void set_needs_abort() { state_ = NEEDS_ABORT; }
-        void set_aborting() { state_ = ABORTING; }
-
-        std::set<int> &mutable_participants() { return participants_; }
-        void add_participant(int p) { participants_.insert(p); }
-        void clear_participants() { participants_.clear(); }
-
-        std::unordered_map<uint64_t, PreparedTransaction> &mutable_prepares() { return prepares_; }
-        std::unordered_map<std::string, std::list<Value>> &mutable_values() { return values_; }
-
-        void set_snapshot_ts(const Timestamp &ts) { snapshot_ts_ = ts; }
-
-    private:
-        uint64_t transaction_id_;
-        Timestamp start_ts_;
-        Timestamp min_read_ts_;
-        std::set<int> participants_;
-        std::unordered_map<uint64_t, PreparedTransaction> prepares_;
-        std::unordered_map<std::string, std::list<Value>> values_;
-        Timestamp snapshot_ts_;
-        int current_participant_;
-        State state_;
-    };
 
     class CommittedTransaction
     {
@@ -204,13 +100,13 @@ namespace strongstore
                            begin_timeout_callback btcb, uint32_t timeout) override;
 
         // Get the value corresponding to key.
-        virtual void Get(Session &session, const std::string &key,
+        void Get(Session &session, const std::string &key,
                          get_callback gcb, get_timeout_callback gtcb,
                          uint32_t timeout = GET_TIMEOUT) override;
 
         // Get the value corresponding to key.
         // Provide hint that transaction will later write the key.
-        virtual void GetForUpdate(Session &session, const std::string &key,
+        void GetForUpdate(Session &session, const std::string &key,
                                   get_callback gcb, get_timeout_callback gtcb,
                                   uint32_t timeout = GET_TIMEOUT) override;
 
@@ -260,37 +156,36 @@ namespace strongstore
 
         void AbortCallback(StrongSession &session, uint64_t req_id);
 
-        void ROCommitCallback(StrongSession &session, uint64_t req_id, int shard_idx,
-                              const std::vector<Value> &values,
-                              const std::vector<PreparedTransaction> &prepares);
-
-        void ROCommitSlowCallback(StrongSession &session, uint64_t req_id, int shard_idx,
-                                  uint64_t rw_transaction_id, const Timestamp &commit_ts, bool is_commit);
-
-        void HandleWound(const uint64_t transaction_id);
+//        void ROCommitCallback(StrongSession &session, uint64_t req_id, int shard_idx,
+//                              const std::vector<Value> &values,
+//                              const std::vector<PreparedTransaction> &prepares);
+//
+//        void ROCommitSlowCallback(StrongSession &session, uint64_t req_id, int shard_idx,
+//                                  uint64_t rw_transaction_id, const Timestamp &commit_ts, bool is_commit);
+//        void HandleWound(const uint64_t transaction_id);
 
         void RealTimeBarrier(const rss::Session &session, rss::continuation_func_t continuation);
 
         // choose coordinator from participants
         void CalculateCoordinatorChoices();
-        int ChooseCoordinator(StrongSession &session);
+//        int ChooseCoordinator(StrongSession &session);
 
         // Choose nonblock time
         Timestamp ChooseNonBlockTimestamp(StrongSession &session);
 
         // For tracking RO reply progress
-        SnapshotResult ReceiveFastPath(StrongSession &session, uint64_t transaction_id,
-                                       int shard_idx,
-                                       const std::vector<Value> &values,
-                                       const std::vector<PreparedTransaction> &prepares);
-        SnapshotResult ReceiveSlowPath(StrongSession &session, uint64_t transaction_id,
-                                       uint64_t rw_transaction_id,
-                                       bool is_commit, const Timestamp &commit_ts);
-        SnapshotResult FindSnapshot(std::unordered_map<uint64_t, PreparedTransaction> &prepared,
-                                    std::vector<CommittedTransaction> &committed);
+//        SnapshotResult ReceiveFastPath(StrongSession &session, uint64_t transaction_id,
+//                                       int shard_idx,
+//                                       const std::vector<Value> &values,
+//                                       const std::vector<PreparedTransaction> &prepares);
+//        SnapshotResult ReceiveSlowPath(StrongSession &session, uint64_t transaction_id,
+//                                       uint64_t rw_transaction_id,
+//                                       bool is_commit, const Timestamp &commit_ts);
+//        SnapshotResult FindSnapshot(std::unordered_map<uint64_t, PreparedTransaction> &prepared,
+//                                    std::vector<CommittedTransaction> &committed);
         void AddValues(StrongSession &session, const std::vector<Value> &values);
-        void AddPrepares(StrongSession &session, const std::vector<PreparedTransaction> &prepares);
-        void ReceivedAllFastPaths(StrongSession &session);
+//        void AddPrepares(StrongSession &session, const std::vector<PreparedTransaction> &prepares);
+//        void ReceivedAllFastPaths(StrongSession &session);
         void FindCommittedKeys(StrongSession &session);
         void CalculateSnapshotTimestamp(StrongSession &session);
         SnapshotResult CheckCommit(StrongSession &session);
@@ -319,7 +214,7 @@ namespace strongstore
         Transport *transport_;
 
         // Client for each shard.
-        std::vector<ShardClient *> sclients_;
+        std::vector<WhiptailReplicationGroup *> sclients_;
 
         // Partitioner
         Partitioner *part_;
@@ -340,8 +235,6 @@ namespace strongstore
         double nb_time_alpha_;
 
         bool debug_stats_;
-
-        int repl_factor_;
     };
 
 } // namespace strongstore

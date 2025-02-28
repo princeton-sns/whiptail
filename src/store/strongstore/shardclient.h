@@ -99,7 +99,7 @@ namespace strongstore
         /* Constructor needs path to shard config. */
         ShardClient(
             const transport::Configuration &config, Transport *transport, uint64_t client_id,
-            int shard, wound_callback wcb = [](uint64_t transaction_id) {});
+            int shard, wound_callback wcb = [](uint64_t transaction_id) {}, int replica = 0);
 
         ~ShardClient();
 

@@ -5,11 +5,168 @@
 #ifndef STRONGSESSION_H
 #define STRONGSESSION_H
 
+#include "store/common/frontend/client.h"
+#include "rss/lib.h"
+#include "store/common/timestamp.h"
+#include "store/strongstore/preparedtransaction.h"
+#include "store/common/transaction.h"
+
 namespace strongstore {
 
-class StrongSession {
+class Client;
 
-};
+ class StrongSession : public ::Session {
+
+    public:
+        StrongSession()
+            : ::Session()
+            , transaction_id_{static_cast<uint64_t>(-1)}
+            , start_ts_{0, 0}
+            , min_read_ts_{0, 0}
+            , participants_{}
+            , prepares_{}
+            , values_{}
+            , snapshot_ts_{}
+            , current_participant_{-1}
+            , state_{EXECUTING} {}
+
+        StrongSession(rss::Session &&rss_session)
+            : ::Session(std::move(rss_session))
+            , transaction_id_{static_cast<uint64_t>(-1)}
+            , start_ts_{0, 0}
+            , min_read_ts_{0, 0}
+            , participants_{}
+            , prepares_{}
+            , values_{}
+            , snapshot_ts_{}
+            , current_participant_{-1}
+            , state_{EXECUTING} {}
+
+        uint64_t transaction_id() const { return transaction_id_; }
+        const Timestamp &start_ts() const { return start_ts_; }
+
+        const Timestamp &min_read_ts() const { return min_read_ts_; }
+        void advance_min_read_ts(const Timestamp &ts) { min_read_ts_ = std::max(min_read_ts_, ts); }
+
+        const std::set<int> &participants() const { return participants_; }
+        const std::unordered_map<uint64_t, PreparedTransaction> prepares() const { return prepares_; }
+
+        const Timestamp &snapshot_ts() const { return snapshot_ts_; }
+
+        void mark_success_or_fail_reply(int participant_shard, int status) {
+            if (status == REPLY_OK) {
+                this->replica_replied_ok_counter_[participant_shard]++;
+            } else {
+                this->replica_replied_fail_counter_[participant_shard]++;
+            }
+        }
+
+        int success_count(int participant_shard) {
+            return this->replica_replied_ok_counter_[participant_shard];
+        }
+
+        int failure_count(int participant_shard) {
+            return this->replica_replied_fail_counter_[participant_shard];
+        }
+
+        void mark_successfully_replicated(int participant_shard) {
+            this->successfully_replicated_.insert(participant_shard);
+        }
+
+        bool all_keys_replicated() {
+            return this->participants_.size() == this->successfully_replicated_.size();
+        }
+
+    protected:
+        friend class Client;
+
+        void start_transaction(uint64_t transaction_id, const Timestamp &start_ts)
+        {
+            transaction_id_ = transaction_id;
+            start_ts_ = start_ts;
+            participants_.clear();
+            prepares_.clear();
+            values_.clear();
+            snapshot_ts_ = Timestamp();
+            current_participant_ = -1;
+            state_ = EXECUTING;
+        }
+
+        void retry_transaction(uint64_t transaction_id)
+        {
+            transaction_id_ = transaction_id;
+            participants_.clear();
+            prepares_.clear();
+            values_.clear();
+            snapshot_ts_ = Timestamp();
+            current_participant_ = -1;
+            state_ = EXECUTING;
+        }
+
+        enum State
+        {
+            EXECUTING = 0,
+            GETTING,
+            PUTTING,
+            COMMITTING,
+            NEEDS_ABORT,
+            ABORTING
+        };
+
+        State state() const { return state_; }
+
+        bool executing() const { return (state_ == EXECUTING); }
+        bool needs_aborts() const { return (state_ == NEEDS_ABORT); }
+
+        int current_participant() const { return current_participant_; }
+
+        void set_executing()
+        {
+            current_participant_ = -1;
+            state_ = EXECUTING;
+        }
+
+        void set_getting(int p)
+        {
+            current_participant_ = p;
+            state_ = GETTING;
+        }
+
+        void set_putting(int p)
+        {
+            current_participant_ = p;
+            state_ = PUTTING;
+        }
+
+        void set_committing() { state_ = COMMITTING; }
+        void set_needs_abort() { state_ = NEEDS_ABORT; }
+        void set_aborting() { state_ = ABORTING; }
+
+        std::set<int> &mutable_participants() { return participants_; }
+        void add_participant(int p) { participants_.insert(p); }
+        void clear_participants() { participants_.clear(); }
+
+        std::unordered_map<uint64_t, PreparedTransaction> &mutable_prepares() { return prepares_; }
+        std::unordered_map<std::string, std::list<Value>> &mutable_values() { return values_; }
+
+        void set_snapshot_ts(const Timestamp &ts) { snapshot_ts_ = ts; }
+
+    private:
+        uint64_t transaction_id_;
+        Timestamp start_ts_;
+        Timestamp min_read_ts_;
+        std::set<int> participants_;
+        std::unordered_map<uint64_t, PreparedTransaction> prepares_;
+        std::unordered_map<std::string, std::list<Value>> values_;
+        Timestamp snapshot_ts_;
+        int current_participant_;
+        State state_;
+
+        std::unordered_map<int, uint8_t> replica_replied_ok_counter_; // shard -> count
+        std::unordered_map<int, uint8_t> replica_replied_fail_counter_;
+        std::set<int> successfully_replicated_; // shard
+
+    };
 
 } // strongstore
 

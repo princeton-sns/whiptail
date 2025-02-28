@@ -64,18 +64,17 @@ namespace strongstore
           next_transaction_id_{client_id_ << 26},
           consistency_{consistency},
           nb_time_alpha_{nb_time_alpha},
-          debug_stats_{debug_stats},
-          repl_factor_(3) // TODO jenndebug don't hardcode this
+          debug_stats_{debug_stats}
     {
         Debug("Initializing StrongStore client with id [%lu]", client_id_);
 
-        auto wcb = std::bind(&Client::HandleWound, this, std::placeholders::_1);
+//        auto wcb = std::bind(&Client::HandleWound, this, std::placeholders::_1);
 
         /* Start a client for each shard. */
         for (uint64_t i = 0; i < nshards_; i++)
         {
-            ShardClient *shardclient = new ShardClient(config_, transport_, client_id_, i, wcb);
-            sclients_.push_back(shardclient);
+            auto *wrg = new WhiptailReplicationGroup(config_, transport_, i, client_id_);
+            sclients_.push_back(wrg);
         }
 
         Debug("SpanStore client [%lu] created!", client_id_);
@@ -237,22 +236,22 @@ namespace strongstore
         }
     }
 
-    int Client::ChooseCoordinator(StrongSession &session)
-    {
-        auto &participants = session.participants();
-        ASSERT(participants.size() != 0);
-
-        std::bitset<MAX_SHARDS> shards;
-
-        for (int p : participants)
-        {
-            shards.set(p);
-        }
-
-        ASSERT(coord_choices_.find(shards) != coord_choices_.end());
-
-        return coord_choices_[shards];
-    }
+//    int Client::ChooseCoordinator(StrongSession &session)
+//    {
+//        auto &participants = session.participants();
+//        ASSERT(participants.size() != 0);
+//
+//        std::bitset<MAX_SHARDS> shards;
+//
+//        for (int p : participants)
+//        {
+//            shards.set(p);
+//        }
+//
+//        ASSERT(coord_choices_.find(shards) != coord_choices_.end());
+//
+//        return coord_choices_[shards];
+//    }
 
     Timestamp Client::ChooseNonBlockTimestamp(StrongSession &session)
     {
@@ -275,57 +274,58 @@ namespace strongstore
         return {now.earliest() + lat, client_id_};
     }
 
-    void Client::HandleWound(const uint64_t transaction_id)
-    {
-        Debug("[%lu] Handling wound", transaction_id);
-
-        auto search = sessions_by_transaction_id_.find(transaction_id);
-        if (search == sessions_by_transaction_id_.end())
-        {
-            Debug("[%lu] Transaction already finished", transaction_id);
-            return;
-        }
-        auto &session = search->second;
-
-        if (session.participants().size() == 0)
-        {
-            Debug("[%lu] RO Transaction...letting finish", transaction_id);
-            return;
-        }
-
-        int p = -1;
-        int coordinator = -1;
-        Debug("[%lu] client state: %d", transaction_id, session.state());
-        switch (session.state())
-        {
-        case StrongSession::EXECUTING:
-            session.set_needs_abort();
-            break;
-        case StrongSession::GETTING:
-            p = session.current_participant();
-            sclients_[p]->AbortGet(transaction_id);
-            break;
-        case StrongSession::PUTTING:
-            p = session.current_participant();
-            sclients_[p]->AbortPut(transaction_id);
-            break;
-        case StrongSession::COMMITTING:
-            Debug("[%lu] Forwarding wound to coordinator", transaction_id);
-            coordinator = ChooseCoordinator(session);
-            sclients_[coordinator]->Wound(transaction_id);
-            break;
-        case StrongSession::ABORTING:
-            Debug("[%lu] Already aborted", transaction_id);
-            break;
-        default:
-            Panic("Unexpected state: %d", session.state());
-        }
-    }
+//    void Client::HandleWound(const uint64_t transaction_id)
+//    {
+//        Debug("[%lu] Handling wound", transaction_id);
+//
+//        auto search = sessions_by_transaction_id_.find(transaction_id);
+//        if (search == sessions_by_transaction_id_.end())
+//        {
+//            Debug("[%lu] Transaction already finished", transaction_id);
+//            return;
+//        }
+//        auto &session = search->second;
+//
+//        if (session.participants().size() == 0)
+//        {
+//            Debug("[%lu] RO Transaction...letting finish", transaction_id);
+//            return;
+//        }
+//
+//        int p = -1;
+//        int coordinator = -1;
+//        Debug("[%lu] client state: %d", transaction_id, session.state());
+//        switch (session.state())
+//        {
+//        case StrongSession::EXECUTING:
+//            session.set_needs_abort();
+//            break;
+//        case StrongSession::GETTING:
+//            p = session.current_participant();
+//            sclients_[p]->AbortGet(transaction_id);
+//            break;
+//        case StrongSession::PUTTING:
+//            p = session.current_participant();
+//            sclients_[p]->AbortPut(transaction_id);
+//            break;
+//        case StrongSession::COMMITTING:
+//            Debug("[%lu] Forwarding wound to coordinator", transaction_id);
+//            coordinator = ChooseCoordinator(session);
+//            sclients_[coordinator]->Wound(transaction_id);
+//            break;
+//        case StrongSession::ABORTING:
+//            Debug("[%lu] Already aborted", transaction_id);
+//            break;
+//        default:
+//            Panic("Unexpected state: %d", session.state());
+//        }
+//    }
 
     // Force transaction to abort.
     void Client::ForceAbort(const uint64_t transaction_id)
     {
-        HandleWound(transaction_id);
+        Panic("Unimplemented ForceAbort");
+//        HandleWound(transaction_id);
     }
 
     void Client::RealTimeBarrier(const rss::Session &session, rss::continuation_func_t continuation)
@@ -452,86 +452,88 @@ namespace strongstore
     void Client::Get(Session &s, const std::string &key, get_callback gcb,
                      get_timeout_callback gtcb, uint32_t timeout)
     {
-        auto &session = static_cast<StrongSession &>(s);
-
-        auto tid = session.transaction_id();
-
-        Debug("GET [%lu : %s]", tid, key.c_str());
-
-        if (session.needs_aborts())
-        {
-            Debug("[%lu] Need to abort", tid);
-            gcb(REPLY_FAIL, "", "", Timestamp());
-            return;
-        }
-
-        ASSERT(session.executing());
-
-        // Contact the appropriate shard to get the value.
-        int i = (*part_)(key, nshards_, -1, session.participants());
-
-        session.set_getting(i);
-
-        // Add this shard to set of participants
-        session.add_participant(i);
-
-        auto gcb1 = [gcb, session = std::ref(session)](int s, const std::string &k, const std::string &v, Timestamp ts)
-        {
-            session.get().set_executing();
-            gcb(s, k, v, ts);
-        };
-
-        auto gtcb1 = [gtcb, session = std::ref(session)](int s, const std::string &k)
-        {
-            session.get().set_executing();
-            gtcb(s, k);
-        };
-
-        // Send the GET operation to appropriate shard.
-        sclients_[i]->Get(tid, key, gcb1, gtcb1, timeout);
+        Panic("Unimplemented Get");
+//        auto &session = static_cast<StrongSession &>(s);
+//
+//        auto tid = session.transaction_id();
+//
+//        Debug("GET [%lu : %s]", tid, key.c_str());
+//
+//        if (session.needs_aborts())
+//        {
+//            Debug("[%lu] Need to abort", tid);
+//            gcb(REPLY_FAIL, "", "", Timestamp());
+//            return;
+//        }
+//
+//        ASSERT(session.executing());
+//
+//        // Contact the appropriate shard to get the value.
+//        int i = (*part_)(key, nshards_, -1, session.participants());
+//
+//        session.set_getting(i);
+//
+//        // Add this shard to set of participants
+//        session.add_participant(i);
+//
+//        auto gcb1 = [gcb, session = std::ref(session)](int s, const std::string &k, const std::string &v, Timestamp ts)
+//        {
+//            session.get().set_executing();
+//            gcb(s, k, v, ts);
+//        };
+//
+//        auto gtcb1 = [gtcb, session = std::ref(session)](int s, const std::string &k)
+//        {
+//            session.get().set_executing();
+//            gtcb(s, k);
+//        };
+//
+//        // Send the GET operation to appropriate shard.
+//        sclients_[i]->Get(tid, key, gcb1, gtcb1, timeout);
     }
 
     /* Returns the value corresponding to the supplied key. */
     void Client::GetForUpdate(Session &s, const std::string &key, get_callback gcb,
                               get_timeout_callback gtcb, uint32_t timeout)
     {
-        auto &session = static_cast<StrongSession &>(s);
-
-        auto tid = session.transaction_id();
-
-        Debug("GET FOR UPDATE [%lu : %s]", tid, key.c_str());
-
-        if (session.needs_aborts())
-        {
-            Debug("[%lu] Need to abort", tid);
-            gcb(REPLY_FAIL, "", "", Timestamp());
-            return;
-        }
-
-        ASSERT(session.executing());
-
-        // Contact the appropriate shard to get the value.
-        int i = (*part_)(key, nshards_, -1, session.participants());
-
-        session.set_getting(i);
-
-        // Add this shard to set of participants
-        session.add_participant(i);
-
-        auto gcb1 = [gcb, session = std::ref(session)](int s, const std::string &k, const std::string &v, Timestamp ts)
-        {
-            session.get().set_executing();
-            gcb(s, k, v, ts);
-        };
-
-        auto gtcb1 = [gtcb, session = std::ref(session)](int s, const std::string &k)
-        {
-            session.get().set_executing();
-            gtcb(s, k);
-        };
-
-        // Send the GET operation to appropriate shard.
-        sclients_[i]->GetForUpdate(tid, key, gcb1, gtcb1, timeout);
+        Panic("Unimplemented GetForUpdate");
+//        auto &session = static_cast<StrongSession &>(s);
+//
+//        auto tid = session.transaction_id();
+//
+//        Debug("GET FOR UPDATE [%lu : %s]", tid, key.c_str());
+//
+//        if (session.needs_aborts())
+//        {
+//            Debug("[%lu] Need to abort", tid);
+//            gcb(REPLY_FAIL, "", "", Timestamp());
+//            return;
+//        }
+//
+//        ASSERT(session.executing());
+//
+//        // Contact the appropriate shard to get the value.
+//        int i = (*part_)(key, nshards_, -1, session.participants());
+//
+//        session.set_getting(i);
+//
+//        // Add this shard to set of participants
+//        session.add_participant(i);
+//
+//        auto gcb1 = [gcb, session = std::ref(session)](int s, const std::string &k, const std::string &v, Timestamp ts)
+//        {
+//            session.get().set_executing();
+//            gcb(s, k, v, ts);
+//        };
+//
+//        auto gtcb1 = [gtcb, session = std::ref(session)](int s, const std::string &k)
+//        {
+//            session.get().set_executing();
+//            gtcb(s, k);
+//        };
+//
+//        // Send the GET operation to appropriate shard.
+//        sclients_[i]->GetForUpdate(tid, key, gcb1, gtcb1, timeout);
     }
 
     /* Sets the value corresponding to the supplied key. */
@@ -556,13 +558,10 @@ namespace strongstore
         // Contact the appropriate shard to set the value.
         int i = (*part_)(key, nshards_, -1, session.participants());
 
-        for (int repl = 0; repl < repl_factor_; repl++) {
+        session.set_putting(i);
 
-            session.set_putting((i + repl) % nshards_);
-
-            // Add this shard to set of participants
-            session.add_participant((i + repl) % nshards_);
-        }
+        // Add this shard to set of participants
+        session.add_participant(i);
 
         auto pcb1 = [pcb, session = std::ref(session)](int s, const std::string &k, const std::string &v)
         {
@@ -576,10 +575,7 @@ namespace strongstore
             ptcb(s, k, v);
         };
 
-        for (int repl = 0; repl < repl_factor_; repl++) {
-
-            sclients_[(i + repl) % nshards_]->Put(tid, key, value, pcb1, ptcb1, timeout);
-        }
+        sclients_[i]->Put(session, tid, key, value, pcb1, ptcb1, timeout);
     }
 
     /* Attempts to commit the ongoing transaction. */
@@ -757,204 +753,205 @@ namespace strongstore
                           commit_callback ccb, commit_timeout_callback ctcb,
                           uint32_t timeout)
     {
-        auto &session = static_cast<StrongSession &>(s);
-
-        auto tid = session.transaction_id();
-
-        Debug("[%lu] ROCOMMIT", tid);
-
-        auto &min_read_ts = session.min_read_ts();
-        Debug("[%lu] min_read_ts: %lu.%lu", tid, min_read_ts.getTimestamp(), min_read_ts.getID());
-
-        session.set_committing();
-
-        auto &participants = session.participants();
-        ASSERT(participants.size() == 0);
-
-        std::unordered_map<int, std::vector<std::string>> sharded_keys;
-        for (auto &key : keys)
-        {
-            int i = (*part_)(key, nshards_, -1, participants);
-            sharded_keys[i].push_back(key);
-            session.add_participant(i);
-        }
-
-        uint64_t req_id = last_req_id_++;
-        PendingRequest *req = new PendingRequest(req_id);
-        pending_reqs_[req_id] = req;
-        req->ccb = ccb;
-        req->ctcb = ctcb;
-        req->outstandingPrepares = sharded_keys.size();
-
-        stats.IncrementList("txn_groups", sharded_keys.size());
-
-        ASSERT(sharded_keys.size() > 0);
-
-        Timestamp min_ts = session.min_read_ts();
-        Timestamp commit_ts{tt_.Now().latest(), client_id_};
-
-        // Hack to make RSS work with zero TrueTime error despite clock skew
-        // (for throughput experiments)
-        if (consistency_ == RSS && min_ts >= commit_ts)
-        {
-            commit_ts.setTimestamp(min_ts.getTimestamp() + 1);
-        }
-
-        Debug("[%lu] commit_ts: %lu.%lu", tid, commit_ts.getTimestamp(), commit_ts.getID());
-        Debug("[%lu] min_ts: %lu.%lu", tid, min_ts.getTimestamp(), min_ts.getID());
-
-        auto roccb = std::bind(&Client::ROCommitCallback, this, std::ref(session), req->id,
-                               std::placeholders::_1, std::placeholders::_2,
-                               std::placeholders::_3);
-        auto rocscb = std::bind(&Client::ROCommitSlowCallback, this, std::ref(session), req->id,
-                                std::placeholders::_1, std::placeholders::_2,
-                                std::placeholders::_3, std::placeholders::_4);
-        auto roctcb = []() {}; // TODO: Handle timeout
-
-        for (auto &s : sharded_keys)
-        {
-            sclients_[s.first]->ROCommit(tid, s.second, commit_ts, min_ts, roccb, rocscb, roctcb, timeout);
-        }
+        Panic("Unimplemented ROCommit");
+//        auto &session = static_cast<StrongSession &>(s);
+//
+//        auto tid = session.transaction_id();
+//
+//        Debug("[%lu] ROCOMMIT", tid);
+//
+//        auto &min_read_ts = session.min_read_ts();
+//        Debug("[%lu] min_read_ts: %lu.%lu", tid, min_read_ts.getTimestamp(), min_read_ts.getID());
+//
+//        session.set_committing();
+//
+//        auto &participants = session.participants();
+//        ASSERT(participants.size() == 0);
+//
+//        std::unordered_map<int, std::vector<std::string>> sharded_keys;
+//        for (auto &key : keys)
+//        {
+//            int i = (*part_)(key, nshards_, -1, participants);
+//            sharded_keys[i].push_back(key);
+//            session.add_participant(i);
+//        }
+//
+//        uint64_t req_id = last_req_id_++;
+//        PendingRequest *req = new PendingRequest(req_id);
+//        pending_reqs_[req_id] = req;
+//        req->ccb = ccb;
+//        req->ctcb = ctcb;
+//        req->outstandingPrepares = sharded_keys.size();
+//
+//        stats.IncrementList("txn_groups", sharded_keys.size());
+//
+//        ASSERT(sharded_keys.size() > 0);
+//
+//        Timestamp min_ts = session.min_read_ts();
+//        Timestamp commit_ts{tt_.Now().latest(), client_id_};
+//
+//        // Hack to make RSS work with zero TrueTime error despite clock skew
+//        // (for throughput experiments)
+//        if (consistency_ == RSS && min_ts >= commit_ts)
+//        {
+//            commit_ts.setTimestamp(min_ts.getTimestamp() + 1);
+//        }
+//
+//        Debug("[%lu] commit_ts: %lu.%lu", tid, commit_ts.getTimestamp(), commit_ts.getID());
+//        Debug("[%lu] min_ts: %lu.%lu", tid, min_ts.getTimestamp(), min_ts.getID());
+//
+//        auto roccb = std::bind(&Client::ROCommitCallback, this, std::ref(session), req->id,
+//                               std::placeholders::_1, std::placeholders::_2,
+//                               std::placeholders::_3);
+//        auto rocscb = std::bind(&Client::ROCommitSlowCallback, this, std::ref(session), req->id,
+//                                std::placeholders::_1, std::placeholders::_2,
+//                                std::placeholders::_3, std::placeholders::_4);
+//        auto roctcb = []() {}; // TODO: Handle timeout
+//
+//        for (auto &s : sharded_keys)
+//        {
+//            sclients_[s.first]->ROCommit(tid, s.second, commit_ts, min_ts, roccb, rocscb, roctcb, timeout);
+//        }
     }
 
-    void Client::ROCommitCallback(StrongSession &session, uint64_t req_id, int shard_idx,
-                                  const std::vector<Value> &values,
-                                  const std::vector<PreparedTransaction> &prepares)
-    {
-        auto tid = session.transaction_id();
+//    void Client::ROCommitCallback(StrongSession &session, uint64_t req_id, int shard_idx,
+//                                  const std::vector<Value> &values,
+//                                  const std::vector<PreparedTransaction> &prepares)
+//    {
+//        auto tid = session.transaction_id();
+//
+//        Debug("[%lu] ROCommit callback", tid);
+//
+//        auto search = pending_reqs_.find(req_id);
+//        if (search == pending_reqs_.end())
+//        {
+//            Debug("[%lu] ROCommitCallback for terminated request id %lu", tid, req_id);
+//            return;
+//        }
+//
+//        SnapshotResult r = ReceiveFastPath(session, tid, shard_idx, values, prepares);
+//        if (r.state == COMMIT)
+//        {
+//            PendingRequest *req = search->second;
+//
+//            commit_callback ccb = req->ccb;
+//            pending_reqs_.erase(search);
+//            delete req;
+//
+//            session.advance_min_read_ts(r.max_read_ts);
+//
+//            auto &min_read_ts = session.min_read_ts();
+//            Debug("min_read_timestamp_: %lu.%lu", min_read_ts.getTimestamp(), min_read_ts.getID());
+//
+//            rss::EndTransaction(service_name_, session);
+//
+//            Debug("[%lu] COMMIT OK", tid);
+//            ccb(COMMITTED);
+//        }
+//        else if (r.state == WAIT)
+//        {
+//            Debug("[%lu] Waiting for more RO responses", tid);
+//        }
+//    }
 
-        Debug("[%lu] ROCommit callback", tid);
+//    void Client::ROCommitSlowCallback(StrongSession &session, uint64_t req_id, int shard_idx,
+//                                      uint64_t rw_transaction_id, const Timestamp &commit_ts, bool is_commit)
+//    {
+//        auto search = pending_reqs_.find(req_id);
+//        if (search == pending_reqs_.end())
+//        {
+//            Debug("ROCommitSlowCallback for terminated request id %lu", req_id);
+//            return;
+//        }
+//
+//        auto tid = session.transaction_id();
+//
+//        Debug("[%lu] ROCommitSlow callback", tid);
+//
+//        SnapshotResult r = ReceiveSlowPath(session, tid, rw_transaction_id, is_commit, commit_ts);
+//        if (r.state == COMMIT)
+//        {
+//            PendingRequest *req = search->second;
+//
+//            commit_callback ccb = req->ccb;
+//            pending_reqs_.erase(search);
+//            delete req;
+//
+//            session.advance_min_read_ts(r.max_read_ts);
+//
+//            auto &min_read_ts = session.min_read_ts();
+//            Debug("min_read_timestamp_: %lu.%lu", min_read_ts.getTimestamp(), min_read_ts.getID());
+//
+//            rss::EndTransaction(service_name_, session);
+//
+//            Debug("[%lu] COMMIT OK", tid);
+//            ccb(COMMITTED);
+//        }
+//        else if (r.state == WAIT)
+//        {
+//            Debug("[%lu] Waiting for more RO responses", tid);
+//        }
+//    }
 
-        auto search = pending_reqs_.find(req_id);
-        if (search == pending_reqs_.end())
-        {
-            Debug("[%lu] ROCommitCallback for terminated request id %lu", tid, req_id);
-            return;
-        }
+//    SnapshotResult Client::ReceiveFastPath(StrongSession &session,
+//                                           uint64_t transaction_id,
+//                                           int shard_idx,
+//                                           const std::vector<Value> &values,
+//                                           const std::vector<PreparedTransaction> &prepares)
+//    {
+//        Debug("[%lu] Received fast path RO response", transaction_id);
+//
+//        auto &participants = session.mutable_participants();
+//
+//        ASSERT(participants.count(shard_idx) > 0);
+//        participants.erase(shard_idx);
+//
+//        AddValues(session, values);
+//        AddPrepares(session, prepares);
+//
+//        // Received all fast path responses
+//        if (participants.size() == 0)
+//        {
+//            ReceivedAllFastPaths(session);
+//        }
+//
+//        return CheckCommit(session);
+//    }
 
-        SnapshotResult r = ReceiveFastPath(session, tid, shard_idx, values, prepares);
-        if (r.state == COMMIT)
-        {
-            PendingRequest *req = search->second;
-
-            commit_callback ccb = req->ccb;
-            pending_reqs_.erase(search);
-            delete req;
-
-            session.advance_min_read_ts(r.max_read_ts);
-
-            auto &min_read_ts = session.min_read_ts();
-            Debug("min_read_timestamp_: %lu.%lu", min_read_ts.getTimestamp(), min_read_ts.getID());
-
-            rss::EndTransaction(service_name_, session);
-
-            Debug("[%lu] COMMIT OK", tid);
-            ccb(COMMITTED);
-        }
-        else if (r.state == WAIT)
-        {
-            Debug("[%lu] Waiting for more RO responses", tid);
-        }
-    }
-
-    void Client::ROCommitSlowCallback(StrongSession &session, uint64_t req_id, int shard_idx,
-                                      uint64_t rw_transaction_id, const Timestamp &commit_ts, bool is_commit)
-    {
-        auto search = pending_reqs_.find(req_id);
-        if (search == pending_reqs_.end())
-        {
-            Debug("ROCommitSlowCallback for terminated request id %lu", req_id);
-            return;
-        }
-
-        auto tid = session.transaction_id();
-
-        Debug("[%lu] ROCommitSlow callback", tid);
-
-        SnapshotResult r = ReceiveSlowPath(session, tid, rw_transaction_id, is_commit, commit_ts);
-        if (r.state == COMMIT)
-        {
-            PendingRequest *req = search->second;
-
-            commit_callback ccb = req->ccb;
-            pending_reqs_.erase(search);
-            delete req;
-
-            session.advance_min_read_ts(r.max_read_ts);
-
-            auto &min_read_ts = session.min_read_ts();
-            Debug("min_read_timestamp_: %lu.%lu", min_read_ts.getTimestamp(), min_read_ts.getID());
-
-            rss::EndTransaction(service_name_, session);
-
-            Debug("[%lu] COMMIT OK", tid);
-            ccb(COMMITTED);
-        }
-        else if (r.state == WAIT)
-        {
-            Debug("[%lu] Waiting for more RO responses", tid);
-        }
-    }
-
-    SnapshotResult Client::ReceiveFastPath(StrongSession &session,
-                                           uint64_t transaction_id,
-                                           int shard_idx,
-                                           const std::vector<Value> &values,
-                                           const std::vector<PreparedTransaction> &prepares)
-    {
-        Debug("[%lu] Received fast path RO response", transaction_id);
-
-        auto &participants = session.mutable_participants();
-
-        ASSERT(participants.count(shard_idx) > 0);
-        participants.erase(shard_idx);
-
-        AddValues(session, values);
-        AddPrepares(session, prepares);
-
-        // Received all fast path responses
-        if (participants.size() == 0)
-        {
-            ReceivedAllFastPaths(session);
-        }
-
-        return CheckCommit(session);
-    }
-
-    SnapshotResult Client::ReceiveSlowPath(StrongSession &session, uint64_t transaction_id,
-                                           uint64_t rw_transaction_id,
-                                           bool is_commit, const Timestamp &commit_ts)
-    {
-        Debug("[%lu] Received slow path RO response", transaction_id);
-        ASSERT(consistency_ == RSS);
-
-        auto &prepares = session.mutable_prepares();
-
-        auto search = prepares.find(rw_transaction_id);
-        if (search == prepares.end())
-        {
-            Debug("[%lu] already received commit decision for %lu", transaction_id, rw_transaction_id);
-            return {WAIT};
-        }
-
-        if (is_commit)
-        {
-            const PreparedTransaction &pt = search->second;
-            Debug("[%lu] adding writes from prepared transaction: %lu", transaction_id, rw_transaction_id);
-
-            std::vector<Value> values;
-            for (auto &write : pt.write_set())
-            {
-                values.emplace_back(rw_transaction_id, commit_ts, write.first, write.second);
-            }
-
-            AddValues(session, values);
-        }
-
-        prepares.erase(search);
-
-        return CheckCommit(session);
-    }
+//    SnapshotResult Client::ReceiveSlowPath(StrongSession &session, uint64_t transaction_id,
+//                                           uint64_t rw_transaction_id,
+//                                           bool is_commit, const Timestamp &commit_ts)
+//    {
+//        Debug("[%lu] Received slow path RO response", transaction_id);
+//        ASSERT(consistency_ == RSS);
+//
+//        auto &prepares = session.mutable_prepares();
+//
+//        auto search = prepares.find(rw_transaction_id);
+//        if (search == prepares.end())
+//        {
+//            Debug("[%lu] already received commit decision for %lu", transaction_id, rw_transaction_id);
+//            return {WAIT};
+//        }
+//
+//        if (is_commit)
+//        {
+//            const PreparedTransaction &pt = search->second;
+//            Debug("[%lu] adding writes from prepared transaction: %lu", transaction_id, rw_transaction_id);
+//
+//            std::vector<Value> values;
+//            for (auto &write : pt.write_set())
+//            {
+//                values.emplace_back(rw_transaction_id, commit_ts, write.first, write.second);
+//            }
+//
+//            AddValues(session, values);
+//        }
+//
+//        prepares.erase(search);
+//
+//        return CheckCommit(session);
+//    }
 
     void Client::AddValues(StrongSession &session, const std::vector<Value> &vs)
     {
@@ -978,150 +975,150 @@ namespace strongstore
         }
     }
 
-    void Client::AddPrepares(StrongSession &session, const std::vector<PreparedTransaction> &ps)
-    {
-        auto &prepares = session.mutable_prepares();
+//    void Client::AddPrepares(StrongSession &session, const std::vector<PreparedTransaction> &ps)
+//    {
+//        auto &prepares = session.mutable_prepares();
+//
+//        for (auto &p : ps)
+//        {
+//            auto search = prepares.find(p.transaction_id());
+//            if (search == prepares.end())
+//            {
+//                prepares.insert(search, {p.transaction_id(), p});
+//            }
+//            else
+//            {
+//                PreparedTransaction &pt = search->second;
+//                ASSERT(pt.transaction_id() == p.transaction_id());
+//                pt.update_prepare_ts(p.prepare_ts());
+//                pt.add_write_set(p.write_set());
+//            }
+//        }
+//    }
+//
+//    void Client::ReceivedAllFastPaths(StrongSession &session)
+//    {
+//        FindCommittedKeys(session);
+//        CalculateSnapshotTimestamp(session);
+//    }
+//
+//    void Client::FindCommittedKeys(StrongSession &session)
+//    {
+//        auto &prepares = session.mutable_prepares();
+//        auto &values = session.mutable_values();
+//
+//        if (prepares.size() == 0)
+//        {
+//            return;
+//        }
+//
+//        ASSERT(consistency_ == RSS);
+//
+//        std::vector<Value> to_add;
+//        for (auto &kv : values)
+//        {
+//            std::list<Value> &l = kv.second;
+//            for (Value &v : l)
+//            {
+//                uint64_t transaction_id = v.transaction_id();
+//                auto search = prepares.find(transaction_id);
+//                if (search != prepares.end())
+//                {
+//                    PreparedTransaction &pt = search->second;
+//                    Debug("adding writes from prepared transaction: %lu", transaction_id);
+//
+//                    for (auto &write : pt.write_set())
+//                    {
+//                        to_add.emplace_back(transaction_id, v.ts(), write.first, write.second);
+//                    }
+//
+//                    prepares.erase(search);
+//                }
+//            }
+//        }
+//
+//        AddValues(session, to_add);
+//    }
 
-        for (auto &p : ps)
-        {
-            auto search = prepares.find(p.transaction_id());
-            if (search == prepares.end())
-            {
-                prepares.insert(search, {p.transaction_id(), p});
-            }
-            else
-            {
-                PreparedTransaction &pt = search->second;
-                ASSERT(pt.transaction_id() == p.transaction_id());
-                pt.update_prepare_ts(p.prepare_ts());
-                pt.add_write_set(p.write_set());
-            }
-        }
-    }
-
-    void Client::ReceivedAllFastPaths(StrongSession &session)
-    {
-        FindCommittedKeys(session);
-        CalculateSnapshotTimestamp(session);
-    }
-
-    void Client::FindCommittedKeys(StrongSession &session)
-    {
-        auto &prepares = session.mutable_prepares();
-        auto &values = session.mutable_values();
-
-        if (prepares.size() == 0)
-        {
-            return;
-        }
-
-        ASSERT(consistency_ == RSS);
-
-        std::vector<Value> to_add;
-        for (auto &kv : values)
-        {
-            std::list<Value> &l = kv.second;
-            for (Value &v : l)
-            {
-                uint64_t transaction_id = v.transaction_id();
-                auto search = prepares.find(transaction_id);
-                if (search != prepares.end())
-                {
-                    PreparedTransaction &pt = search->second;
-                    Debug("adding writes from prepared transaction: %lu", transaction_id);
-
-                    for (auto &write : pt.write_set())
-                    {
-                        to_add.emplace_back(transaction_id, v.ts(), write.first, write.second);
-                    }
-
-                    prepares.erase(search);
-                }
-            }
-        }
-
-        AddValues(session, to_add);
-    }
-
-    void Client::CalculateSnapshotTimestamp(StrongSession &session)
-    {
-        auto &values = session.mutable_values();
-
-        // Find snapshot ts, the minimum timestamp we can use to read all keys
-        Timestamp snapshot_ts{0, 0};
-        for (auto &kv : values)
-        {
-            const std::list<Value> &l = kv.second;
-            ASSERT(l.size() > 0);
-            const Value &v = l.back();
-            if (snapshot_ts < v.ts())
-            {
-                snapshot_ts = v.ts();
-            }
-        }
-
-        session.set_snapshot_ts(snapshot_ts);
-    }
-
-    SnapshotResult Client::CheckCommit(StrongSession &session)
-    {
-        auto &participants = session.participants();
-        auto &prepares = session.mutable_prepares();
-        auto &values = session.mutable_values();
-        auto &snapshot_ts = session.snapshot_ts();
-
-        if (participants.size() > 0)
-        {
-            return {WAIT};
-        }
-
-        if (consistency_ == SS)
-        {
-            return {COMMIT, snapshot_ts};
-        }
-
-        for (auto &kv : values)
-        {
-            Debug("key: %s", kv.first.c_str());
-            std::list<Value> &l = kv.second;
-            for (Value &v : l)
-            {
-                Debug("value: %lu %lu.%lu %s", v.transaction_id(), v.ts().getTimestamp(), v.ts().getID(), v.val().c_str());
-            }
-        }
-
-        for (auto &p : prepares)
-        {
-            Debug("prepare: %lu %lu.%lu", p.second.transaction_id(), p.second.prepare_ts().getTimestamp(), p.second.prepare_ts().getID());
-            for (auto &write : p.second.write_set())
-            {
-                Debug("write: %s %s", write.first.c_str(), write.second.c_str());
-            }
-        }
-
-        // Find min prepare ts
-        Timestamp min_ts = Timestamp::MAX;
-        for (auto &p : prepares)
-        {
-            const PreparedTransaction &pt = p.second;
-            if (pt.prepare_ts() < min_ts)
-            {
-                min_ts = pt.prepare_ts();
-            }
-        }
-
-        Debug("min prepare ts: %lu.%lu", min_ts.getTimestamp(), min_ts.getID());
-        Debug("snapshot ts: %lu.%lu", snapshot_ts.getTimestamp(), snapshot_ts.getID());
-        Debug("can commit: %d", snapshot_ts < min_ts);
-
-        if (snapshot_ts < min_ts)
-        {
-            return {COMMIT, snapshot_ts};
-        }
-        else
-        {
-            return {WAIT};
-        }
-    }
+//    void Client::CalculateSnapshotTimestamp(StrongSession &session)
+//    {
+//        auto &values = session.mutable_values();
+//
+//        // Find snapshot ts, the minimum timestamp we can use to read all keys
+//        Timestamp snapshot_ts{0, 0};
+//        for (auto &kv : values)
+//        {
+//            const std::list<Value> &l = kv.second;
+//            ASSERT(l.size() > 0);
+//            const Value &v = l.back();
+//            if (snapshot_ts < v.ts())
+//            {
+//                snapshot_ts = v.ts();
+//            }
+//        }
+//
+//        session.set_snapshot_ts(snapshot_ts);
+//    }
+//
+//    SnapshotResult Client::CheckCommit(StrongSession &session)
+//    {
+//        auto &participants = session.participants();
+//        auto &prepares = session.mutable_prepares();
+//        auto &values = session.mutable_values();
+//        auto &snapshot_ts = session.snapshot_ts();
+//
+//        if (participants.size() > 0)
+//        {
+//            return {WAIT};
+//        }
+//
+//        if (consistency_ == SS)
+//        {
+//            return {COMMIT, snapshot_ts};
+//        }
+//
+//        for (auto &kv : values)
+//        {
+//            Debug("key: %s", kv.first.c_str());
+//            std::list<Value> &l = kv.second;
+//            for (Value &v : l)
+//            {
+//                Debug("value: %lu %lu.%lu %s", v.transaction_id(), v.ts().getTimestamp(), v.ts().getID(), v.val().c_str());
+//            }
+//        }
+//
+//        for (auto &p : prepares)
+//        {
+//            Debug("prepare: %lu %lu.%lu", p.second.transaction_id(), p.second.prepare_ts().getTimestamp(), p.second.prepare_ts().getID());
+//            for (auto &write : p.second.write_set())
+//            {
+//                Debug("write: %s %s", write.first.c_str(), write.second.c_str());
+//            }
+//        }
+//
+//        // Find min prepare ts
+//        Timestamp min_ts = Timestamp::MAX;
+//        for (auto &p : prepares)
+//        {
+//            const PreparedTransaction &pt = p.second;
+//            if (pt.prepare_ts() < min_ts)
+//            {
+//                min_ts = pt.prepare_ts();
+//            }
+//        }
+//
+//        Debug("min prepare ts: %lu.%lu", min_ts.getTimestamp(), min_ts.getID());
+//        Debug("snapshot ts: %lu.%lu", snapshot_ts.getTimestamp(), snapshot_ts.getID());
+//        Debug("can commit: %d", snapshot_ts < min_ts);
+//
+//        if (snapshot_ts < min_ts)
+//        {
+//            return {COMMIT, snapshot_ts};
+//        }
+//        else
+//        {
+//            return {WAIT};
+//        }
+//    }
 
 } // namespace strongstore
