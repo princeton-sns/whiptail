@@ -451,9 +451,8 @@ void Server::HandleRWCommitCoordinator(const TransportAddress &remote, proto::RW
 
     Debug("[%lu] Coordinator for transaction", transaction_id);
 
-    // const TrueTimeInterval now = tt_.Now();
-    // const Timestamp start_ts{now.latest(), client_id};
-    const Timestamp start_ts = msg.start_timestamp();
+    const TrueTimeInterval now = tt_.Now();
+    const Timestamp start_ts{now.latest(), client_id};
     TransactionState s = transactions_.StartCoordinatorPrepare(transaction_id, start_ts, shard_idx_,
                                                                participants, transaction, nonblock_ts);
 
@@ -466,7 +465,8 @@ void Server::HandleRWCommitCoordinator(const TransportAddress &remote, proto::RW
             // ASSERT(ar.wound_rws.size() == 0);
             const Timestamp prepare_ts = GetPrepareTimestamp(client_id);
             transactions_.FinishCoordinatorPrepare(transaction_id, prepare_ts);
-            const Timestamp &commit_ts = transactions_.GetRWCommitTimestamp(transaction_id);
+            // const Timestamp &commit_ts = transactions_.GetRWCommitTimestamp(transaction_id);
+            const Timestamp &commit_ts = msg.commit_timestamp();
 
             auto *reply = new PendingRWCommitCoordinatorReply(client_id, client_req_id, remote.clone());
             pending_rw_commit_c_replies_[transaction_id] = reply;

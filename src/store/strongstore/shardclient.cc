@@ -395,9 +395,9 @@ namespace strongstore
         nonblock_timestamp.serialize((rw_commit_c_.mutable_nonblock_timestamp()));
 
         const TrueTimeInterval now = tt_.Now();
-        const Timestamp start_ts{now.latest(), client_id_};
+        const Timestamp commit_ts{now.latest(), client_id_};
 
-        start_ts.serialize(rw_commit_c_.mutable_start_timestamp());
+        commit_ts.serialize(rw_commit_c_.mutable_commit_timestamp());
 
         for (int p : participants)
         {
