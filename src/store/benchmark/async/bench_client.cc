@@ -548,7 +548,8 @@ void BenchmarkClient::Cleanup()
             auto client_index = ss.current_client_index();
             auto &client = *clients_[client_index];
 
-            client.ForceAbort(transaction_id);
+            // client.ForceAbort(transaction_id);
+            // TODO jenndebug undo this later, so the benchmarks don't all crash
         }
 
         transport_.TimerMicro(1e6, std::bind(&BenchmarkClient::CleanupContinue, this));

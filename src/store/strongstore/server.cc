@@ -317,7 +317,7 @@ void Server::HandleROCommit(const TransportAddress &remote, proto::ROCommit &msg
     uint64_t client_req_id = msg.rid().client_req_id();
     uint64_t transaction_id = msg.transaction_id();
 
-    //Debug("[%lu] Received ROCommit request", transaction_id);
+    Debug("[%lu] Received ROCommit request", transaction_id);
 
     std::unordered_set<std::string> keys{msg.keys().begin(), msg.keys().end()};
 
@@ -325,19 +325,20 @@ void Server::HandleROCommit(const TransportAddress &remote, proto::ROCommit &msg
     const Timestamp min_ts{msg.min_timestamp()};
 
     min_prepare_timestamp_ = std::max(min_prepare_timestamp_, commit_ts);  // TODO: is this correct?
+                                                                            // ^ Bro how would i know
 
     TransactionState s = transactions_.StartRO(transaction_id, keys, min_ts, commit_ts);
     if (s == PREPARE_WAIT) {
-        //Debug("[%lu] Waiting for prepared transactions", transaction_id);
-        auto reply = new PendingROCommitReply(client_id, client_req_id, remote.clone());
-        reply->n_slow_path_replies = transactions_.GetRONumberSkipped(transaction_id);
-        pending_ro_commit_replies_[transaction_id] = reply;
-
-        if (debug_stats_) {
-            _Latency_StartRec(&reply->wait_lat);
-        }
-
-        return;
+        Debug("[%lu] Waiting for prepared transactions", transaction_id);
+//        auto reply = new PendingROCommitReply(client_id, client_req_id, remote.clone());
+//        reply->n_slow_path_replies = transactions_.GetRONumberSkipped(transaction_id);
+//        pending_ro_commit_replies_[transaction_id] = reply;
+//
+//        if (debug_stats_) {
+//            _Latency_StartRec(&reply->wait_lat);
+//        }
+//
+//        return;
     }
 
     ro_commit_reply_.Clear();
@@ -355,28 +356,28 @@ void Server::HandleROCommit(const TransportAddress &remote, proto::ROCommit &msg
         rreply->set_val(value.second.c_str());
     }
 
-    if (consistency_ == RSS && transactions_.GetRONumberSkipped(transaction_id) > 0) {
-        const std::vector<PreparedTransaction> skipped_prepares = transactions_.GetROSkippedRWTransactions(transaction_id);
-
-        // Add for slow replies
-        auto reply = new PendingROCommitReply(client_id, client_req_id, remote.clone());
-        reply->n_slow_path_replies = skipped_prepares.size();
-        pending_ro_commit_replies_[transaction_id] = reply;
-
-        for (auto &pt : skipped_prepares) {
-            //Debug("[%lu] replying with skipped prepare: %lu", transaction_id, pt.transaction_id());
-            proto::PreparedTransactionMessage *ptm = ro_commit_reply_.add_prepares();
-            pt.serialize(ptm);
-        }
-
-        transport_->SendMessage(this, remote, ro_commit_reply_);
-
-        transactions_.StartROSlowPath(transaction_id);
-    } else {
+//    if (consistency_ == RSS && transactions_.GetRONumberSkipped(transaction_id) > 0) {
+//        const std::vector<PreparedTransaction> skipped_prepares = transactions_.GetROSkippedRWTransactions(transaction_id);
+//
+//        // Add for slow replies
+//        auto reply = new PendingROCommitReply(client_id, client_req_id, remote.clone());
+//        reply->n_slow_path_replies = skipped_prepares.size();
+//        pending_ro_commit_replies_[transaction_id] = reply;
+//
+//        for (auto &pt : skipped_prepares) {
+//            //Debug("[%lu] replying with skipped prepare: %lu", transaction_id, pt.transaction_id());
+//            proto::PreparedTransactionMessage *ptm = ro_commit_reply_.add_prepares();
+//            pt.serialize(ptm);
+//        }
+//
+//        transport_->SendMessage(this, remote, ro_commit_reply_);
+//
+//        transactions_.StartROSlowPath(transaction_id);
+//    } else {
         transport_->SendMessage(this, remote, ro_commit_reply_);
 
         transactions_.CommitRO(transaction_id);
-    }
+//    }
 }
 
 void Server::ContinueROCommit(uint64_t transaction_id) {

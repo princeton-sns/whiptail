@@ -122,7 +122,7 @@ namespace strongstore
     /* Sends BEGIN to a single shard indexed by i. */
     void ShardClient::Begin(uint64_t transaction_id, const Timestamp &start_time)
     {
-        Debug("[%lu] [shard %i] BEGIN", transaction_id, shard_idx_);
+        Debug("[%lu] [shard %i, replica %i] BEGIN", transaction_id, shard_idx_, replica_);
 
         auto search = transactions_.find(transaction_id);
         ASSERT(search == transactions_.end());
@@ -346,22 +346,24 @@ namespace strongstore
             values.emplace_back(v);
         }
 
-        std::vector<PreparedTransaction> prepares;
-        for (auto &p : reply.prepares())
-        {
-            prepares.emplace_back(p);
-        }
+        ASSERT(reply.prepares().size() == 0);
 
+        std::vector<PreparedTransaction> prepares;
+//        for (auto &p : reply.prepares())
+//        {
+//            prepares.emplace_back(p);
+//        }
+//
         uint64_t n_prepares = prepares.size();
         if (n_prepares == 0)
         {
             pendingROCommits.erase(itr);
             delete req;
         }
-        else
-        {
-            req->n_slow_replies = n_prepares;
-        }
+//        else
+//        {
+//            req->n_slow_replies = n_prepares;
+//        }
 
         ccb(shard_idx_, values, prepares);
     }

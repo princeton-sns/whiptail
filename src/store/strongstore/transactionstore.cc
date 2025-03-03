@@ -568,31 +568,31 @@ namespace strongstore
             }
 
             const Transaction &transaction = rw.transaction();
-            for (auto &w : transaction.getWriteSet())
-            {
-                if (keys.count(w.first) != 0)
-                {
-                    Debug("%lu conflicts with %lu", transaction_id, p.first);
-                    if (consistency_ == Consistency::RSS &&
-                        min_ts < rw.prepare_ts() && commit_ts < rw.nonblock_ts())
-                    {
-                        Debug("[%lu] Not waiting for prepared transaction (nonblock): %lu < %lu",
-                              transaction_id, commit_ts.getTimestamp(),
-                              rw.nonblock_ts().getTimestamp());
+//            for (auto &w : transaction.getWriteSet())
+//            {
+//                if (keys.count(w.first) != 0)
+//                {
+//                    Debug("%lu conflicts with %lu", transaction_id, p.first);
+//                    if (consistency_ == Consistency::RSS &&
+//                        min_ts < rw.prepare_ts() && commit_ts < rw.nonblock_ts())
+//                    {
+//                        Debug("[%lu] Not waiting for prepared transaction (nonblock): %lu < %lu",
+//                              transaction_id, commit_ts.getTimestamp(),
+//                              rw.nonblock_ts().getTimestamp());
+//
+//                        ro.add_skipped_rw(p.first);
+//                        rw.add_slow_path_ro(transaction_id);
+//                        n_skipped += 1;
+//                    }
+//                    else
+//                    {
+//                        rw.add_waiting_ro(transaction_id);
+//                        n_conflicts += 1;
+//                    }
 
-                        ro.add_skipped_rw(p.first);
-                        rw.add_slow_path_ro(transaction_id);
-                        n_skipped += 1;
-                    }
-                    else
-                    {
-                        rw.add_waiting_ro(transaction_id);
-                        n_conflicts += 1;
-                    }
-
-                    break;
-                }
-            }
+//                    break;
+//                }
+//            }
         }
 
         ro.StartRO(keys, min_ts, commit_ts, n_conflicts);

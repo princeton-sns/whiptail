@@ -46,4 +46,17 @@ class Timestamp {
     uint64_t id;
 };
 
+// Custom hash function for Timestamp class
+namespace std {
+    template <>
+    struct hash<Timestamp> {
+        std::size_t operator()(const Timestamp &ts) const {
+            std::size_t seed = 0;
+            seed ^= std::hash<uint64_t>{}(ts.getTimestamp()) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+            seed ^= std::hash<uint64_t>{}(ts.getID()) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+            return seed;
+        }
+    };
+}
+
 #endif /* _TIMESTAMP_H_ */

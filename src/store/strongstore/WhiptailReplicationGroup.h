@@ -17,8 +17,8 @@ namespace strongstore {
         WhiptailReplicationGroup(transport::Configuration &config, Transport *transport, int shard_idx,
                                  uint64_t client_id);
 
-        void put_callback_whiptail(StrongSession &session, const put_callback &pcb, int status, const std::string &key,
-                                   const std::string &value);
+        void PutCallbackWhiptail(StrongSession &session, const put_callback &pcb, int status, const std::string &key,
+                                 const std::string &value);
 
         void Put(StrongSession &session, uint64_t tid, const string &key, const string &value,
                  const put_callback &putCallback, const put_timeout_callback &putTimeoutCallback, uint32_t timeout);
@@ -34,6 +34,20 @@ namespace strongstore {
         void Abort(uint64_t transaction_id, abort_callback acb,
                    abort_timeout_callback atcb, uint32_t timeout);
 
+
+//        void
+//        Get(uint64_t transaction_id, const string &key, get_callback gcb, get_timeout_callback gtcb, uint32_t timeout);
+
+        void ROCommitCallbackWhiptail(StrongSession &session, uint64_t req_id, int shard_idx,
+                                      const std::vector<Value> &values,
+                                      const std::vector<PreparedTransaction> &prepares,
+                                      const ro_commit_callback &roccb);
+
+        void ROCommit(StrongSession& session, uint64_t transaction_id, const std::vector<std::string> &keys,
+                      const Timestamp &commit_timestamp,
+                      const Timestamp &min_read_timestamp,
+                      ro_commit_callback ccb, ro_commit_slow_callback cscb,
+                      ro_commit_timeout_callback ctcb, uint32_t timeout);
 
     private:
 

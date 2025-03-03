@@ -53,47 +53,46 @@
 #include "store/strongstore/WhiptailReplicationGroup.h"
 #include "store/strongstore/StrongSession.h"
 
-namespace strongstore
-{
+namespace strongstore {
 
-    class CommittedTransaction
-    {
+    class CommittedTransaction {
     public:
         uint64_t transaction_id;
         Timestamp commit_ts;
         bool committed;
     };
 
-    enum SnapshotState
-    {
+    enum SnapshotState {
         WAIT,
         COMMIT
     };
 
-    struct SnapshotResult
-    {
+    struct SnapshotResult {
         SnapshotState state;
         Timestamp max_read_ts;
         std::unordered_map<std::string, std::string> kv_;
     };
 
-    class Client : public ::Client
-    {
+    class Client : public ::Client {
     public:
         Client(Consistency consistency, const NetworkConfiguration &net_config,
                const std::string &client_region, transport::Configuration &config,
                uint64_t id, int nshards, int closestReplic, Transport *transport,
                Partitioner *part, TrueTime &tt, bool debug_stats,
                double nb_time_alpha);
+
         virtual ~Client();
 
         virtual Session &BeginSession() override;
+
         virtual Session &ContinueSession(rss::Session &session) override;
+
         virtual rss::Session EndSession(Session &session) override;
 
         // Overriding functions from ::Client
         // Begin a transaction
-        virtual void Begin(Session &session, begin_callback bcb, begin_timeout_callback btcb, uint32_t timeout) override;
+        virtual void
+        Begin(Session &session, begin_callback bcb, begin_timeout_callback btcb, uint32_t timeout) override;
 
         // Begin a retried transaction.
         virtual void Retry(Session &session, begin_callback bcb,
@@ -101,14 +100,14 @@ namespace strongstore
 
         // Get the value corresponding to key.
         void Get(Session &session, const std::string &key,
-                         get_callback gcb, get_timeout_callback gtcb,
-                         uint32_t timeout = GET_TIMEOUT) override;
+                 get_callback gcb, get_timeout_callback gtcb,
+                 uint32_t timeout = GET_TIMEOUT) override;
 
         // Get the value corresponding to key.
         // Provide hint that transaction will later write the key.
         void GetForUpdate(Session &session, const std::string &key,
-                                  get_callback gcb, get_timeout_callback gtcb,
-                                  uint32_t timeout = GET_TIMEOUT) override;
+                          get_callback gcb, get_timeout_callback gtcb,
+                          uint32_t timeout = GET_TIMEOUT) override;
 
         // Set the value for the given key.
         virtual void Put(Session &session, const std::string &key, const std::string &value,
@@ -122,6 +121,7 @@ namespace strongstore
         // Abort all Get(s) and Put(s) since Begin().
         virtual void Abort(Session &session, abort_callback acb, abort_timeout_callback atcb,
                            uint32_t timeout) override;
+
         // Force transaction to abort.
         void ForceAbort(const uint64_t transaction_id) override;
 
@@ -133,10 +133,9 @@ namespace strongstore
     private:
         const static std::size_t MAX_SHARDS = 16;
 
-        struct PendingRequest
-        {
+        struct PendingRequest {
             PendingRequest(uint64_t id)
-                : id(id), outstandingPrepares(0) {}
+                    : id(id), outstandingPrepares(0) {}
 
             ~PendingRequest() {}
 
@@ -149,19 +148,21 @@ namespace strongstore
         };
 
         void ContinueBegin(Session &session, begin_callback bcb);
+
         void ContinueRetry(Session &session, begin_callback bcb);
 
         // local Prepare function
-        void CommitCallback(StrongSession &session, uint64_t req_id, int status, Timestamp commit_ts, Timestamp nonblock_ts);
+        void
+        CommitCallback(StrongSession &session, uint64_t req_id, int status, Timestamp commit_ts, Timestamp nonblock_ts);
 
         void AbortCallback(StrongSession &session, uint64_t req_id);
 
-//        void ROCommitCallback(StrongSession &session, uint64_t req_id, int shard_idx,
-//                              const std::vector<Value> &values,
-//                              const std::vector<PreparedTransaction> &prepares);
-//
-//        void ROCommitSlowCallback(StrongSession &session, uint64_t req_id, int shard_idx,
-//                                  uint64_t rw_transaction_id, const Timestamp &commit_ts, bool is_commit);
+        void ROCommitCallback(StrongSession &session, uint64_t req_id, int shard_idx,
+                              const std::vector<Value> &values,
+                              const std::vector<PreparedTransaction> &prepares);
+
+        void ROCommitSlowCallback(StrongSession &session, uint64_t req_id, int shard_idx,
+                                  uint64_t rw_transaction_id, const Timestamp &commit_ts, bool is_commit);
 //        void HandleWound(const uint64_t transaction_id);
 
         void RealTimeBarrier(const rss::Session &session, rss::continuation_func_t continuation);
@@ -183,12 +184,13 @@ namespace strongstore
 //                                       bool is_commit, const Timestamp &commit_ts);
 //        SnapshotResult FindSnapshot(std::unordered_map<uint64_t, PreparedTransaction> &prepared,
 //                                    std::vector<CommittedTransaction> &committed);
-        void AddValues(StrongSession &session, const std::vector<Value> &values);
+//        void AddValues(StrongSession &session, const std::vector<Value> &values);
 //        void AddPrepares(StrongSession &session, const std::vector<PreparedTransaction> &prepares);
 //        void ReceivedAllFastPaths(StrongSession &session);
         void FindCommittedKeys(StrongSession &session);
+
         void CalculateSnapshotTimestamp(StrongSession &session);
-        SnapshotResult CheckCommit(StrongSession &session);
+//        SnapshotResult CheckCommit(StrongSession &session);
 
         std::unordered_map<std::bitset<MAX_SHARDS>, int> coord_choices_;
         std::unordered_map<std::bitset<MAX_SHARDS>, uint16_t> min_lats_;
