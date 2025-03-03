@@ -38,10 +38,11 @@ namespace strongstore {
 //        void
 //        Get(uint64_t transaction_id, const string &key, get_callback gcb, get_timeout_callback gtcb, uint32_t timeout);
 
-        void ROCommitCallbackWhiptail(StrongSession &session, uint64_t req_id, int shard_idx,
+        void ROCommitCallbackWhiptail(StrongSession &session, const ro_commit_callback &rocc,
+                                      int shard_idx,
                                       const std::vector<Value> &values,
-                                      const std::vector<PreparedTransaction> &prepares,
-                                      const ro_commit_callback &roccb);
+                                      const std::vector<PreparedTransaction> &prepares
+                                      );
 
         void ROCommit(StrongSession& session, uint64_t transaction_id, const std::vector<std::string> &keys,
                       const Timestamp &commit_timestamp,

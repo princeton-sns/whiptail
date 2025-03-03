@@ -23,6 +23,7 @@ namespace strongstore {
         if (session.success_count(shard_idx_) >= config_.QuorumSize()) {
             session.mark_successfully_replicated(shard_idx_);
             Debug("[%lu] replication count %d", session.transaction_id(), session.success_count(shard_idx_));
+            session.clear_success_count(shard_idx_);
             pcb(REPLY_OK, key, value);
         } else if (session.failure_count(shard_idx_) >= config_.QuorumSize()) {
             Panic("Failed txn! Not enough replicas replied");
@@ -74,10 +75,10 @@ namespace strongstore {
 //        }
 //    }
 
-    void WhiptailReplicationGroup::ROCommitCallbackWhiptail(StrongSession &session, uint64_t req_id, int shard_idx,
+    void WhiptailReplicationGroup::ROCommitCallbackWhiptail(StrongSession &session, const ro_commit_callback &roccb,
+                                  int shard_idx,
                                   const std::vector<Value> &values,
-                                  const std::vector<PreparedTransaction> &prepares,
-                                  const ro_commit_callback &roccb) {
+                                  const std::vector<PreparedTransaction> &prepares) {
         ASSERT(prepares.size() == 0);
 
         session.mark_success_or_fail_reply(shard_idx_, REPLY_OK);
@@ -86,12 +87,14 @@ namespace strongstore {
         if (session.success_count(shard_idx_) >= config_.QuorumSize() && session.has_quorum(shard_idx_, config_.QuorumSize())) {
 
             const std::vector<Value> majority_values = session.quorum_resp(shard_idx_, config_.QuorumSize());
+            session.clear_success_count(shard_idx_);
             session.clear_reply_values(shard_idx_);
             roccb(shard_idx, majority_values, prepares);
         }
 
         if (session.success_count(shard_idx_) == config_.n && !session.has_quorum(shard_idx_, config_.QuorumSize())) {
             Debug("jenndebug OOPS no majority, do something wrong for now");
+                session.clear_reply_values(shard_idx_);
             roccb(shard_idx, values, prepares); // TODO jenndebug WRONG
         }
     }
@@ -102,9 +105,12 @@ namespace strongstore {
                                             ro_commit_callback ccb, ro_commit_slow_callback cscb,
                                             ro_commit_timeout_callback ctcb, uint32_t timeout) {
 
+        auto roccbw = std::bind(&WhiptailReplicationGroup::ROCommitCallbackWhiptail, this, std::ref(session), ccb,
+        std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
+
         session.clear_reply_values(shard_idx_);
         for (ShardClient *shard_client: shard_clients_) {
-            shard_client->ROCommit(transaction_id, keys, commit_timestamp, min_read_timestamp, ccb, cscb, ctcb,
+            shard_client->ROCommit(transaction_id, keys, commit_timestamp, min_read_timestamp, roccbw, cscb, ctcb,
                                    timeout);
         }
     }

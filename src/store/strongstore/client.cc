@@ -499,7 +499,7 @@ namespace strongstore {
 
         auto tid = session.transaction_id();
 
-        Debug("PUT [%lu : %s]", tid, key.c_str());
+        Debug("PUT [%lu : %s, %s]", tid, key.c_str(), value.c_str());
 
         if (session.needs_aborts()) {
             Debug("[%lu] Need to abort", tid);
@@ -756,6 +756,10 @@ namespace strongstore {
         auto tid = session.transaction_id();
 
         Debug("[%lu] ROCommit callback", tid);
+
+        for (const Value value : values) {
+            Debug("jenndebug value: %s, %s", value.key().c_str(), value.val().c_str());
+        }
 
         auto search = pending_reqs_.find(req_id);
         if (search == pending_reqs_.end()) {

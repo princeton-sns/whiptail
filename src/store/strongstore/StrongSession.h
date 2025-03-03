@@ -66,6 +66,11 @@ namespace strongstore {
             return this->replica_replied_ok_counter_[participant_shard];
         }
 
+        void clear_success_count(int participant_shard) {
+            this->replica_replied_ok_counter_[participant_shard] = 0;
+            this->replica_replied_fail_counter_[participant_shard] = 0;
+        }
+
         int failure_count(int participant_shard) {
             return this->replica_replied_fail_counter_[participant_shard];
         }
