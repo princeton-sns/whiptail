@@ -121,7 +121,7 @@ class RssCodebase:
         if 'partitioner' in config:
             client_command += ' --partitioner %s' % config['partitioner']
 
-        if config['benchmark_name'] == 'retwis':
+        if config['benchmark_name'] == 'retwis' or config['benchmark_name'] == 'ycsbt':
             client_command += ' --num_keys %d' % config['client_num_keys']
             if 'client_key_selector' in config:
                 client_command += ' --key_selector %s' % config['client_key_selector']
@@ -327,6 +327,11 @@ class RssCodebase:
             replica_command += ' --debug_stats'
 
         if config['benchmark_name'] == 'retwis':
+            replica_command += ' --num_keys %d' % config['client_num_keys']
+            if 'server_preload_keys' in config:
+                replica_command += ' --preload_keys=%s' % str(
+                    config['server_preload_keys']).lower()
+        elif config['benchmark_name'] == 'ycsbt':
             replica_command += ' --num_keys %d' % config['client_num_keys']
             if 'server_preload_keys' in config:
                 replica_command += ' --preload_keys=%s' % str(

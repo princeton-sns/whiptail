@@ -1,0 +1,3 @@
+file(GLOB SourceFiles "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
+
+add_library(workload_ycsbt ${SourceFiles})

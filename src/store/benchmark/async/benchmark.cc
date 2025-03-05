@@ -45,6 +45,7 @@
 #include "store/benchmark/async/common/uniform_key_selector.h"
 #include "store/benchmark/async/common/zipf_key_selector.h"
 #include "store/benchmark/async/retwis/retwis_client.h"
+#include "store/benchmark/async/ycsbt/ycsbt_client.h"
 #include "store/common/partitioner.h"
 #include "store/common/stats.h"
 #include "store/common/truetime.h"
@@ -61,6 +62,7 @@ enum benchmode_t
 {
     BENCH_UNKNOWN,
     BENCH_RETWIS,
+    BENCH_YCSBT
 };
 
 enum keysmode_t
@@ -161,8 +163,8 @@ DEFINE_validator(strong_consistency, &ValidateStrongConsistency);
 
 DEFINE_double(nb_time_alpha, 1.0, "multiple for non-block time estimates.");
 
-const std::string benchmark_args[] = {"retwis"};
-const benchmode_t benchmodes[]{BENCH_RETWIS};
+const std::string benchmark_args[] = {"retwis", "ycsbt"};
+const benchmode_t benchmodes[]{BENCH_RETWIS, BENCH_YCSBT};
 static bool ValidateBenchmark(const char *flagname, const std::string &value)
 {
     int n = sizeof(benchmark_args);
@@ -517,7 +519,7 @@ int main(int argc, char **argv)
 
     // parse retwis settings
     std::vector<std::string> keys;
-    if (benchMode == BENCH_RETWIS)
+    if (benchMode == BENCH_RETWIS || benchMode == BENCH_YCSBT)
     {
         if (FLAGS_keys_path.empty())
         {
@@ -722,6 +724,8 @@ int main(int argc, char **argv)
     {
     case BENCH_RETWIS:
         break;
+    case BENCH_YCSBT:
+        break;
     default:
         NOT_REACHABLE();
     }
@@ -742,6 +746,18 @@ int main(int argc, char **argv)
             FLAGS_abort_backoff, FLAGS_retry_aborted, FLAGS_max_backoff,
             FLAGS_max_attempts);
         break;
+    case BENCH_YCSBT:
+        bench = new ycsbt::YcsbtClient(
+            keySelector, clients, FLAGS_message_timeout, *tport, seed,
+            bench_mode,
+            FLAGS_client_switch_probability,
+            FLAGS_client_arrival_rate, FLAGS_client_think_time, FLAGS_client_stay_probability,
+            FLAGS_mpl,
+            FLAGS_exp_duration, FLAGS_warmup_secs, FLAGS_cooldown_secs,
+            FLAGS_tput_interval,
+            FLAGS_abort_backoff, FLAGS_retry_aborted, FLAGS_max_backoff,
+            FLAGS_max_attempts);
+        break;
     default:
         NOT_REACHABLE();
     }
@@ -749,6 +765,7 @@ int main(int argc, char **argv)
     switch (benchMode)
     {
     case BENCH_RETWIS:
+    case BENCH_YCSBT:
         tport->Timer(0, [bench, bdcb]()
                      { bench->Start(bdcb); });
         break;
