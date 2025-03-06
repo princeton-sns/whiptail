@@ -576,6 +576,8 @@ namespace strongstore {
                               std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
         auto cctcb = [](int) {};
 
+        const Timestamp commit_ts{tt_.Now().mid(), client_id_};
+
         // auto pccb = [transaction_id = tid](int status)
         // {
         //     Debug("[%lu] PREPARE callback status %d", transaction_id, status);
@@ -585,7 +587,7 @@ namespace strongstore {
         for (auto p: participants) {
             // if (p == coordinator_shard)
             // {
-            sclients_[p]->RWCommitCoordinator(tid, participants, nonblock_timestamp, cccb, cctcb, timeout);
+            sclients_[p]->RWCommitCoordinator(tid, commit_ts, participants, nonblock_timestamp, cccb, cctcb, timeout);
             // }
             // else
             // {
@@ -725,7 +727,9 @@ namespace strongstore {
         ASSERT(sharded_keys.size() > 0);
 
         Timestamp min_ts = session.min_read_ts();
-        Timestamp commit_ts{tt_.Now().latest(), client_id_};
+
+        // TODO jenndebug mid? Not earliest?
+        Timestamp commit_ts{tt_.Now().earliest(), client_id_};
 
         // Hack to make RSS work with zero TrueTime error despite clock skew
         // (for throughput experiments)

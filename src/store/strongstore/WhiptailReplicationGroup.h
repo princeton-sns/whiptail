@@ -24,6 +24,7 @@ namespace strongstore {
                  const put_callback &putCallback, const put_timeout_callback &putTimeoutCallback, uint32_t timeout);
 
         void RWCommitCoordinator(uint64_t transaction_id,
+                                 const Timestamp& commit_ts,
                                  const std::set<int> &participants,
                                  Timestamp &nonblock_timestamp,
                                  const rw_coord_commit_callback &ccb,

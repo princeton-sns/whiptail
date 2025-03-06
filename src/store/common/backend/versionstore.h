@@ -56,8 +56,10 @@ public:
                            std::vector<std::pair<T, V>> &values);
     bool remove(const std::string &key, const T &t);
     void put(const std::string &key, const V &v, const T &t);
+    void put(const std::string& key, const V &v, const T &t, std::chrono::microseconds network_latency_window);
     void commitGet(const std::string &key, const T &readTime, const T &commit);
     bool getUpperBound(const std::string &key, const T &t, T &result);
+    std::chrono::microseconds get_network_latency_window(const std::string& key) const;
 
 private:
     struct VersionedValue
@@ -84,6 +86,8 @@ private:
     /* Global store which keeps key -> (timestamp, value) list. */
     std::unordered_map<std::string, std::set<VersionedValue>> store;
     std::unordered_map<std::string, std::map<T, T>> lastReads;
+    std::unordered_map<std::string, std::chrono::microseconds> network_latency_windows;
+
     bool inStore(const std::string &key);
     void getValue(
         const std::string &key, const T &t,
@@ -158,6 +162,14 @@ bool VersionedKVStore<T, V>::get(const std::string &key, const T &t,
 }
 
 template <class T, class V>
+std::chrono::microseconds VersionedKVStore<T, V>::get_network_latency_window(const std::string& key) const {
+
+    // TODO jenndebug don't hardcode to 2 ms
+    std::chrono::microseconds duration(200000); // TODO jenndebug configure this to be per-key
+    return duration;
+}
+
+template <class T, class V>
 bool VersionedKVStore<T, V>::remove(const std::string &key, const T &t)
 {
     auto storeKeyItr = store.find(key);
@@ -226,6 +238,15 @@ void VersionedKVStore<T, V>::put(const std::string &key, const V &value,
 {
     // Key does not exist. Create a list and an entry.
     store[key].insert(VersionedKVStore<T, V>::VersionedValue(t, value));
+}
+
+template <class T, class V>
+void VersionedKVStore<T, V>::put(const std::string &key, const V &value,
+                                 const T &t, std::chrono::microseconds network_latency_window)
+{
+    // Key does not exist. Create a list and an entry.
+    store[key].insert(VersionedKVStore<T, V>::VersionedValue(t, value));
+    this->network_latency_windows[key] = network_latency_window;
 }
 
 /*

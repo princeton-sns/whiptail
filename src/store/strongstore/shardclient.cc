@@ -31,8 +31,7 @@
 
 #include "lib/configuration.h"
 
-namespace strongstore
-{
+namespace strongstore {
 
     using namespace std;
     using namespace proto;
@@ -40,15 +39,14 @@ namespace strongstore
     ShardClient::ShardClient(const transport::Configuration &config,
                              Transport *transport, uint64_t client_id, int shard,
                              wound_callback wcb, int replica)
-        : last_req_id_{0},
-          config_{config},
-          transport_{transport},
-          client_id_{client_id},
-          shard_idx_{shard},
-          wcb_{wcb},
-          replica_(replica),
-          tt_{0}
-    {
+            : last_req_id_{0},
+              config_{config},
+              transport_{transport},
+              client_id_{client_id},
+              shard_idx_{shard},
+              wcb_{wcb},
+              replica_(replica),
+              tt_{0} {
         transport_->Register(this, config_, -1, -1);
 
         // TODO: Remove hardcoding
@@ -59,69 +57,47 @@ namespace strongstore
 
     void ShardClient::ReceiveMessage(const TransportAddress &remote,
                                      const std::string &type,
-                                     const std::string &data, void *meta_data)
-    {
-        if (type == get_reply_.GetTypeName())
-        {
+                                     const std::string &data, void *meta_data) {
+        if (type == get_reply_.GetTypeName()) {
             get_reply_.ParseFromString(data);
             HandleGetReply(get_reply_);
-        }
-        else if (type == rw_commit_c_reply_.GetTypeName())
-        {
+        } else if (type == rw_commit_c_reply_.GetTypeName()) {
             rw_commit_c_reply_.ParseFromString(data);
             HandleRWCommitCoordinatorReply(rw_commit_c_reply_);
-        }
-        else if (type == rw_commit_p_reply_.GetTypeName())
-        {
+        } else if (type == rw_commit_p_reply_.GetTypeName()) {
             rw_commit_p_reply_.ParseFromString(data);
             HandleRWCommitParticipantReply(rw_commit_p_reply_);
-        }
-        else if (type == prepare_ok_reply_.GetTypeName())
-        {
+        } else if (type == prepare_ok_reply_.GetTypeName()) {
             prepare_ok_reply_.ParseFromString(data);
             HandlePrepareOKReply(prepare_ok_reply_);
-        }
-        else if (type == prepare_abort_reply_.GetTypeName())
-        {
+        } else if (type == prepare_abort_reply_.GetTypeName()) {
             prepare_abort_reply_.ParseFromString(data);
             HandlePrepareAbortReply(prepare_abort_reply_);
-        }
-        else if (type == ro_commit_reply_.GetTypeName())
-        {
+        } else if (type == ro_commit_reply_.GetTypeName()) {
             ro_commit_reply_.ParseFromString(data);
             HandleROCommitReply(ro_commit_reply_);
-        }
-        else if (type == ro_commit_slow_reply_.GetTypeName())
-        {
+        } else if (type == ro_commit_slow_reply_.GetTypeName()) {
             ro_commit_slow_reply_.ParseFromString(data);
             HandleROCommitSlowReply(ro_commit_slow_reply_);
-        }
-        else if (type == abort_reply_.GetTypeName())
-        {
+        } else if (type == abort_reply_.GetTypeName()) {
             abort_reply_.ParseFromString(data);
             HandleAbortReply(abort_reply_);
-        }
-        else if (type == wound_.GetTypeName())
-        {
+        } else if (type == wound_.GetTypeName()) {
 //            wound_.ParseFromString(data);
 //            HandleWound(wound_);
-        }
-        else
-        {
+        } else {
             Panic("Received unexpected message type: %s", type.c_str());
         }
     }
 
-    void ShardClient::HandleWound(const proto::Wound &msg)
-    {
+    void ShardClient::HandleWound(const proto::Wound &msg) {
         uint64_t transaction_id = msg.transaction_id();
         Debug("Received wound for tid: %lu", transaction_id);
         wcb_(transaction_id);
     };
 
     /* Sends BEGIN to a single shard indexed by i. */
-    void ShardClient::Begin(uint64_t transaction_id, const Timestamp &start_time)
-    {
+    void ShardClient::Begin(uint64_t transaction_id, const Timestamp &start_time) {
         Debug("[%lu] [shard %i, replica %i] BEGIN", transaction_id, shard_idx_, replica_);
 
         auto search = transactions_.find(transaction_id);
@@ -132,11 +108,9 @@ namespace strongstore
         t.set_start_time(start_time);
     }
 
-    bool ShardClient::CheckPriorReadsAndWrites(uint64_t transaction_id, const std::string &key, get_callback gcb)
-    {
+    bool ShardClient::CheckPriorReadsAndWrites(uint64_t transaction_id, const std::string &key, get_callback gcb) {
         auto search = transactions_.find(transaction_id);
-        if (search == transactions_.end())
-        {
+        if (search == transactions_.end()) {
             return false;
         }
 
@@ -144,20 +118,17 @@ namespace strongstore
 
         // Read your own writes, check the write set first.
         auto wsearch = txn.getWriteSet().find(key);
-        if (wsearch != txn.getWriteSet().end())
-        {
+        if (wsearch != txn.getWriteSet().end()) {
             gcb(REPLY_OK, key, wsearch->second, Timestamp());
             return true;
         }
 
         // Consistent reads, check the read set.
         auto rssearch = read_sets_.find(transaction_id);
-        if (rssearch != read_sets_.end())
-        {
+        if (rssearch != read_sets_.end()) {
             auto &read_set = rssearch->second;
             auto rsearch = read_set.find(key);
-            if (rsearch != read_set.end())
-            {
+            if (rsearch != read_set.end()) {
                 gcb(REPLY_OK, key, rsearch->second, Timestamp());
                 return true;
             }
@@ -168,22 +139,19 @@ namespace strongstore
 
     void ShardClient::Get(uint64_t transaction_id, const std::string &key,
                           get_callback gcb, get_timeout_callback gtcb,
-                          uint32_t timeout)
-    {
+                          uint32_t timeout) {
         Get(transaction_id, key, gcb, gtcb, timeout, false);
     }
 
     void ShardClient::GetForUpdate(uint64_t transaction_id, const std::string &key,
                                    get_callback gcb, get_timeout_callback gtcb,
-                                   uint32_t timeout)
-    {
+                                   uint32_t timeout) {
         Get(transaction_id, key, gcb, gtcb, timeout, true);
     }
 
     void ShardClient::Get(uint64_t transaction_id, const std::string &key,
                           get_callback gcb, get_timeout_callback gtcb,
-                          uint32_t timeout, bool for_update)
-    {
+                          uint32_t timeout, bool for_update) {
         // Send the GET operation to appropriate shard.
         Debug("[shard %i] Sending GET [%s]", shard_idx_, key.c_str());
 
@@ -211,14 +179,12 @@ namespace strongstore
         transport_->SendMessageToReplica(this, shard_idx_, replica_, get_);
     }
 
-    void ShardClient::HandleGetReply(const proto::GetReply &reply)
-    {
+    void ShardClient::HandleGetReply(const proto::GetReply &reply) {
         uint64_t req_id = reply.rid().client_req_id();
         int status = reply.status();
 
         auto itr = pendingGets.find(req_id);
-        if (itr == pendingGets.end())
-        {
+        if (itr == pendingGets.end()) {
             Debug("[%d][%lu] GetReply for stale request.", shard_idx_, req_id);
             return; // stale request
         }
@@ -235,8 +201,7 @@ namespace strongstore
 
         std::string val;
         Timestamp ts;
-        if (status == REPLY_OK)
-        {
+        if (status == REPLY_OK) {
             val = reply.val();
             ts = Timestamp(reply.timestamp());
         }
@@ -250,8 +215,7 @@ namespace strongstore
 
     void ShardClient::Put(uint64_t transaction_id, const std::string &key, const std::string &value,
                           put_callback pcb, put_timeout_callback ptcb,
-                          uint32_t timeout)
-    {
+                          uint32_t timeout) {
         auto search = transactions_.find(transaction_id);
         ASSERT(search != transactions_.end());
 
@@ -267,8 +231,7 @@ namespace strongstore
                                const Timestamp &min_read_timestamp,
                                ro_commit_callback ccb,
                                ro_commit_slow_callback cscb,
-                               ro_commit_timeout_callback ctcb, uint32_t timeout)
-    {
+                               ro_commit_timeout_callback ctcb, uint32_t timeout) {
         Debug("[%lu] [shard %i] Sending ROCommit", transaction_id, shard_idx_);
 
         uint64_t req_id = last_req_id_++;
@@ -287,21 +250,18 @@ namespace strongstore
         min_read_timestamp.serialize(ro_commit_.mutable_min_timestamp());
 
         ro_commit_.clear_keys();
-        for (auto &k : keys)
-        {
+        for (auto &k: keys) {
             ro_commit_.add_keys(k.c_str());
         }
 
         transport_->SendMessageToReplica(this, shard_idx_, replica_, ro_commit_);
     }
 
-    void ShardClient::HandleROCommitSlowReply(const proto::ROCommitSlowReply &reply)
-    {
+    void ShardClient::HandleROCommitSlowReply(const proto::ROCommitSlowReply &reply) {
         uint64_t req_id = reply.rid().client_req_id();
 
         auto itr = pendingROCommits.find(req_id);
-        if (itr == pendingROCommits.end())
-        {
+        if (itr == pendingROCommits.end()) {
             Debug("[%d][%lu] ROCommitReply for stale request.", shard_idx_, req_id);
             return; // stale request
         }
@@ -316,8 +276,7 @@ namespace strongstore
         bool is_commit = reply.is_commit();
 
         req->n_slow_replies -= 1;
-        if (req->n_slow_replies == 0)
-        {
+        if (req->n_slow_replies == 0) {
             pendingROCommits.erase(itr);
             delete req;
         }
@@ -325,13 +284,11 @@ namespace strongstore
         cscb(shard_idx_, transaction_id, commit_ts, is_commit);
     }
 
-    void ShardClient::HandleROCommitReply(const proto::ROCommitReply &reply)
-    {
+    void ShardClient::HandleROCommitReply(const proto::ROCommitReply &reply) {
         uint64_t req_id = reply.rid().client_req_id();
 
         auto itr = pendingROCommits.find(req_id);
-        if (itr == pendingROCommits.end())
-        {
+        if (itr == pendingROCommits.end()) {
             Debug("[%d][%lu] ROCommitReply for stale request.", shard_idx_, req_id);
             return; // stale request
         }
@@ -341,8 +298,7 @@ namespace strongstore
         ASSERT(req->n_slow_replies == 0);
 
         std::vector<Value> values;
-        for (auto &v : reply.values())
-        {
+        for (auto &v: reply.values()) {
             values.emplace_back(v);
         }
 
@@ -355,8 +311,7 @@ namespace strongstore
 //        }
 //
         uint64_t n_prepares = prepares.size();
-        if (n_prepares == 0)
-        {
+        if (n_prepares == 0) {
             pendingROCommits.erase(itr);
             delete req;
         }
@@ -369,10 +324,9 @@ namespace strongstore
     }
 
     void ShardClient::RWCommitCoordinator(
-        uint64_t transaction_id,
-        const std::set<int> participants, Timestamp &nonblock_timestamp,
-        rw_coord_commit_callback ccb, rw_coord_commit_timeout_callback ctcb, uint32_t timeout)
-    {
+            uint64_t transaction_id, const Timestamp &commit_ts,
+            const std::set<int> participants, Timestamp &nonblock_timestamp,
+            rw_coord_commit_callback ccb, rw_coord_commit_timeout_callback ctcb, uint32_t timeout) {
         Debug("[%lu] [shard %i] Sending RWCommitCoordinator", transaction_id, shard_idx_);
 
         auto search = transactions_.find(transaction_id);
@@ -394,13 +348,12 @@ namespace strongstore
         t.serialize(rw_commit_c_.mutable_transaction());
         nonblock_timestamp.serialize((rw_commit_c_.mutable_nonblock_timestamp()));
 
-        const TrueTimeInterval now = tt_.Now();
-        const Timestamp commit_ts{now.latest(), client_id_};
+        // const TrueTimeInterval now = tt_.Now();
+//        Debug("[%lu] jenndebug commit_ts %lu", transaction_id, commit_ts.getTimestamp());
 
         commit_ts.serialize(rw_commit_c_.mutable_commit_timestamp());
 
-        for (int p : participants)
-        {
+        for (int p: participants) {
             rw_commit_c_.add_participants(p);
         }
 
@@ -408,13 +361,11 @@ namespace strongstore
         transport_->SendMessageToReplica(this, shard_idx_, replica_, rw_commit_c_);
     }
 
-    void ShardClient::HandleRWCommitCoordinatorReply(const proto::RWCommitCoordinatorReply &reply)
-    {
+    void ShardClient::HandleRWCommitCoordinatorReply(const proto::RWCommitCoordinatorReply &reply) {
         uint64_t req_id = reply.rid().client_req_id();
 
         auto itr = pendingRWCoordCommits.find(req_id);
-        if (itr == pendingRWCoordCommits.end())
-        {
+        if (itr == pendingRWCoordCommits.end()) {
             Debug("[%d][%lu] RWCommitCoordinatorReply for stale request.", shard_idx_, req_id);
             return; // stale request
         }
@@ -436,8 +387,7 @@ namespace strongstore
     void ShardClient::RWCommitParticipant(uint64_t transaction_id,
                                           int coordinator_shard, Timestamp &nonblock_timestamp,
                                           rw_part_commit_callback ccb, rw_part_commit_timeout_callback ctcb,
-                                          uint32_t timeout)
-    {
+                                          uint32_t timeout) {
         Debug("[%lu] [shard %i] Sending RWCommitParticipant", transaction_id, shard_idx_);
 
         auto search = transactions_.find(transaction_id);
@@ -463,14 +413,12 @@ namespace strongstore
         transport_->SendMessageToReplica(this, shard_idx_, replica_, rw_commit_p_);
     }
 
-    void ShardClient::HandleRWCommitParticipantReply(const proto::RWCommitParticipantReply &reply)
-    {
+    void ShardClient::HandleRWCommitParticipantReply(const proto::RWCommitParticipantReply &reply) {
         Debug("[shard %i] Received RWCommitParticipant", shard_idx_);
         uint64_t req_id = reply.rid().client_req_id();
 
         auto itr = pendingRWParticipantCommits.find(req_id);
-        if (itr == pendingRWParticipantCommits.end())
-        {
+        if (itr == pendingRWParticipantCommits.end()) {
             Debug("[%d][%lu] RWCommitParticipantReply for stale request.", shard_idx_, req_id);
             return; // stale request
         }
@@ -490,8 +438,7 @@ namespace strongstore
     void ShardClient::PrepareOK(uint64_t transaction_id, int participant_shard,
                                 const Timestamp &prepare_timestamp, const Timestamp &nonblock_ts,
                                 prepare_callback pcb,
-                                prepare_timeout_callback ptcb, uint32_t timeout)
-    {
+                                prepare_timeout_callback ptcb, uint32_t timeout) {
         Debug("[shard %i] Sending PrepareOK [%lu]", shard_idx_, transaction_id);
 
         uint64_t req_id = last_req_id_++;
@@ -511,14 +458,12 @@ namespace strongstore
         transport_->SendMessageToReplica(this, shard_idx_, replica_, prepare_ok_);
     }
 
-    void ShardClient::HandlePrepareOKReply(const proto::PrepareOKReply &reply)
-    {
+    void ShardClient::HandlePrepareOKReply(const proto::PrepareOKReply &reply) {
         Debug("[shard %i] Received PrepareOKReply", shard_idx_);
         uint64_t req_id = reply.rid().client_req_id();
 
         auto itr = pendingPrepareOKs.find(req_id);
-        if (itr == pendingPrepareOKs.end())
-        {
+        if (itr == pendingPrepareOKs.end()) {
             Debug("[%d][%lu] PrepareOKReply for stale request.", shard_idx_,
                   req_id);
             return; // stale request
@@ -537,8 +482,7 @@ namespace strongstore
     void ShardClient::PrepareAbort(uint64_t transaction_id, int participant_shard,
                                    prepare_callback pcb,
                                    prepare_timeout_callback ptcb,
-                                   uint32_t timeout)
-    {
+                                   uint32_t timeout) {
         Debug("[shard %i] Sending PrepareAbort [%lu]", shard_idx_, transaction_id);
 
         uint64_t req_id = last_req_id_++;
@@ -558,14 +502,12 @@ namespace strongstore
     }
 
     void ShardClient::HandlePrepareAbortReply(
-        const proto::PrepareAbortReply &reply)
-    {
+            const proto::PrepareAbortReply &reply) {
         Debug("[shard %i] Received PrepareAbortReply", shard_idx_);
         uint64_t req_id = reply.rid().client_req_id();
 
         auto itr = pendingPrepareAborts.find(req_id);
-        if (itr == pendingPrepareAborts.end())
-        {
+        if (itr == pendingPrepareAborts.end()) {
             Debug("[%d][%lu] PrepareAbortReply for stale request.", shard_idx_,
                   req_id);
             return; // stale request
@@ -580,8 +522,7 @@ namespace strongstore
     }
 
     void ShardClient::Abort(uint64_t transaction_id, abort_callback acb,
-                            abort_timeout_callback atcb, uint32_t timeout)
-    {
+                            abort_timeout_callback atcb, uint32_t timeout) {
         Debug("[%lu] [shard %i] Sending Abort", transaction_id, shard_idx_);
 
         uint64_t req_id = last_req_id_++;
@@ -599,8 +540,7 @@ namespace strongstore
         transport_->SendMessageToReplica(this, shard_idx_, replica_, abort_);
     }
 
-    void ShardClient::Wound(uint64_t transaction_id)
-    {
+    void ShardClient::Wound(uint64_t transaction_id) {
         Debug("[%lu] [shard %i] Sending wound", transaction_id, shard_idx_);
 
         wound_.set_transaction_id(transaction_id);
@@ -608,14 +548,11 @@ namespace strongstore
         transport_->SendMessageToReplica(this, shard_idx_, replica_, wound_);
     }
 
-    void ShardClient::AbortGet(uint64_t transaction_id)
-    {
+    void ShardClient::AbortGet(uint64_t transaction_id) {
         Debug("[%lu] [shard %i] Aborting GET", transaction_id, shard_idx_);
 
-        for (auto it = pendingGets.begin(); it != pendingGets.end(); ++it)
-        {
-            if (it->second->transaction_id == transaction_id)
-            {
+        for (auto it = pendingGets.begin(); it != pendingGets.end(); ++it) {
+            if (it->second->transaction_id == transaction_id) {
                 PendingGet *req = it->second;
                 uint64_t transaction_id = req->transaction_id;
                 get_callback gcb = req->gcb;
@@ -630,21 +567,18 @@ namespace strongstore
         }
     }
 
-    void ShardClient::AbortPut(uint64_t transaction_id)
-    {
+    void ShardClient::AbortPut(uint64_t transaction_id) {
         Debug("[%lu] [shard %i] Aborting PUT", transaction_id, shard_idx_);
 
         Panic("No PUT in progress!");
     }
 
-    void ShardClient::HandleAbortReply(const proto::AbortReply &reply)
-    {
+    void ShardClient::HandleAbortReply(const proto::AbortReply &reply) {
         Debug("[shard %i] Received HandleAbortReply", shard_idx_);
         uint64_t req_id = reply.rid().client_req_id();
 
         auto itr = pendingAborts.find(req_id);
-        if (itr == pendingAborts.end())
-        {
+        if (itr == pendingAborts.end()) {
             Debug("[%d][%lu] PrepareAbortReply for stale request.", shard_idx_,
                   req_id);
             return; // stale request
@@ -656,8 +590,7 @@ namespace strongstore
         pendingAborts.erase(itr);
         delete req;
 
-        if (reply.status() == REPLY_OK)
-        {
+        if (reply.status() == REPLY_OK) {
             transactions_.erase(transaction_id);
             read_sets_.erase(transaction_id);
         }

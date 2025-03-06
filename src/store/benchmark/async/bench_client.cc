@@ -42,6 +42,10 @@
 
 DEFINE_LATENCY(op);
 
+// TODO jenndebug throwing away aborted retries?
+// Jeff might have fixed it.
+// Keep upper bound on retries, but include them in latency / tp / abort counts
+
 BenchmarkClient::BenchmarkClient(const std::vector<Client *> &clients, uint32_t timeout,
                                  Transport &transport, uint64_t id,
                                  BenchmarkClientMode mode,

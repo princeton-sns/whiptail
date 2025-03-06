@@ -127,6 +127,7 @@ namespace strongstore
                       ro_commit_timeout_callback ctcb, uint32_t timeout);
 
         void RWCommitCoordinator(uint64_t transaction_id,
+                                 const Timestamp& commit_ts,
                                  const std::set<int> participants,
                                  Timestamp &nonblock_timestamp,
                                  rw_coord_commit_callback ccb,

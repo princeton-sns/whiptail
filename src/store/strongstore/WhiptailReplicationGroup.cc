@@ -45,12 +45,13 @@ namespace strongstore {
     }
 
     void WhiptailReplicationGroup::RWCommitCoordinator(uint64_t transaction_id,
+                                                       const Timestamp& commit_ts,
                                                        const std::set<int> &participants,
                                                        Timestamp &nonblock_timestamp,
                                                        const rw_coord_commit_callback &ccb,
                                                        const rw_coord_commit_timeout_callback &ctcb, uint32_t timeout) {
         for (ShardClient *shard_client: shard_clients_) {
-            shard_client->RWCommitCoordinator(transaction_id, participants, nonblock_timestamp, ccb, ctcb, timeout);
+            shard_client->RWCommitCoordinator(transaction_id, commit_ts, participants, nonblock_timestamp, ccb, ctcb, timeout);
         }
     }
 

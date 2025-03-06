@@ -34,6 +34,7 @@
 #define _STRONG_SERVER_H_
 
 #include <memory>
+#include <queue>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -52,6 +53,8 @@
 #include "store/strongstore/shardclient.h"
 #include "store/strongstore/strong-proto.pb.h"
 #include "store/strongstore/transactionstore.h"
+#include "store/strongstore/preparedtransaction.h"
+#include "store/strongstore/PendingOp.h"
 
 namespace strongstore
 {
@@ -198,8 +201,10 @@ namespace strongstore
 
         void HandleROCommit(const TransportAddress &remote, proto::ROCommit &msg);
 
-        void HandleRWCommitCoordinator(const TransportAddress &remote,
+        void EnqueueOps(const TransportAddress &remote,
                                        proto::RWCommitCoordinator &msg);
+
+        void HandleRWCommitCoordinator();
 
         void SendRWCommmitCoordinatorReplyOK(uint64_t transaction_id,
                                              const Timestamp &commit_ts,
@@ -282,6 +287,10 @@ namespace strongstore
         std::unordered_map<uint64_t, PendingROCommitReply *> pending_ro_commit_replies_;
         std::unordered_map<uint64_t, PendingGetReply *> pending_get_replies_;
 
+        std::priority_queue<PendingOp, std::vector<PendingOp>, std::greater<PendingOp>> queue_; // pending
+        std::mutex q_mutex_;
+        std::unordered_map<uint64_t, uint64_t> transaction_still_pending_ops_;
+
         proto::Get get_;
         proto::RWCommitCoordinator rw_commit_c_;
         proto::RWCommitParticipant rw_commit_p_;
@@ -310,6 +319,7 @@ namespace strongstore
         int replica_idx_;
         Consistency consistency_;
         bool debug_stats_;
+
     };
 
 } // namespace strongstore
