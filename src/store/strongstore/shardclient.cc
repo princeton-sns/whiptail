@@ -140,13 +140,44 @@ namespace strongstore {
     void ShardClient::Get(uint64_t transaction_id, const std::string &key,
                           get_callback gcb, get_timeout_callback gtcb,
                           uint32_t timeout) {
-        Get(transaction_id, key, gcb, gtcb, timeout, false);
+        // Get(transaction_id, key, gcb, gtcb, timeout, false);
+        GetBuffered(transaction_id, key, gcb, gtcb, timeout);
     }
 
     void ShardClient::GetForUpdate(uint64_t transaction_id, const std::string &key,
                                    get_callback gcb, get_timeout_callback gtcb,
                                    uint32_t timeout) {
         Get(transaction_id, key, gcb, gtcb, timeout, true);
+    }
+
+    void ShardClient::GetBuffered(uint64_t transaction_id, const std::string &key,
+                                    get_callback gc, get_timeout_callback gtcb, uint32_t timeout) {
+        // Send the GET operation to appropriate shard.
+        Debug("[shard %i] GET_BUFFERED [%s]", shard_idx_, key.c_str());
+
+        // auto search = transactions_.find(transaction_id);
+        // ASSERT(search != transactions_.end());
+        // auto &t = search->second;
+        // auto &start_ts = t.start_time();
+
+        // TODO: Setup timeout
+        // get_.Clear();
+        // get_.mutable_rid()->set_client_id(client_id_);
+        // get_.mutable_rid()->set_client_req_id(req_id);
+        // get_.set_transaction_id(transaction_id);
+        // start_ts.serialize(get_.mutable_timestamp());
+        // get_.set_key(key);
+        // get_.set_for_update(for_update);
+
+        // transport_->SendMessageToReplica(this, shard_idx_, replica_, get_);
+
+        auto search = transactions_.find(transaction_id);
+        ASSERT(search != transactions_.end());
+
+        auto &t = search->second;
+        t.addPendingReadSet(key);
+
+        gc(REPLY_OK, key, "", Timestamp());
     }
 
     void ShardClient::Get(uint64_t transaction_id, const std::string &key,
@@ -357,7 +388,6 @@ namespace strongstore {
             rw_commit_c_.add_participants(p);
         }
 
-
         transport_->SendMessageToReplica(this, shard_idx_, replica_, rw_commit_c_);
     }
 
@@ -381,7 +411,12 @@ namespace strongstore {
 
         Debug("[shard %i] COMMIT timestamp %lu.%lu", shard_idx_,
               reply.commit_timestamp().timestamp(), reply.commit_timestamp().id());
-        ccb(reply.status(), Timestamp(reply.commit_timestamp()), Timestamp(reply.nonblock_timestamp()));
+
+        std::vector<Value> values;
+        for (const auto& v : reply.values())
+            values.push_back(Value(v));
+
+        ccb(reply.status(), values, Timestamp(reply.commit_timestamp()), Timestamp(reply.nonblock_timestamp()));
     }
 
     void ShardClient::RWCommitParticipant(uint64_t transaction_id,

@@ -9,6 +9,7 @@
 #ifndef _TRANSACTION_H_
 #define _TRANSACTION_H_
 
+#include <set>
 #include <unordered_map>
 
 #include "lib/assert.h"
@@ -34,6 +35,8 @@ class Transaction {
     // many times this key has been read
     std::unordered_map<std::string, Timestamp> readSet;
 
+    std::set<std::string> pendingReadSet;
+
     // map between key and value(s)
     std::unordered_map<std::string, std::string> writeSet;
 
@@ -49,10 +52,14 @@ class Transaction {
     const std::unordered_map<std::string, Timestamp> &getReadSet() const;
     const std::unordered_map<std::string, std::string> &getWriteSet() const;
     std::unordered_map<std::string, std::string> &getWriteSet();
+    const std::set<std::string>& getPendingReadSet() const;
+    std::set<std::string>& getPendingReadSet();
     void serialize(TransactionMessage *msg) const;
 
     void addReadSet(const std::string &key, const Timestamp &readTime);
     void addWriteSet(const std::string &key, const std::string &value);
+
+    void addPendingReadSet(const std::string& key);
     void set_start_time(const Timestamp &ts);
 
     void add_read_write_sets(const Transaction &other);

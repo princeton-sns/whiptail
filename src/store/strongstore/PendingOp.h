@@ -9,67 +9,75 @@
 #include <chrono>
 #include <utility>
 
+enum PendingOpType {
+    PUT = 0,
+    GET,
+};
+
 namespace strongstore {
 
-class PendingOp {
+    class PendingOp {
 
-public:
-PendingOp(std::string  key, std::string  value, const Timestamp& commit_ts, uint64_t transaction_id,
-const Timestamp& nonblock_ts, const std::chrono::microseconds& network_latency_window)
-    : key_(std::move(key))
-    , value_(std::move(value))
-    , commit_ts_(commit_ts)
-    , transaction_id_(transaction_id)
-    , nonblock_ts_(nonblock_ts)
-    , network_latency_window_(network_latency_window)
-    , execute_time_(commit_ts.getTimestamp() + network_latency_window.count()) {
+    public:
+        PendingOp(PendingOpType pendingOpType, std::string key, std::string value, const Timestamp &commit_ts,
+                  uint64_t transaction_id, const Timestamp &nonblock_ts,
+                  const std::chrono::microseconds &network_latency_window)
+                : pendingOpType_(pendingOpType), key_(std::move(key)), value_(std::move(value)), commit_ts_(commit_ts),
+                  transaction_id_(transaction_id), nonblock_ts_(nonblock_ts),
+                  network_latency_window_(network_latency_window),
+                  execute_time_(commit_ts.getTimestamp() + network_latency_window.count()) {
 
 //    Debug("jenndebug commit.getTimestamp() [%lu], network_latency_window.count() [%lu]", commit_ts.getTimestamp(), network_latency_window.count());
 
-    }
+        }
 
-uint64_t execute_time() const {
-    return execute_time_;
-}
+        uint64_t execute_time() const {
+            return execute_time_;
+        }
 
-bool operator>(const PendingOp& other) const {
-    return execute_time_ > other.execute_time();
-}
+        bool operator>(const PendingOp &other) const {
+            return execute_time_ > other.execute_time();
+        }
 
-const std::string& key() const {
-    return key_;
-}
+        const PendingOpType& pendingOpType() const {
+            return pendingOpType_;
+        }
 
-const std::string& value() const {
-    return value_;
-}
+        const std::string &key() const {
+            return key_;
+        }
 
-uint64_t transaction_id() const {
-    return transaction_id_;
-}
+        const std::string &value() const {
+            return value_;
+        }
 
-const Timestamp& commit_ts() const {
-    return commit_ts_;
-}
+        uint64_t transaction_id() const {
+            return transaction_id_;
+        }
 
-const std::chrono::microseconds& network_latency_window() const {
-    return network_latency_window_;
-}
+        const Timestamp &commit_ts() const {
+            return commit_ts_;
+        }
 
-const Timestamp& nonblock_ts() const {
-    return nonblock_ts_;
-}
+        const std::chrono::microseconds &network_latency_window() const {
+            return network_latency_window_;
+        }
 
-private:
-    std::string key_;
-    std::string value_;
-    Timestamp commit_ts_;
-    Timestamp nonblock_ts_;
-    uint64_t transaction_id_;
-    std::chrono::microseconds network_latency_window_;
-    uint64_t execute_time_;
+        const Timestamp &nonblock_ts() const {
+            return nonblock_ts_;
+        }
 
-};
+    private:
+        PendingOpType pendingOpType_;
+        std::string key_;
+        std::string value_;
+        Timestamp commit_ts_;
+        Timestamp nonblock_ts_;
+        uint64_t transaction_id_;
+        std::chrono::microseconds network_latency_window_;
+        uint64_t execute_time_;
+
+    };
 
 } // strongstore
 

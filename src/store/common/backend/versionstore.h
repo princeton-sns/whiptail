@@ -164,8 +164,8 @@ bool VersionedKVStore<T, V>::get(const std::string &key, const T &t,
 template <class T, class V>
 std::chrono::microseconds VersionedKVStore<T, V>::get_network_latency_window(const std::string& key) const {
 
-    // TODO jenndebug don't hardcode to 2 ms
-    std::chrono::microseconds duration(200000); // TODO jenndebug configure this to be per-key
+    // TODO jenndebug don't hardcode
+    std::chrono::microseconds duration(2000); // TODO jenndebug configure this to be per-key
     return duration;
 }
 

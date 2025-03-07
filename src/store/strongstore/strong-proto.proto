@@ -43,6 +43,7 @@ message RWCommitCoordinatorReply {
     required int32 status = 2;
     optional TimestampMessage commit_timestamp = 3;
     optional TimestampMessage nonblock_timestamp = 4;
+    repeated ReadReply values = 6;
 }
 
 message RWCommitParticipant {

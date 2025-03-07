@@ -8,8 +8,7 @@ namespace retwis {
     OneShotWrites::OneShotWrites(KeySelector *keySelector, std::mt19937 &rand)
             : RetwisTransaction(keySelector, 1, rand, "one_shot_writes") {}
 
-    OneShotWrites::~OneShotWrites() {
-    }
+    OneShotWrites::~OneShotWrites() = default;
 
     Operation OneShotWrites::GetNextOperation(std::size_t op_index) {
         Debug("ONE_SHOT_WRITES %lu", op_index);

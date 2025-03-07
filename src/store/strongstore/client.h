@@ -153,7 +153,8 @@ namespace strongstore {
 
         // local Prepare function
         void
-        CommitCallback(StrongSession &session, uint64_t req_id, int status, Timestamp commit_ts, Timestamp nonblock_ts);
+        CommitCallback(StrongSession &session, uint64_t req_id, int status, const std::vector<Value> &values,
+                       Timestamp commit_ts, Timestamp nonblock_ts);
 
         void AbortCallback(StrongSession &session, uint64_t req_id);
 

@@ -24,4 +24,5 @@ message TransactionMessage {
     required TimestampMessage starttime = 1;
     repeated ReadMessage readset = 2;
     repeated WriteMessage writeset = 3;
+    repeated string pendingreadset = 4;
 }

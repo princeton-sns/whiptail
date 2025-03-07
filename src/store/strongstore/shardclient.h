@@ -78,7 +78,7 @@ namespace strongstore
     typedef std::function<void(int, Timestamp)> prepare_callback;
     typedef std::function<void(int, Timestamp)> prepare_timeout_callback;
 
-    typedef std::function<void(int, Timestamp, Timestamp)> rw_coord_commit_callback;
+    typedef std::function<void(int, const std::vector<Value> &, Timestamp, Timestamp)> rw_coord_commit_callback;
     typedef std::function<void(int)> rw_coord_commit_timeout_callback;
 
     typedef std::function<void(int)> rw_part_commit_callback;
@@ -115,6 +115,9 @@ namespace strongstore
         void GetForUpdate(uint64_t transaction_id, const std::string &key,
                           get_callback gcb, get_timeout_callback gtcb,
                           uint32_t timeout);
+
+        void GetBuffered(uint64_t transaction_id, const std::string &key,
+                        get_callback gc, get_timeout_callback gtcb, uint32_t timeout);
 
         void Put(uint64_t transaction_id, const std::string &key, const std::string &value,
                  put_callback pcb, put_timeout_callback ptcb,

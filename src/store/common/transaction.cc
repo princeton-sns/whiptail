@@ -10,7 +10,7 @@
 
 using namespace std;
 
-Transaction::Transaction() : readSet{}, writeSet{}, start_time_{} {}
+Transaction::Transaction() : readSet{}, writeSet{}, pendingReadSet{}, start_time_{} {}
 
 Transaction::Transaction(const TransactionMessage &msg)
     : start_time_{msg.starttime()} {
@@ -22,6 +22,11 @@ Transaction::Transaction(const TransactionMessage &msg)
     for (int i = 0; i < msg.writeset_size(); i++) {
         WriteMessage writeMsg = msg.writeset(i);
         writeSet[writeMsg.key()] = writeMsg.value();
+    }
+
+    for (int i = 0; i < msg.pendingreadset_size(); i++) {
+        const std::string& pendingRead = msg.pendingreadset(i);
+        pendingReadSet.insert(pendingRead);
     }
 }
 
@@ -39,6 +44,14 @@ unordered_map<string, string> &Transaction::getWriteSet() {
     return writeSet;
 }
 
+const set<string> &Transaction::getPendingReadSet() const {
+    return pendingReadSet;
+}
+
+set<string>& Transaction::getPendingReadSet() {
+    return pendingReadSet;
+}
+
 const Timestamp &Transaction::start_time() const { return start_time_; }
 
 void Transaction::set_start_time(const Timestamp &ts) { start_time_ = ts; }
@@ -51,6 +64,10 @@ void Transaction::addWriteSet(const string &key, const string &value) {
     writeSet[key] = value;
 }
 
+void Transaction::addPendingReadSet(const string &key) {
+    pendingReadSet.insert(key);
+}
+
 void Transaction::add_read_write_sets(const Transaction &other) {
     for (auto &kt : other.getReadSet()) {
         readSet[kt.first] = kt.second;
@@ -58,6 +75,10 @@ void Transaction::add_read_write_sets(const Transaction &other) {
 
     for (auto &kv : other.getWriteSet()) {
         writeSet[kv.first] = kv.second;
+    }
+
+    for (auto &k : other.getPendingReadSet()) {
+        pendingReadSet.insert(k);
     }
 }
 
@@ -73,5 +94,10 @@ void Transaction::serialize(TransactionMessage *msg) const {
         WriteMessage *writeMsg = msg->add_writeset();
         writeMsg->set_key(write.first);
         writeMsg->set_value(write.second);
+    }
+
+    for (auto key : pendingReadSet) {
+        std::string* pendingRead = msg->add_pendingreadset();
+        *pendingRead = key;
     }
 }

@@ -411,42 +411,42 @@ namespace strongstore {
     /* Returns the value corresponding to the supplied key. */
     void Client::Get(Session &s, const std::string &key, get_callback gcb,
                      get_timeout_callback gtcb, uint32_t timeout) {
-        Panic("Unimplemented Get");
+//        Panic("Unimplemented Get");
 
-//        auto &session = static_cast<StrongSession &>(s);
-//
-//        auto tid = session.transaction_id();
-//        Debug("GET [%lu : %s]", tid, key.c_str());
-//
-//        if (session.needs_aborts()) {
-//            Debug("[%lu] Need to abort", tid);
-//            gcb(REPLY_FAIL, "", "", Timestamp());
-//            return;
-//        }
-//
-//        ASSERT(session.executing());
-//
-//        // Contact the appropriate shard to get the value.
-//        int i = (*part_)(key, nshards_, -1, session.participants());
-//
-//        session.set_getting(i);
-//
-//        // Add this shard to set of participants
-//        session.add_participant(i);
-//
-//        auto gcb1 = [gcb, session = std::ref(session)](int s, const std::string &k, const std::string &v,
-//                                                       Timestamp ts) {
-//            session.get().set_executing();
-//            gcb(s, k, v, ts);
-//        };
-//
-//        auto gtcb1 = [gtcb, session = std::ref(session)](int s, const std::string &k) {
-//            session.get().set_executing();
-//            gtcb(s, k);
-//        };
-//
-//        // Send the GET operation to appropriate shard.
-//        sclients_[i]->Get(tid, key, gcb1, gtcb1, timeout);
+        auto &session = static_cast<StrongSession &>(s);
+
+        auto tid = session.transaction_id();
+        Debug("GET [%lu : %s]", tid, key.c_str());
+
+        if (session.needs_aborts()) {
+            Debug("[%lu] Need to abort", tid);
+            gcb(REPLY_FAIL, "", "", Timestamp());
+            return;
+        }
+
+        ASSERT(session.executing());
+
+        // Contact the appropriate shard to get the value.
+        int i = (*part_)(key, nshards_, -1, session.participants());
+
+        session.set_getting(i);
+
+        // Add this shard to set of participants
+        session.add_participant(i);
+
+        auto gcb1 = [gcb, session = std::ref(session)](int s, const std::string &k, const std::string &v,
+                                                       Timestamp ts) {
+            session.get().set_executing();
+            gcb(s, k, v, ts);
+        };
+
+        auto gtcb1 = [gtcb, session = std::ref(session)](int s, const std::string &k) {
+            session.get().set_executing();
+            gtcb(s, k);
+        };
+
+        // Send the GET operation to appropriate shard.
+        sclients_[i]->Get(session, tid, key, gcb1, gtcb1, timeout);
     }
 
     /* Returns the value corresponding to the supplied key. */
@@ -573,7 +573,8 @@ namespace strongstore {
         }
 
         auto cccb = std::bind(&Client::CommitCallback, this, std::ref(session), req->id,
-                              std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
+                              std::placeholders::_1, std::placeholders::_2, std::placeholders::_3,
+                              std::placeholders::_4);
         auto cctcb = [](int) {};
 
         const Timestamp commit_ts{tt_.Now().mid(), client_id_};
@@ -587,7 +588,8 @@ namespace strongstore {
         for (auto p: participants) {
             // if (p == coordinator_shard)
             // {
-            sclients_[p]->RWCommitCoordinator(tid, commit_ts, participants, nonblock_timestamp, cccb, cctcb, timeout);
+            sclients_[p]->RWCommitCoordinator(session, tid, commit_ts, participants, nonblock_timestamp, cccb, cctcb,
+                                              timeout);
             // }
             // else
             // {
@@ -596,8 +598,8 @@ namespace strongstore {
         }
     }
 
-    void Client::CommitCallback(StrongSession &session, uint64_t req_id, int status, Timestamp commit_ts,
-                                Timestamp nonblock_ts) {
+    void Client::CommitCallback(StrongSession &session, uint64_t req_id, int status, const std::vector<Value> &values,
+                                Timestamp commit_ts, Timestamp nonblock_ts) {
         auto tid = session.transaction_id();
         Debug("[%lu] COMMIT callback status %d", tid, status);
 
@@ -607,6 +609,10 @@ namespace strongstore {
             return;
         }
         PendingRequest *req = search->second;
+
+//        for (const auto &value: values) {
+//            Debug("jenndebug %s %s", value.key().c_str(), value.val().c_str());
+//        }
 
         transaction_status_t tstatus;
         switch (status) {
@@ -761,7 +767,7 @@ namespace strongstore {
 
         Debug("[%lu] ROCommit callback", tid);
 
-        for (const Value value : values) {
+        for (const Value value: values) {
             Debug("jenndebug value: %s, %s", value.key().c_str(), value.val().c_str());
         }
 

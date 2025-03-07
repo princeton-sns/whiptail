@@ -2,6 +2,7 @@
 
 #include <iostream>
 
+#include "store/benchmark/async/retwis/one_shot_rw.h"
 #include "store/benchmark/async/retwis/one_shot_writes.h"
 #include "store/benchmark/async/retwis/one_shot_reads.h"
 #include "store/benchmark/async/retwis/add_user.h"
@@ -34,9 +35,11 @@ RetwisClient::~RetwisClient() {
 
 AsyncTransaction *RetwisClient::GetNextTransaction() {
     // int ttype = GetRand()() % 100;
+    lastOp = "one_shot_rw";
+    return new OneShotRW(keySelector, GetRand());
     // if (ttype < 50) {
-        lastOp = "one_shot_writes";
-        return new OneShotWrites(keySelector, GetRand());
+//        lastOp = "one_shot_writes";
+//        return new OneShotWrites(keySelector, GetRand());
     // } else {
         // lastOp = "one_shot_reads";
         // return new OneShotReads(keySelector, GetRand());
