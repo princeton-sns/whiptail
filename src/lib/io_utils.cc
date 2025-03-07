@@ -29,6 +29,7 @@
 #include "lib/io_utils.h"
 
 #include <cmath>
+#include <cstdint>
 
 int ReadBytesFromStream(std::istream *is, std::string &value)
 {

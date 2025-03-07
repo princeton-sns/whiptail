@@ -26,6 +26,7 @@
  *
  **********************************************************************/
 #include "store/common/common.h"
+#include <cstdint>
 
 std::string BytesToHex(const std::string &bytes, size_t maxLength)
 {
