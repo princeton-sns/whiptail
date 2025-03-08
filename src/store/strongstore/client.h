@@ -169,7 +169,7 @@ namespace strongstore {
         void RealTimeBarrier(const rss::Session &session, rss::continuation_func_t continuation);
 
         // choose coordinator from participants
-        void CalculateCoordinatorChoices();
+//        void CalculateCoordinatorChoices();
 //        int ChooseCoordinator(StrongSession &session);
 
         // Choose nonblock time

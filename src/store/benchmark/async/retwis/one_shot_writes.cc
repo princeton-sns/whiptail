@@ -15,12 +15,6 @@ namespace retwis {
         if (op_index == 0) {
             return BeginRW();
         } else if (op_index == 1) {
-            // std::vector<std::string> keys, values;
-            // for (std::size_t i = 0; i < 1; i++) {
-            //     keys.push_back(GetKey(i));
-            //     values.push_back(GetKey(i));
-            // }
-            // return PutMulti(keys, values);
             return Put(GetKey(0), GetKey(0));
         } else if (op_index == 2) {
             return Commit();

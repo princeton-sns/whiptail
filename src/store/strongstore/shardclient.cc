@@ -152,24 +152,7 @@ namespace strongstore {
 
     void ShardClient::GetBuffered(uint64_t transaction_id, const std::string &key,
                                     get_callback gc, get_timeout_callback gtcb, uint32_t timeout) {
-        // Send the GET operation to appropriate shard.
         Debug("[shard %i] GET_BUFFERED [%s]", shard_idx_, key.c_str());
-
-        // auto search = transactions_.find(transaction_id);
-        // ASSERT(search != transactions_.end());
-        // auto &t = search->second;
-        // auto &start_ts = t.start_time();
-
-        // TODO: Setup timeout
-        // get_.Clear();
-        // get_.mutable_rid()->set_client_id(client_id_);
-        // get_.mutable_rid()->set_client_req_id(req_id);
-        // get_.set_transaction_id(transaction_id);
-        // start_ts.serialize(get_.mutable_timestamp());
-        // get_.set_key(key);
-        // get_.set_for_update(for_update);
-
-        // transport_->SendMessageToReplica(this, shard_idx_, replica_, get_);
 
         auto search = transactions_.find(transaction_id);
         ASSERT(search != transactions_.end());

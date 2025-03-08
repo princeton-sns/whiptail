@@ -83,7 +83,7 @@ namespace strongstore {
 
         std::cerr << "jenndebug " << config_.to_string() << std::endl;
 
-        CalculateCoordinatorChoices();
+        // CalculateCoordinatorChoices();
 
         rss::RegisterRSSService(service_name_, std::bind(&Client::RealTimeBarrier, this, std::placeholders::_1,
                                                          std::placeholders::_2));
@@ -105,111 +105,111 @@ namespace strongstore {
         Debug("sessions_by_transaction_id_.size(): %lu", sessions_by_transaction_id_.size());
     }
 
-    void Client::CalculateCoordinatorChoices() {
-        if (static_cast<std::size_t>(config_.g) > MAX_SHARDS) {
-            Panic("CalculateCoordinatorChoices doesn't support more than %lu shards.", MAX_SHARDS);
-        }
-
-        std::vector<uint16_t> prepare_lats{};
-        prepare_lats.reserve(config_.g);
-        std::vector<uint16_t> commit_lats{};
-        commit_lats.reserve(config_.g);
-
-        for (int i = 0; i < config_.g; i++) {
-            const std::string &leader_region = net_config_.GetRegion(i, 0);
-            uint16_t min_q_lat = net_config_.GetMinQuorumLatency(i, 0);
-
-            // Calculate prepare lat (including client to participant)
-            uint16_t prepare_lat = net_config_.GetOneWayLatency(client_region_, leader_region);
-            prepare_lat += min_q_lat;
-            prepare_lats[i] = prepare_lat;
-
-            // Calculate commit lat (including coordinator to client)
-            uint16_t commit_lat = min_q_lat;
-            commit_lat += net_config_.GetOneWayLatency(leader_region, client_region_);
-            commit_lats[i] = commit_lat;
-        }
-
-        uint16_t s_max = (1 << config_.g) - 1;
-
-        for (uint16_t s = 1; s != 0 && s <= s_max; s++) {
-            std::bitset<MAX_SHARDS> shards{s};
-
-            uint16_t min_lat = static_cast<uint16_t>(-1);
-            int min_coord = -1;
-            for (std::size_t coord_idx = 1; coord_idx <= shards.count(); coord_idx++) {
-                // Find coord
-                std::size_t coord = -1;
-                std::size_t n_test = 0;
-                for (std::size_t i = 0; i < MAX_SHARDS; i++) {
-                    if (shards.test(i)) {
-                        n_test++;
-                    }
-
-                    if (n_test == coord_idx) {
-                        coord = i;
-                        break;
-                    }
-                }
-
-                const std::string &c_leader_region = net_config_.GetRegion(coord, 0);
-
-                // Find max prepare lat
-                uint16_t lat = 0;
-                for (std::size_t i = 0; i < MAX_SHARDS; i++) {
-                    uint16_t l = 0;
-                    if (i == coord) {
-                        l = net_config_.GetOneWayLatency(client_region_, c_leader_region);
-                    } else if (shards.test(i)) {
-                        const std::string &p_leader_region = net_config_.GetRegion(i, 0);
-                        l = prepare_lats[i] + net_config_.GetOneWayLatency(p_leader_region, c_leader_region);
-                    }
-
-                    lat = std::max(lat, l);
-                }
-
-                lat += commit_lats[coord];
-
-                if (lat < min_lat) {
-                    min_lat = lat;
-                    min_coord = static_cast<int>(coord);
-                }
-            }
-
-            // Not in wide area, pick random coordinator
-            if (min_lat == 0) {
-                std::size_t coord_idx = (client_id_ % shards.count()) + 1;
-
-                // Find coord
-                std::size_t n_test = 0;
-                for (std::size_t i = 0; i < MAX_SHARDS; i++) {
-                    if (shards.test(i)) {
-                        n_test++;
-                    }
-
-                    if (n_test == coord_idx) {
-                        min_coord = i;
-                        break;
-                    }
-                }
-                Debug("Choosing random coord: %d", min_coord);
-            }
-
-            coord_choices_.emplace(shards, min_coord);
-            min_lats_.emplace(shards, min_lat);
-        }
-
-        Debug("Printing coord_choices:");
-        for (auto &c: coord_choices_) {
-            Debug("shards: %s, min_coord: %d", c.first.to_string().c_str(),
-                  c.second);
-        }
-
-        Debug("Printing min_lats:");
-        for (auto &c: min_lats_) {
-            Debug("shards: %s, min_lat: %u", c.first.to_string().c_str(), c.second);
-        }
-    }
+//    void Client::CalculateCoordinatorChoices() {
+//        if (static_cast<std::size_t>(config_.g) > MAX_SHARDS) {
+//            Panic("CalculateCoordinatorChoices doesn't support more than %lu shards.", MAX_SHARDS);
+//        }
+//
+//        std::vector<uint16_t> prepare_lats{};
+//        prepare_lats.reserve(config_.g);
+//        std::vector<uint16_t> commit_lats{};
+//        commit_lats.reserve(config_.g);
+//
+//        for (int i = 0; i < config_.g; i++) {
+//            const std::string &leader_region = net_config_.GetRegion(i, 0);
+//            uint16_t min_q_lat = net_config_.GetMinQuorumLatency(i, 0);
+//
+//            // Calculate prepare lat (including client to participant)
+//            uint16_t prepare_lat = net_config_.GetOneWayLatency(client_region_, leader_region);
+//            prepare_lat += min_q_lat;
+//            prepare_lats[i] = prepare_lat;
+//
+//            // Calculate commit lat (including coordinator to client)
+//            uint16_t commit_lat = min_q_lat;
+//            commit_lat += net_config_.GetOneWayLatency(leader_region, client_region_);
+//            commit_lats[i] = commit_lat;
+//        }
+//
+//        uint16_t s_max = (1 << config_.g) - 1;
+//
+//        for (uint16_t s = 1; s != 0 && s <= s_max; s++) {
+//            std::bitset<MAX_SHARDS> shards{s};
+//
+//            uint16_t min_lat = static_cast<uint16_t>(-1);
+//            int min_coord = -1;
+//            for (std::size_t coord_idx = 1; coord_idx <= shards.count(); coord_idx++) {
+//                // Find coord
+//                std::size_t coord = -1;
+//                std::size_t n_test = 0;
+//                for (std::size_t i = 0; i < MAX_SHARDS; i++) {
+//                    if (shards.test(i)) {
+//                        n_test++;
+//                    }
+//
+//                    if (n_test == coord_idx) {
+//                        coord = i;
+//                        break;
+//                    }
+//                }
+//
+//                const std::string &c_leader_region = net_config_.GetRegion(coord, 0);
+//
+//                // Find max prepare lat
+//                uint16_t lat = 0;
+//                for (std::size_t i = 0; i < MAX_SHARDS; i++) {
+//                    uint16_t l = 0;
+//                    if (i == coord) {
+//                        l = net_config_.GetOneWayLatency(client_region_, c_leader_region);
+//                    } else if (shards.test(i)) {
+//                        const std::string &p_leader_region = net_config_.GetRegion(i, 0);
+//                        l = prepare_lats[i] + net_config_.GetOneWayLatency(p_leader_region, c_leader_region);
+//                    }
+//
+//                    lat = std::max(lat, l);
+//                }
+//
+//                lat += commit_lats[coord];
+//
+//                if (lat < min_lat) {
+//                    min_lat = lat;
+//                    min_coord = static_cast<int>(coord);
+//                }
+//            }
+//
+//            // Not in wide area, pick random coordinator
+//            if (min_lat == 0) {
+//                std::size_t coord_idx = (client_id_ % shards.count()) + 1;
+//
+//                // Find coord
+//                std::size_t n_test = 0;
+//                for (std::size_t i = 0; i < MAX_SHARDS; i++) {
+//                    if (shards.test(i)) {
+//                        n_test++;
+//                    }
+//
+//                    if (n_test == coord_idx) {
+//                        min_coord = i;
+//                        break;
+//                    }
+//                }
+//                Debug("Choosing random coord: %d", min_coord);
+//            }
+//
+//            coord_choices_.emplace(shards, min_coord);
+//            min_lats_.emplace(shards, min_lat);
+//        }
+//
+//        Debug("Printing coord_choices:");
+//        for (auto &c: coord_choices_) {
+//            Debug("shards: %s, min_coord: %d", c.first.to_string().c_str(),
+//                  c.second);
+//        }
+//
+//        Debug("Printing min_lats:");
+//        for (auto &c: min_lats_) {
+//            Debug("shards: %s, min_lat: %u", c.first.to_string().c_str(), c.second);
+//        }
+//    }
 
 //    int Client::ChooseCoordinator(StrongSession &session)
 //    {
@@ -411,7 +411,6 @@ namespace strongstore {
     /* Returns the value corresponding to the supplied key. */
     void Client::Get(Session &s, const std::string &key, get_callback gcb,
                      get_timeout_callback gtcb, uint32_t timeout) {
-//        Panic("Unimplemented Get");
 
         auto &session = static_cast<StrongSession &>(s);
 
@@ -578,12 +577,6 @@ namespace strongstore {
         auto cctcb = [](int) {};
 
         const Timestamp commit_ts{tt_.Now().mid(), client_id_};
-
-        // auto pccb = [transaction_id = tid](int status)
-        // {
-        //     Debug("[%lu] PREPARE callback status %d", transaction_id, status);
-        // };
-        // auto pctcb = [](int) {};
 
         for (auto p: participants) {
             // if (p == coordinator_shard)
