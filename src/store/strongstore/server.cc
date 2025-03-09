@@ -455,7 +455,6 @@ namespace strongstore {
         //     }
         //     this->q_mutex_.unlock();
         // }
-//    Debug("HandleRWCommitCoordinator callback shot off");
 
         std::vector<PendingOp> safe_to_execute;
 
@@ -477,30 +476,35 @@ namespace strongstore {
 
         for (const auto &pendingOp: safe_to_execute) {
 
-            const PendingOpType& pendingOpType = pendingOp.pendingOpType();
+            const PendingOpType &pendingOpType = pendingOp.pendingOpType();
             const std::string &key = pendingOp.key();
-            const std::string &value = pendingOp.value();
+            const std::string &val = pendingOp.value();
             const Timestamp &commit_ts = pendingOp.commit_ts();
             uint64_t transaction_id = pendingOp.transaction_id();
             const Timestamp &nonblock_ts = pendingOp.nonblock_ts();
 
-            std::unordered_map<std::string, std::string> reads;
 
             if (pendingOpType == PUT) {
-                store_.put(key, value, {commit_ts, transaction_id});
+//                Debug("jenndebug [%lu] executing PUT %s, %s, %s", transaction_id, key.c_str(), val.c_str(),
+//                      commit_ts.to_string().c_str());
+                store_.put(key, val, {commit_ts, transaction_id});
             } else if (pendingOpType == GET) {
 
                 std::pair<TimestampID, std::string> value;
                 ASSERT(store_.get(key, {commit_ts, transaction_id}, value));
-                reads[key] = value.second;
+                transactions_.read_results(transaction_id)[key] = value.second;
 
-
+//                Debug("jenndebug [%lu] executing GET %s, %s, %s", transaction_id, key.c_str(), value.second.c_str(),
+//                      commit_ts.to_string().c_str());
             }
-            this->transaction_still_pending_ops_[transaction_id]--;
+//            this->transaction_still_pending_ops_[transaction_id]--;
+            transactions_.still_pending_ops(transaction_id)--;
 
             // Reply to client
-            if (this->transaction_still_pending_ops_[transaction_id] == 0) {
-                SendRWCommmitCoordinatorReplyOK(transaction_id, commit_ts, nonblock_ts, reads);
+//            if (this->transaction_still_pending_ops_[transaction_id] == 0) {
+            if (0 == transactions_.still_pending_ops(transaction_id)) {
+                SendRWCommmitCoordinatorReplyOK(transaction_id, commit_ts, nonblock_ts,
+                                                transactions_.read_results(transaction_id));
             }
         }
 
@@ -568,6 +572,8 @@ namespace strongstore {
                                     network_latency_window);
 
                 this->queue_.push(pendingOp);
+
+//                Debug("jenndebug [%lu] enqueued PUT %s, %s", transaction_id, write.first.c_str(), write.second.c_str());
                 //
                 //     store_.put(write.first, write.second, {commit_ts, transaction_id});
                 if (pendingOp.execute_time() > latest_execution_time) {
@@ -575,22 +581,27 @@ namespace strongstore {
                 }
             }
             //
-            if (transaction.getWriteSet().size() > 0) {
+            if (!transaction.getWriteSet().empty()) {
                 min_prepare_timestamp_ = std::max(min_prepare_timestamp_, commit_ts);
             }
-            this->transaction_still_pending_ops_[transaction_id] = transaction.getWriteSet().size();
+            transactions_.still_pending_ops(transaction_id) += transaction.getWriteSet().size();
+//            this->transaction_still_pending_ops_[transaction_id] = transaction.getWriteSet().size();
 
-            for (auto &key : transaction.getPendingReadSet()) {
+            for (auto &key: transaction.getPendingReadSet()) {
                 const std::chrono::microseconds network_latency_window = store_.get_network_latency_window(key);
                 PendingOp pendingOp(GET, key, "", commit_ts, transaction_id, nonblock_ts, network_latency_window);
 
                 this->queue_.push(pendingOp);
 
+//                Debug("jenndebug [%lu] enqueued GET %s", transaction_id, key.c_str());
+
                 if (pendingOp.execute_time() > latest_execution_time) {
                     latest_execution_time = pendingOp.execute_time();
                 }
             }
-            this->transaction_still_pending_ops_[transaction_id] += transaction.getPendingReadSet().size();
+
+            transactions_.still_pending_ops(transaction_id) += transaction.getPendingReadSet().size();
+//            this->transaction_still_pending_ops_[transaction_id] += transaction.getPendingReadSet().size();
 
             TrueTimeInterval now_tt = tt_.Now();
             uint64_t wait_until_us = latest_execution_time > now_tt.mid() ? latest_execution_time - tt_.Now().mid() : 0;
@@ -746,17 +757,19 @@ namespace strongstore {
         commit_ts.serialize(rw_commit_c_reply_.mutable_commit_timestamp());
         nonblock_ts.serialize(rw_commit_c_reply_.mutable_nonblock_timestamp());
 
-        for (const auto& kv : reads) {
-            const std::string& k = kv.first;
-            const std::string& value = kv.second;
+        for (const auto &kv: reads) {
+            const std::string &k = kv.first;
+            const std::string &value = kv.second;
             proto::ReadReply *rreply = rw_commit_c_reply_.add_values();
             rreply->set_transaction_id(transaction_id);
             commit_ts.serialize(rreply->mutable_timestamp());
             rreply->set_key(k);
             rreply->set_val(value);
+//            Debug("jenndebug [%lu] rreply %s, %s",transaction_id,  rreply->key().c_str(), rreply->val().c_str());
         }
 
         transport_->SendMessage(this, *remote, rw_commit_c_reply_);
+        rw_commit_c_reply_.Clear();
 
         delete remote;
         delete reply;

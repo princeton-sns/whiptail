@@ -66,6 +66,10 @@ namespace strongstore {
             return !(*this == other);
         }
 
+        std::string to_string() const {
+            return "(" + key_ + ", " + val_ + ", " + ts_.to_string() + ")";
+        }
+
     private:
         uint64_t transaction_id_;
         Timestamp ts_;

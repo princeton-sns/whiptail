@@ -14,6 +14,7 @@
 #include "lib/assert.h"
 #include "lib/message.h"
 #include "store/common/common-proto.pb.h"
+#include "build/store/strongstore/common-proto.pb.h"
 
 class Timestamp {
    public:
@@ -40,6 +41,10 @@ class Timestamp {
     void setID(uint64_t i) { id = i; };
     void setTimestamp(uint64_t t) { timestamp = t; };
     void serialize(TimestampMessage *msg) const;
+
+    std::string to_string() const {
+        return std::to_string(timestamp) + "," + std::to_string(id);
+    }
 
    private:
     uint64_t timestamp;

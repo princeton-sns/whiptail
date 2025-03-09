@@ -43,6 +43,10 @@ class Transaction {
     // Start time (used for deadlock prevention)
     Timestamp start_time_;
 
+    uint8_t still_pending_ops_;
+
+    std::unordered_map<std::string, std::string> read_results_;
+
    public:
     Transaction();
     Transaction(const TransactionMessage &msg);
@@ -63,6 +67,17 @@ class Transaction {
     void set_start_time(const Timestamp &ts);
 
     void add_read_write_sets(const Transaction &other);
+
+    uint8_t &still_pending_ops() { return still_pending_ops_; }
+    uint8_t still_pending_ops() const { return still_pending_ops_; }
+
+    const std::unordered_map<std::string, std::string>& read_results() const {
+        return read_results_;
+    }
+
+    std::unordered_map<std::string, std::string>& read_results() {
+        return read_results_;
+    }
 };
 
 #endif /* _TRANSACTION_H_ */

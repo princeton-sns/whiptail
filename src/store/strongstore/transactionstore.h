@@ -133,6 +133,30 @@ namespace strongstore
 
         Stats &GetStats() { return stats_; };
 
+        uint8_t still_pending_ops(uint64_t transaction_id) const {
+            auto search = pending_rw_.find(transaction_id);
+            ASSERT(search != pending_rw_.end());
+            return search->second.transaction().still_pending_ops();
+        }
+
+        uint8_t& still_pending_ops(uint64_t transaction_id) {
+            auto search = pending_rw_.find(transaction_id);
+            ASSERT(search != pending_rw_.end());
+            return search->second.mutable_transaction().still_pending_ops();
+        }
+
+        const std::unordered_map<std::string, std::string>& read_results(uint64_t transaction_id) const {
+            auto search = pending_rw_.find(transaction_id);
+            ASSERT(search != pending_rw_.end());
+            return search->second.transaction().read_results();
+        }
+
+        std::unordered_map<std::string, std::string>& read_results(uint64_t transaction_id) {
+            auto search = pending_rw_.find(transaction_id);
+            ASSERT(search != pending_rw_.end());
+            return search->second.mutable_transaction().read_results();
+        }
+
     private:
         class PendingRWTransaction
         {
@@ -150,6 +174,7 @@ namespace strongstore
             const Timestamp &prepare_ts() const { return prepare_ts_; }
             const Timestamp &commit_ts() const { return commit_ts_; }
             const Transaction &transaction() const { return transaction_; }
+            Transaction& mutable_transaction() { return transaction_; }
             int coordinator() const { return coordinator_; }
             std::shared_ptr<TransportAddress> client_addr() const { return client_addr_; }
 

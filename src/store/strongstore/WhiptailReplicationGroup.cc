@@ -19,11 +19,13 @@ namespace strongstore {
     void WhiptailReplicationGroup::PutCallbackWhiptail(StrongSession &session, const put_callback &pcb, int status,
                                                        const std::string &key, const std::string &value) {
 
+//        Debug("jenndebug [%lu] PUT %s, %s", session.transaction_id(), key.c_str(), value.c_str());
+
         session.mark_success_or_fail_reply(shard_idx_, status);
 
         if (session.success_count(shard_idx_) >= config_.n) {
             session.mark_successfully_replicated(shard_idx_);
-            Debug("[%lu] replication count %d", session.transaction_id(), session.success_count(shard_idx_));
+//            Debug("[%lu] replication count %d", session.transaction_id(), session.success_count(shard_idx_));
             session.clear_success_count(shard_idx_);
             pcb(REPLY_OK, key, value);
         } else if (session.failure_count(shard_idx_) >= config_.QuorumSize()) {
@@ -46,6 +48,16 @@ namespace strongstore {
         }
     }
 
+    std::string stringify(const std::vector<Value> &values) {
+        std::string result = "[";
+
+        for (const auto &v: values)
+            result += v.to_string() + ", ";
+
+        result += "]";
+        return result;
+    }
+
     void WhiptailReplicationGroup::RWCommitCallbackWhiptail(StrongSession &session, const rw_coord_commit_callback &ccb,
                                                             int status, const std::vector<Value> &values,
                                                             const Timestamp &commit_ts,
@@ -53,9 +65,11 @@ namespace strongstore {
         session.mark_success_or_fail_reply(shard_idx_, status);
         session.add_reply_values(shard_idx_, values);
 
+//        Debug("jenndebug [%lu] values %s", session.transaction_id(), stringify(values).c_str());
+
         if (session.success_count(shard_idx_) >= config_.QuorumSize()) {
 
-            Debug("[%lu] successful replication count %d", session.transaction_id(), session.success_count(shard_idx_));
+//            Debug("[%lu] successful replication count %d", session.transaction_id(), session.success_count(shard_idx_));
             if (!values.empty()) {
                 // has reads
                 if (session.has_quorum(shard_idx_, config_.QuorumSize())) {
@@ -65,7 +79,7 @@ namespace strongstore {
                     ccb(REPLY_OK, majority_values, commit_ts, nonblock_ts);
                 } else if (session.success_count(shard_idx_) == config_.n &&
                            !session.has_quorum(shard_idx_, config_.QuorumSize())) {
-                    Debug("jenndebug OOPS no majority, do something wrong for now");
+                    Debug("jenndebug [%lu] OOPS no majority, do something wrong for now", session.transaction_id());
                     session.clear_reply_values(shard_idx_);
                     ccb(REPLY_OK, {}, commit_ts, nonblock_ts); // TODO jenndebug WRONG
                 }
@@ -116,10 +130,11 @@ namespace strongstore {
                                                        const std::string &key, const std::string &value,
                                                        const Timestamp &ts) {
         session.mark_success_or_fail_reply(shard_idx_, status);
+//        Debug("jenndebug [%lu] GET_BUFFERED %s, %s", session.transaction_id(), key.c_str(), value.c_str());
 
         if (session.success_count(shard_idx_) >= config_.n) {
             session.mark_successfully_replicated(shard_idx_);
-            Debug("[%lu] replication count %d", session.transaction_id(), session.success_count(shard_idx_));
+//            Debug("[%lu] replication count %d", session.transaction_id(), session.success_count(shard_idx_));
             session.clear_success_count(shard_idx_);
             gcb(REPLY_OK, key, value, ts);
         } else if (session.failure_count(shard_idx_) >= config_.QuorumSize()) {

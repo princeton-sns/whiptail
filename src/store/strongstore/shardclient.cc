@@ -151,7 +151,7 @@ namespace strongstore {
     }
 
     void ShardClient::GetBuffered(uint64_t transaction_id, const std::string &key,
-                                    get_callback gc, get_timeout_callback gtcb, uint32_t timeout) {
+                                  get_callback gc, get_timeout_callback gtcb, uint32_t timeout) {
         Debug("[shard %i] GET_BUFFERED [%s]", shard_idx_, key.c_str());
 
         auto search = transactions_.find(transaction_id);
@@ -361,6 +361,8 @@ namespace strongstore {
         rw_commit_c_.set_transaction_id(transaction_id);
         t.serialize(rw_commit_c_.mutable_transaction());
         nonblock_timestamp.serialize((rw_commit_c_.mutable_nonblock_timestamp()));
+//        Debug("jenndebug [%lu] writeset_size %u, pendingreadset_size %u", transaction_id,
+//              rw_commit_c_.transaction().writeset().size(), rw_commit_c_.transaction().pendingreadset().size());
 
         // const TrueTimeInterval now = tt_.Now();
 //        Debug("[%lu] jenndebug commit_ts %lu", transaction_id, commit_ts.getTimestamp());
@@ -396,7 +398,7 @@ namespace strongstore {
               reply.commit_timestamp().timestamp(), reply.commit_timestamp().id());
 
         std::vector<Value> values;
-        for (const auto& v : reply.values())
+        for (const auto &v: reply.values())
             values.push_back(Value(v));
 
         ccb(reply.status(), values, Timestamp(reply.commit_timestamp()), Timestamp(reply.nonblock_timestamp()));

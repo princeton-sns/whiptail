@@ -814,17 +814,17 @@ void Cleanup()
 
 void FlushStats()
 {
-    if (FLAGS_stats_file.size() > 0)
+    if (!FLAGS_stats_file.empty())
     {
-        Notice("Flushing stats to %s.", FLAGS_stats_file.c_str());
+        Debug("Flushing stats to %s.", FLAGS_stats_file.c_str());
         Stats total;
-        for (unsigned int i = 0; i < benchClients.size(); i++)
+        for (auto & benchClient : benchClients)
         {
-            total.Merge(benchClients[i]->GetStats());
+            total.Merge(benchClient->GetStats());
         }
-        for (unsigned int i = 0; i < clients.size(); i++)
+        for (auto & client : clients)
         {
-            total.Merge(clients[i]->GetStats());
+            total.Merge(client->GetStats());
         }
 
         total.ExportJSON(FLAGS_stats_file);
