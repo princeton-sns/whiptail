@@ -63,7 +63,7 @@ namespace ycsbt
     AsyncTransaction *YcsbtClient::GetNextTransaction()
     {
         Debug("Num ops txn: %d", num_ops_txn);
-        return new YcsbtTransaction(coreWorkload, num_ops_txn);
+        return new YcsbtTransaction(coreWorkload, num_ops_txn + 1);
     }
 
 } // namespace retwis

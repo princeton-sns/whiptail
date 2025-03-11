@@ -48,7 +48,7 @@ ZipfKeySelector::ZipfKeySelector(const std::vector<std::string> &keys,
             std::to_string(keys.size()));
     }
 
-    if (exponent <= 0)
+    if (exponent < 0)
     {
         throw std::invalid_argument("exponent is not strictly positive: " +
                                     std::to_string(exponent));

@@ -6,8 +6,9 @@
     [
       "ycsbt_write_percentage"
     ],
-    [      "client_num_ops_txn"
-  ]
+    [
+      "client_num_ops_txn"
+    ]
   ],
   "replication_protocol": "strong",
   "client_protocol_mode": "span-lock",
@@ -46,13 +47,15 @@
       "eu-west-1-2"
     ]
   ],
-  "client_total": 1,
+  "client_total": 3,
   "client_processes_per_client_node": 1,
   "client_threads_per_process": 1,
   "clients": [
-    "client-0-0"
+    "client-0-0",
+    "client-1-0",
+    "client-2-0"
   ],
- "server_regions": {
+  "server_regions": {
     "us-east-1": [
       "us-east-1-0",
       "us-east-1-1",
@@ -90,7 +93,7 @@
   "client_max_attempts": -1,
   "client_max_backoff": 2500,
   "client_message_timeout": 60000,
-  "run_locally": true,
+  "run_locally": false,
   "replication_protocol_settings": {
     "message_transport_type": "tcp"
   },
@@ -115,54 +118,54 @@
   "region_rtt_latencies": {
     "us-east-1": {
       "us-east-1": 0,
-      "eu-west-1": 73,
-      "ap-northeast-1": 160,
-      "us-west-1": 63,
-      "eu-central-1": 87,
-      "ap-southeast-2": 199
+      "eu-west-1": 0,
+      "ap-northeast-1": 0,
+      "us-west-1": 0,
+      "eu-central-1": 0,
+      "ap-southeast-2": 0
     },
     "eu-west-1": {
-      "us-east-1": 73,
+      "us-east-1": 0,
       "eu-west-1": 0,
-      "ap-northeast-1": 220,
-      "us-west-1": 145,
-      "eu-central-1": 26,
-      "ap-southeast-2": 255
+      "ap-northeast-1": 0,
+      "us-west-1": 0,
+      "eu-central-1": 0,
+      "ap-southeast-2": 0
     },
     "ap-northeast-1": {
-      "us-east-1": 160,
-      "eu-west-1": 220,
+      "us-east-1": 0,
+      "eu-west-1": 0,
       "ap-northeast-1": 0,
-      "us-west-1": 115,
-      "eu-central-1": 243,
-      "ap-southeast-2": 106
+      "us-west-1": 0,
+      "eu-central-1": 0,
+      "ap-southeast-2": 0
     },
     "us-west-1": {
-      "us-east-1": 63,
-      "eu-west-1": 145,
-      "ap-northeast-1": 115,
+      "us-east-1": 0,
+      "eu-west-1": 0,
+      "ap-northeast-1": 0,
       "us-west-1": 0,
-      "eu-central-1": 148,
-      "ap-southeast-2": 139
+      "eu-central-1": 0,
+      "ap-southeast-2": 0
     },
     "eu-central-1": {
-      "us-east-1": 87,
-      "eu-west-1": 26,
-      "ap-northeast-1": 243,
-      "us-west-1": 148,
+      "us-east-1": 0,
+      "eu-west-1": 0,
+      "ap-northeast-1": 0,
+      "us-west-1": 0,
       "eu-central-1": 0,
-      "ap-southeast-2": 177
+      "ap-southeast-2": 0
     },
     "ap-southeast-2": {
-      "us-east-1": 199,
-      "eu-west-1": 255,
-      "ap-northeast-1": 106,
-      "us-west-1": 139,
-      "eu-central-1": 177,
+      "us-east-1": 0,
+      "eu-west-1": 0,
+      "ap-northeast-1": 0,
+      "us-west-1": 0,
+      "eu-central-1": 0,
       "ap-southeast-2": 0
     }
   },
-  "server_emulate_wan": false,
+  "server_emulate_wan": true,
   "plots": [],
   "cdf_plots": {
     "font": "DejaVu Sans,12",
@@ -195,10 +198,10 @@
   "output_latency_scale": 1000,
   "src_commit_hash": "HEAD",
   "stats_file_name": "stats.json",
-  "base_local_exp_directory": "/workspaces/whiptail/experiments/results",
-  "base_mounted_fs_path": "/mnt/extra",
-  "base_remote_bin_directory_nfs": "/workspaces/whiptail",
-  "base_remote_exp_directory": "/mnt/extra/experiments",
+  "base_local_exp_directory": "/users/lisirrx/whiptail/experiments/results",
+  "base_mounted_fs_path": "/users/lisirrx/mnt",
+  "base_remote_bin_directory_nfs": "/users/lisirrx/whiptail",
+  "base_remote_exp_directory": "/users/lisirrx/mnt/experiments",
   "bin_directory_name": "bin",
   "client_bin_name": "benchmark",
   "client_name_format_str": "%s",
@@ -209,7 +212,7 @@
   "num_experiment_runs": 1,
   "out_directory_name": "out",
   "server_bin_name": "server",
-  "src_directory": "/workspaces/whiptail/src",
+  "src_directory": "/users/lisirrx/whiptail/src",
   "make_collect_bins": [
     "store/benchmark/async/benchmark",
     "store/server"
@@ -225,7 +228,7 @@
   "make_env": {},
   "server_rdma_port": 9087,
   "rxe_cfg_path": "",
-  "cc":"2pl",
+  "cc": "occ",
   "client_read_percentage": 0,
   "client_write_percentage": 1000,
   "client_conflict_percentage": 2,
@@ -246,8 +249,20 @@
   "client_gc_debug_trace": false,
   "client_cpuprofile": false,
   "server_gc_debug_trace": false,
-  "client_zipf_coefficient": [0,0.7,1.2],
+  "client_zipf_coefficient": [
+    0,
+    0.7,
+    1.2
+  ],
   "ycsbt_read_percentage": 95,
-  "ycsbt_write_percentage": [0,5,1000],
-  "client_num_ops_txn": [2,3,6]
+  "ycsbt_write_percentage": [
+    0,
+    5,
+    1000
+  ],
+  "client_num_ops_txn": [
+    1,
+    2,
+    5
+  ]
 }
