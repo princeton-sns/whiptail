@@ -52,6 +52,7 @@ namespace ycsbt
                      int mpl,
                      int expDuration, int warmupSec, int cooldownSec, int tputInterval, uint32_t abortBackoff,
                      bool retryAborted, uint32_t maxBackoff, uint32_t maxAttempts,
+                     double  zipf_coefficient, int num_keys, int num_ops_txn, double ycsbt_read_percentage,double ycsbt_write_percentage,
                      const std::string &latencyFilename = "latency");
 
         virtual ~YcsbtClient();
@@ -63,6 +64,7 @@ namespace ycsbt
         KeySelector *keySelector;
         std::string lastOp;
         CoreWorkloadT *coreWorkload;
+        int num_ops_txn;
     };
 
 } // namespace retwis

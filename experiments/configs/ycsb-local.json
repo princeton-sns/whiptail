@@ -10,9 +10,6 @@
     "us-east-1-0",
     "us-east-1-1",
     "us-east-1-2",
-    "eu-west-1-0",
-    "eu-west-1-1",
-    "eu-west-1-2",
     "us-west-1-0",
     "us-west-1-1",
     "us-west-1-2"
@@ -23,31 +20,23 @@
   "shard_config_format_str": "shard-%d.config",
   "replica_config_format_str": "replica-%d.config",
   "fault_tolerance": 1,
-  "num_shards": 3,
+  "num_shards": 2,
   "shards": [
     [
       "us-east-1-0",
-      "eu-west-1-0",
-      "us-west-1-0"
-    ],
-    [
-      "eu-west-1-1",
-      "us-west-1-1",
-      "us-east-1-1"
-    ],
-    [
+      "us-west-1-0",
+      "us-west-1-1"
+    ],[
+      "us-east-1-1",
       "us-west-1-2",
-      "us-east-1-2",
-      "eu-west-1-2"
+      "us-east-1-2"
     ]
   ],
-  "client_total": 3,
+  "client_total": 1,
   "client_processes_per_client_node": 1,
   "client_threads_per_process": 1,
   "clients": [
-    "client-0-0",
-    "client-1-0",
-    "client-2-0"
+    "client-0-0"
   ],
   "server_regions": {
     "us-east-1": [
@@ -56,36 +45,29 @@
       "us-east-1-2",
       "client-0-0"
     ],
-    "eu-west-1": [
-      "eu-west-1-0",
-      "eu-west-1-1",
-      "eu-west-1-2",
-      "client-1-0"
-    ],
     "us-west-1": [
       "us-west-1-0",
       "us-west-1-1",
-      "us-west-1-2",
-      "client-2-0"
+      "us-west-1-2"
     ]
   },
   "server_port": 7087,
   "truetime_error": 10,
-  "client_num_keys": 1000000,
-  "benchmark_name": "retwis",
+  "client_num_keys": 10000000,
+  "benchmark_name": "ycsbt",
   "bench_mode": "open",
   "client_key_selector": "zipf",
-  "client_zipf_coefficient": 0.7,
-  "client_arrival_rate": 1,
+  "client_zipf_coefficient": 0.1,
+  "client_arrival_rate": 22,
   "client_stay_probability": 0.9,
-  "client_switch_probability": 0.5,
   "client_think_time": 0,
   "nb_time_alpha": 1.0,
   "rw_num_ops_txn": 1,
+  "server_load_time": 0,
   "server_preload_keys": true,
   "client_abort_backoff": 1,
   "client_retry_aborted": true,
-  "client_max_attempts": 10,
+  "client_max_attempts": -1,
   "client_max_backoff": 2500,
   "client_message_timeout": 60000,
   "run_locally": true,
@@ -96,23 +78,20 @@
     "txn_groups",
     "commit_branch"
   ],
-  "experiment_name": "spanner-rss",
+  "experiment_name": "",
   "codebase_name": "rss",
-  "pin_client_processes": false,
-  "pin_server_processes": false,
   "client_debug_output": true,
   "server_debug_output": true,
-  "client_debug_stats": false,
-  "server_debug_stats": false,
-  "server_load_time": 5,
+  "client_debug_stats": true,
+  "server_debug_stats": true,
   "client_experiment_length": 10,
   "client_rand_sleep": 0,
-  "client_ramp_down": 0,
   "client_ramp_up": 0,
+  "client_ramp_down": 0,
   "default_remote_shell": "bash",
-  "server_host_format_str": "%s.%s.%s.utah.cloudlab.us",
-  "client_host_format_str": "%s.%s.%s.utah.cloudlab.us",
-  "project_name": "cops-pg0",
+  "server_host_format_str": "%s%s%s",
+  "client_host_format_str": "%s%s%s",
+  "project_name": "",
   "region_rtt_latencies": {
     "us-east-1": {
       "us-east-1": 0,
@@ -203,7 +182,7 @@
   "bin_directory_name": "bin",
   "client_bin_name": "benchmark",
   "client_name_format_str": "%s",
-  "emulab_user": "root",
+  "emulab_user": "lisirrx",
   "max_bandwidth": "10gibps",
   "max_file_descriptors": 1000000,
   "max_retries": 1,
@@ -226,6 +205,10 @@
   "make_env": {},
   "server_rdma_port": 9087,
   "rxe_cfg_path": "",
+  "cc":"2pl",
+  "client_num_ops_txn":10,
+  "ycsbt_read_percentage": 0.5,
+  "ycsbt_write_percentage": 0.5,
   "client_read_percentage": 0,
   "client_write_percentage": 1000,
   "client_conflict_percentage": 2,

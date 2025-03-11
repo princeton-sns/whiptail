@@ -26,6 +26,7 @@
  *
  **********************************************************************/
 #include "store/benchmark/async/ycsbt/ycsbt_client.h"
+#include "lib/message.h"
 #include "store/benchmark/async/ycsbt/ycsbt_transaction.h"
 #include <iostream>
 
@@ -41,7 +42,7 @@ namespace ycsbt
                                double arrival_rate, double think_time, double stay_probability,
                                int mpl,
                                int expDuration, int warmupSec, int cooldownSec, int tputInterval, uint32_t abortBackoff,
-                               bool retryAborted, uint32_t maxBackoff, uint32_t maxAttempts, const std::string &latencyFilename)
+                               bool retryAborted, uint32_t maxBackoff, uint32_t maxAttempts, double  zipf_coefficient, int num_keys, int num_ops_txn, double ycsbt_read_percentage,double ycsbt_write_percentage, const std::string &latencyFilename)
         : BenchmarkClient(clients, timeout, transport, id,
                           mode,
                           switch_probability,
@@ -49,9 +50,9 @@ namespace ycsbt
                           mpl,
                           expDuration, warmupSec, cooldownSec, abortBackoff,
                           retryAborted, maxBackoff, maxAttempts, latencyFilename),
-          keySelector(keySelector)
+          keySelector(keySelector), num_ops_txn(num_ops_txn)
     {
-        coreWorkload = new CoreWorkloadT("");
+        coreWorkload = new CoreWorkloadT(zipf_coefficient, num_keys, num_ops_txn, ycsbt_read_percentage, ycsbt_write_percentage);
     }
 
     YcsbtClient::~YcsbtClient()
@@ -61,7 +62,8 @@ namespace ycsbt
 
     AsyncTransaction *YcsbtClient::GetNextTransaction()
     {
-        return new YcsbtTransaction(coreWorkload, 10);
+        Debug("Num ops txn: %d", num_ops_txn);
+        return new YcsbtTransaction(coreWorkload, num_ops_txn);
     }
 
 } // namespace retwis

@@ -17,15 +17,13 @@ class CoreWorkloadT : public ycsbt::CoreWorkload {
  public:
   CoreWorkloadT(){};
 
-  CoreWorkloadT(const std::string& params_json_str) {
-    Init(params_json_str);
+  CoreWorkloadT(double  zipf_coefficient, int num_keys, int num_ops_txn, double ycsbt_read_percentage,double ycsbt_write_percentage) {
+    Init(zipf_coefficient, num_keys, num_ops_txn, ycsbt_read_percentage, ycsbt_write_percentage);
   }
 
   bool
-  Init(const std::string& params_json_str) {
-    ycsbt::CoreWorkload::Init(params_json_str);
-
-
+  Init(double  zipf_coefficient, int num_keys, int num_ops_txn, double ycsbt_read_percentage,double ycsbt_write_percentage) {
+    ycsbt::CoreWorkload::Init(zipf_coefficient, num_keys, num_ops_txn, ycsbt_read_percentage, ycsbt_write_percentage);
     m_size_batch = 10;
     m_oneshot_weight = 1;
     m_multishot_weight = 0;

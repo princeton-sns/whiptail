@@ -367,6 +367,10 @@ DEFINE_string(customer_name_file_path, "smallbank_names",
               "path to file"
               " containing names to be loaded (for smallbank)");
 
+DEFINE_double(ycsbt_read_percentage, 0.5, "percentage of read operations in YCSB-T");
+DEFINE_double(ycsbt_write_percentage, 0.5, "percentage of write operations in YCSB-T");
+
+
 DEFINE_LATENCY(op);
 
 std::vector<Client *> clients;
@@ -756,11 +760,13 @@ int main(int argc, char **argv)
             FLAGS_exp_duration, FLAGS_warmup_secs, FLAGS_cooldown_secs,
             FLAGS_tput_interval,
             FLAGS_abort_backoff, FLAGS_retry_aborted, FLAGS_max_backoff,
-            FLAGS_max_attempts);
+            FLAGS_max_attempts, FLAGS_zipf_coefficient, FLAGS_num_keys, FLAGS_num_ops_txn, FLAGS_ycsbt_read_percentage, FLAGS_ycsbt_write_percentage);
         break;
     default:
         NOT_REACHABLE();
     }
+
+    Debug("BenchMark Created.");
 
     switch (benchMode)
     {

@@ -59,7 +59,7 @@ namespace strongstore
               key.c_str(), value.first.getTimestamp(),
               value.first.getID());
 
-        return REPLY_OK;
+        return status;
     }
 
     int OCCStore::Prepare(uint64_t id, const Transaction &txn)

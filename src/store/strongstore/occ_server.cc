@@ -29,8 +29,8 @@
  * SOFTWARE.
  *
  **********************************************************************/
- #include "store/strongstore/occ_server.h"
- #include "store/common/frontend/client.h"
+#include "store/strongstore/occ_server.h"
+#include "store/common/frontend/client.h"
 #include "store/common/transaction.h"
 #include "store/strongstore/transactionstore.h"
  
@@ -1452,13 +1452,13 @@
          }
          else if (request.op() == strongstore::proto::Request::COMMIT)
          {
-             // Debug("[%lu] Received COMMIT", transaction_id);
+             Debug("[%lu] Received COMMIT", transaction_id);
  
              const Timestamp commit_ts{request.commit().commit_timestamp()};
  
              if (request.has_prepare())
              { // Coordinator commit
-                 // Debug("[%lu] Coordinator commit", transaction_id);
+                 Debug("[%lu] Coordinator commit", transaction_id);
  
                  if (transactions_.GetRWTransactionState(transaction_id) != COMMITTING)
                  {
@@ -1489,16 +1489,13 @@
                  }
                  else
                  {
-                     // Debug("[%lu] Already prepared", transaction_id);
+                     Debug("[%lu] Already prepared", transaction_id);
                  }
- 
-                 uint64_t commit_wait_us = tt_.TimeToWaitUntilMicros(commit_ts.getTimestamp());
-                 Debug("[%lu] delaying commit by %lu us", transaction_id, commit_wait_us);
-                 transport_->TimerMicro(commit_wait_us, std::bind(&OCCServer::CoordinatorCommitTransaction, this, transaction_id, commit_ts));
+                 CoordinatorCommitTransaction(transaction_id, commit_ts);
              }
              else
              { // Participant commit
-                 // Debug("[%lu] Participant commit", transaction_id);
+                 Debug("[%lu] Participant commit", transaction_id);
                  if (transactions_.GetRWTransactionState(transaction_id) != COMMITTING)
                  {
                      transactions_.ParticipantReceivePrepareOK(transaction_id);

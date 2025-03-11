@@ -28,6 +28,7 @@
 #include "store/server.h"
 
 #include <gflags/gflags.h>
+#include <string>
 #include <valgrind/callgrind.h>
 
 #include <csignal>
@@ -39,11 +40,19 @@
 #include "store/common/partitioner.h"
 #include "store/strongstore/occ_server.h"
 #include "store/strongstore/server.h"
+#include "strongstore/occ_server.h"
 
 enum protocol_t
 {
     PROTO_UNKNOWN,
     PROTO_STRONG
+};
+
+enum cc_t 
+{
+    CC_UNKNOWN,
+    TWOPL,
+    OCC
 };
 
 enum transmode_t
@@ -90,7 +99,31 @@ static bool ValidateProtocol(const char *flagname, const std::string &value)
 DEFINE_string(protocol, protocol_args[0],
               "the protocol to use during this"
               " experiment");
+
+
 DEFINE_validator(protocol, &ValidateProtocol);
+
+const std::string cc_args[] = {"2pl", "occ"};
+const cc_t ccs[]{TWOPL, OCC};
+static bool ValidateCC(const char *flagname, const std::string &value){
+    int n = sizeof(cc_args);
+    for (int i = 0; i < n; ++i)
+    {
+        if (value == cc_args[i])
+        {
+            return true;
+        }
+    }
+    std::cerr << "Invalid value for --" << flagname << ": " << value
+              << std::endl;
+    return false;
+}
+DEFINE_string(cc, cc_args[0],
+    "the cc to use during this"
+    " experiment");
+
+
+DEFINE_validator(cc, &ValidateCC);
 
 const std::string trans_args[] = {"udp", "tcp"};
 
@@ -136,7 +169,9 @@ DEFINE_string(partitioner, partitioner_args[0],
               "the partitioner to use during this"
               " experiment");
 DEFINE_validator(partitioner, &ValidatePartitioner);
-
+DEFINE_string(benchmark, "retwis",
+    "the mode of the protocol to use"
+    " during this experiment");
 /**
  * TPCC settings.
  */
@@ -195,7 +230,20 @@ TransportReceiver *replica = nullptr;
 Partitioner *part = nullptr;
 
 void Cleanup(int signal);
+inline constexpr uint64_t FNV_OFFSET_BASIS_64 = 0xcbf29ce484222325;
+inline constexpr uint64_t FNV_PRIME_64 = 0x00000100000001B3;
+uint64_t fnvhash64(uint64_t val) {
+    uint64_t m_hashval = FNV_OFFSET_BASIS_64;
+    uint64_t m_octet;
+    for (int i = 0; i < 8; i++) {
+      m_octet = val & 0x00ff;
+      val = val >> 8;
 
+      m_hashval = m_hashval ^ m_octet;
+      m_hashval = m_hashval * FNV_PRIME_64;
+    }
+    return m_hashval;
+  }
 int main(int argc, char **argv)
 {
     gflags::SetUsageMessage(
@@ -231,6 +279,18 @@ int main(int argc, char **argv)
         if (FLAGS_protocol == protocol_args[i])
         {
             proto = protos[i];
+            break;
+        }
+    }
+
+    // cc
+    cc_t cc = CC_UNKNOWN;
+    int numCCs = sizeof(cc_args);
+    for (int i = 0; i < numCCs; ++i)
+    {
+        if (FLAGS_cc == cc_args[i])
+        {
+            cc = ccs[i];
             break;
         }
     }
@@ -332,10 +392,26 @@ int main(int argc, char **argv)
     {
     case PROTO_STRONG:
     {
-        server = new strongstore::OCCServer(consistency, shard_config,
-                                         replica_config, FLAGS_server_id,
-                                         FLAGS_group_idx, FLAGS_replica_idx,
-                                         tport, tt, FLAGS_debug_stats, FLAGS_enable_replica);
+        Debug("Using %d CC", cc);
+        switch (cc) {
+        case TWOPL:
+            server = new strongstore::Server(consistency, shard_config,
+                replica_config, FLAGS_server_id,
+                FLAGS_group_idx, FLAGS_replica_idx,
+                tport, tt, FLAGS_debug_stats, FLAGS_enable_replica);
+                break;
+        case OCC:
+            server = new strongstore::OCCServer(consistency, shard_config,
+                replica_config, FLAGS_server_id,
+                FLAGS_group_idx, FLAGS_replica_idx,
+                tport, tt, FLAGS_debug_stats, FLAGS_enable_replica);
+                break;
+        default:
+        {
+            NOT_REACHABLE();
+        }
+        }
+        
         break;
     }
     default:
@@ -355,35 +431,57 @@ int main(int argc, char **argv)
         {
             if (FLAGS_preload_keys)
             {
-                std::string key = "0000000000";
-                for (size_t i = 0; i < FLAGS_num_keys; ++i)
-                {
-                    if ((*part)(key, FLAGS_num_shards, FLAGS_group_idx,
-                                txnGroups) == FLAGS_group_idx)
-                    {
-                        server->Load(key, key, Timestamp());
-                        ++stored;
-                    }
-                    if (i % 100000 == 0)
-                    {
-                        Debug("Loaded key %s", key.c_str());
-                    }
 
-                    ++loaded;
-
-                    for (int j = key.size() - 1; j >= 0; --j)
+                if(FLAGS_benchmark == "retwis"){
+                    std::string key = "0000000000";
+                    for (size_t i = 0; i < FLAGS_num_keys; ++i)
                     {
-                        if (key[j] < '9')
+                        if ((*part)(key, FLAGS_num_shards, FLAGS_group_idx,
+                                    txnGroups) == FLAGS_group_idx)
                         {
-                            key[j] += static_cast<char>(1);
-                            break;
+                            server->Load(key, key, Timestamp());
+                            ++stored;
                         }
-                        else
+                        if (i % 100000 == 0)
                         {
-                            key[j] = '0';
+                            Debug("Loaded key %s", key.c_str());
                         }
+    
+                        ++loaded;
+    
+                        for (int j = key.size() - 1; j >= 0; --j)
+                        {
+                            if (key[j] < '9')
+                            {
+                                key[j] += static_cast<char>(1);
+                                break;
+                            }
+                            else
+                            {
+                                key[j] = '0';
+                            }
+                        }
+                    }
+                } else {
+                    for (size_t i = 0; i < FLAGS_num_keys; ++i)
+                    {
+                        std::string key = std::to_string(fnvhash64(i));
+
+                        if ((*part)(key, FLAGS_num_shards, FLAGS_group_idx,
+                                    txnGroups) == FLAGS_group_idx)
+                        {
+                            server->Load(key, key, Timestamp());
+                            ++stored;
+                        }
+                        if (i % 100000 == 0)
+                        {
+                            Debug("Loaded key %s", key.c_str());
+                        }
+    
+                        ++loaded;
                     }
                 }
+              
             }
 
             Debug("Stored %lu out of %lu key-value pairs from [0,%lu).", stored,

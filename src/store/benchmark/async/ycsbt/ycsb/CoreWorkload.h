@@ -33,8 +33,8 @@ class CoreWorkload {
     // TODO
   }
 
-  CoreWorkload(const std::string &params_json_str){
-    Init(params_json_str);
+  CoreWorkload(double  zipf_coefficient, int num_keys, int num_ops_txn, double ycsbt_read_percentage,double ycsbt_write_percentage){
+    Init(zipf_coefficient, num_keys, num_ops_txn, ycsbt_read_percentage, ycsbt_write_percentage);
   }
 
   ~CoreWorkload() {
@@ -51,20 +51,18 @@ class CoreWorkload {
    * Compute values for private members
    */
   bool 
-  Init(const std::string &params_json_str) {
-
-  
-    m_num_rows = 0;
+  Init(double  zipf_coefficient, int num_keys, int num_ops_txn, double ycsbt_read_percentage,double ycsbt_write_percentage) {
+    m_num_rows = num_keys;
     m_num_columns = 0;
-    m_read_weight = 1.0;
-    m_write_weight = 1.0;
+    m_read_weight = ycsbt_read_percentage;
+    m_write_weight = ycsbt_write_percentage;
     m_select_weight = 1.0;
     m_scan_weight = 1.0;
     m_update_weight = 1.0;
     m_insert_weight = 1.0;
     m_delete_weight = 1.0;
     m_upsert_weight = 1.0;
-    m_zipf_constant = 0.99;
+    m_zipf_constant = zipf_coefficient;
     m_max_value = 1000;
     m_seed = 98;
     m_update_all = true;
@@ -146,7 +144,7 @@ class CoreWorkload {
   //   // initialize all the partitions except INSERT
   //   for (OP op : {SELECT, DELETE, UPDATE}) {
   //     // get partition index
-  //     int index = m_op_partition_nop[op];
+  //     int index =  [op];
   //     // partition begin index
   //     int begin;
   //     if (index == 0) {

@@ -123,10 +123,15 @@ class RssCodebase:
 
         if config['benchmark_name'] == 'retwis' or config['benchmark_name'] == 'ycsbt':
             client_command += ' --num_keys %d' % config['client_num_keys']
+            client_command += ' --num_ops_txn %d' % config['client_num_ops_txn']
             if 'client_key_selector' in config:
                 client_command += ' --key_selector %s' % config['client_key_selector']
             if config['client_key_selector'] == 'zipf':
                 client_command += ' --zipf_coefficient %f' % config['client_zipf_coefficient']
+                
+        if config['benchmark_name'] == 'ycsbt':
+            client_command += ' --ycsbt_read_percentage %f' % config['ycsbt_read_percentage']
+            client_command += ' --ycsbt_write_percentage %f' % config['ycsbt_write_percentage']
 
         if 'client_wrap_command' in config and len(config['client_wrap_command']) > 0:
             client_command = config['client_wrap_command'] % client_command
@@ -325,7 +330,9 @@ class RssCodebase:
 
         if 'server_debug_stats' in config and config['server_debug_stats']:
             replica_command += ' --debug_stats'
-
+            
+        replica_command += ' --benchmark %s' % config['benchmark_name']
+        replica_command += ' --cc %s' % config['cc']
         if config['benchmark_name'] == 'retwis':
             replica_command += ' --num_keys %d' % config['client_num_keys']
             if 'server_preload_keys' in config:

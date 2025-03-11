@@ -46,7 +46,7 @@
 
 #include "lib/message.h"
 
-#define ASSERT(x) Assert(x)
+#define ASSERT(x) x
 
 #define NOT_REACHABLE()                                               \
     do                                                                \

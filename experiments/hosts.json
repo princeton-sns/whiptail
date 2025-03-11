@@ -1,0 +1,14 @@
+{
+    "user": "root",
+    "auth": "publickey",
+    "keypath": "",
+    "password": "",
+    "ping_interval": 100,
+    "ping_times": 1000, 
+    "hosts": [
+        {
+            "host": "node1",
+            "ip": "192.168.1.1"
+        }
+    ]
+}

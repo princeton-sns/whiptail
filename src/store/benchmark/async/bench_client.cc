@@ -229,6 +229,7 @@ void BenchmarkClient::ExecuteNextOperation(const uint64_t session_id)
     auto &session = ss.session();
 
     Operation op = transaction->GetNextOperation(op_index);
+    // Debug("Operation: %d %s %s", op.type, op.key.c_str(), op.value.c_str());
     ss.incr_op_index();
 
     auto gcb = std::bind(&BenchmarkClient::GetCallback, this, session_id, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
