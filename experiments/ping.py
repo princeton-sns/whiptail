@@ -8,7 +8,8 @@ import matplotlib.pyplot as plt
 import sys
 import argparse
 
-DEFAULT_TIMEOUT = 3  # seconds for SSH connection timeout
+TEST_TIMEOUT = 30
+DEFAULT_TIMEOUT = 500 * 1000  # seconds for SSH connection timeout
 
 def read_config(config_file):
     """Read the JSON configuration file."""
@@ -197,7 +198,7 @@ def main():
         print(f"Attempting to connect to {target_address} ...")
         # Test SSH connection with a simple command
         test_cmd = "echo 'Connection successful'"
-        res = run_remote_command(target_address, config, test_cmd)
+        res = run_remote_command(target_address, config, test_cmd, timeout=TEST_TIMEOUT)
         if res.returncode != 0:
             print(f"Failed to connect to {target_address}, skipping this host.")
             continue
@@ -213,7 +214,7 @@ def main():
         write_local_temp_file(local_script_temp, script_content)
 
         # Copy the generated ping script to the remote host
-        copy_files_to_remote(target_address, config, [local_script_temp])
+        copy_files_to_remote(target_address, config, [local_script_temp], remote_path="./run_ping.sh")
         os.remove(local_script_temp)  # Remove local temporary file
 
         # Execute the ping script on the remote host
