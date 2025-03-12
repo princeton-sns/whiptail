@@ -155,7 +155,7 @@ def parse_ping_file(filename):
         for line in f:
             match = pattern.search(line)
             if match:
-                latencies.append(float(match.group(1)))
+                latencies.append(float(match.group(1)) / 2)
     return latencies
 
 def plot_cdf(latencies, output_file):
