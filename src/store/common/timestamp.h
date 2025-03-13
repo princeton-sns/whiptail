@@ -14,7 +14,6 @@
 #include "lib/assert.h"
 #include "lib/message.h"
 #include "store/common/common-proto.pb.h"
-#include "build/store/strongstore/common-proto.pb.h"
 
 class Timestamp {
    public:
