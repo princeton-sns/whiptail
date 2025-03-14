@@ -53,7 +53,7 @@ class CoreWorkload {
   bool 
   Init(double  zipf_coefficient, int num_keys, int num_ops_txn, double ycsbt_read_percentage,double ycsbt_write_percentage) {
     m_num_rows = num_keys;
-    m_num_columns = 0;
+    m_num_columns = 1;
     m_read_weight = ycsbt_read_percentage;
     m_write_weight = ycsbt_write_percentage;
     m_select_weight = 1.0;
@@ -114,11 +114,11 @@ class CoreWorkload {
     }
     // Initialize the assignment of operations to partitions
     // The 1st partition is READ-ONLY; 0
-    // The 2nd is for deletion; 1
-    // The 3rd is for updatation; 2
-    // The 4th is for insertion; 3
-    // In constant.h, SELECT=0, DELETE=1, UPDATE=2, INSERT=3; we use them as postal code while fixing OP=int
-    m_op_partition_nop = new int[NUM_OPS]{0, 1, 2, 3};
+    // The 2nd is for deletion; NONE
+    // The 3rd is for updatation; 1
+    // The 4th is for insertion; 2
+    // In constant.h, SELECT=0, UPDATE=1, INSERT=2; we use them as postal code while fixing OP=int
+    m_op_partition_nop = new int[NUM_OPS]{0, 1, 2};
 
     // TODO [Shengzhou] Temporarily using the first three partitions as the partition of read and update
     m_zipf_key = zipfian_distribution<KeyType>(0, m_partition_bounds[UPDATE]-1, m_zipf_constant);

@@ -26,10 +26,10 @@ namespace ycsbt {
                                            // delimiters specifying a partition
 
     // number of supporting operations, now we support the first 4 operations:
-    // SELECT, DELETE, UPDATE, INSERT
-    inline constexpr int NUM_OPS = 4;
+    // SELECT, DELETE, UPDATE, INSERT: now we only have 3 ops select update insert
+    inline constexpr int NUM_OPS = 3;
     // number of partitions, can be changed into configurable
-    inline constexpr uint64_t NUM_PARTITIONS = 4;
+    inline constexpr uint64_t NUM_PARTITIONS = 3;
 
     // FNV hash function
     inline constexpr uint64_t FNV_OFFSET_BASIS_64 = 0xcbf29ce484222325;

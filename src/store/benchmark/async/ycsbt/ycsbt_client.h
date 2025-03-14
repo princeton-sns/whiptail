@@ -65,6 +65,7 @@ namespace ycsbt
         std::string lastOp;
         CoreWorkloadT *coreWorkload;
         int num_ops_txn;
+        bool readOnly;
     };
 
 } // namespace retwis

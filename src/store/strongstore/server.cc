@@ -1654,6 +1654,9 @@ namespace strongstore
                 ASSERT(s == PREPARING);
 
                 LockAcquireResult ar = locks_.AcquireLocks(transaction_id, transaction);
+                if (ar.status != LockStatus::ACQUIRED) {
+                    Debug("ERROR: %d can not grab lock", transaction_id);
+                }
                 ASSERT(ar.status == LockStatus::ACQUIRED);
 
                 transactions_.SetParticipantPrepareTimestamp(transaction_id, prepare_ts);
@@ -1702,6 +1705,9 @@ namespace strongstore
                     ASSERT(s == PREPARING);
 
                     LockAcquireResult ar = locks_.AcquireLocks(transaction_id, transaction);
+                    if (ar.status != LockStatus::ACQUIRED) {
+                        Debug("ERROR: %d can not grab lock", transaction_id);
+                    }
                     ASSERT(ar.status == LockStatus::ACQUIRED);
 
                     transactions_.FinishCoordinatorPrepare(transaction_id, commit_ts);

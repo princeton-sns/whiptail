@@ -28,6 +28,7 @@
 #include "store/benchmark/async/ycsbt/ycsbt_client.h"
 #include "lib/message.h"
 #include "store/benchmark/async/ycsbt/ycsbt_transaction.h"
+#include "store/benchmark/async/ycsbt/ycsbt_ro_transaction.h"
 #include <iostream>
 
 
@@ -53,6 +54,9 @@ namespace ycsbt
           keySelector(keySelector), num_ops_txn(num_ops_txn)
     {
         coreWorkload = new CoreWorkloadT(zipf_coefficient, num_keys, num_ops_txn, ycsbt_read_percentage, ycsbt_write_percentage);
+        if(ycsbt_write_percentage == 0) {
+            readOnly = true;
+        }
     }
 
     YcsbtClient::~YcsbtClient()
@@ -63,6 +67,9 @@ namespace ycsbt
     AsyncTransaction *YcsbtClient::GetNextTransaction()
     {
         Debug("Num ops txn: %d", num_ops_txn);
+        if(readOnly){
+            return new YcsbtROTransaction(coreWorkload, num_ops_txn + 1);
+        }
         return new YcsbtTransaction(coreWorkload, num_ops_txn + 1);
     }
 
