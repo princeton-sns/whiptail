@@ -1,10 +1,4 @@
 {
-  "experiment_independent_vars": [
-    [
-      "cc",
-      "benchmark_name"
-    ]
-  ],
   "replication_protocol": "strong",
   "client_protocol_mode": "span-lock",
   "server_names": [
@@ -73,9 +67,9 @@
   "server_port": 7087,
   "truetime_error": 10,
   "client_num_keys": 10000000,
-  "benchmark_name": ["ycsbt", "retwis"],
+  "benchmark_name": "retwis",
   "bench_mode": "closed",
-  "mpl":500,
+  "mpl":100,
   "client_key_selector": "zipf",
   "client_arrival_rate": 22,
   "client_stay_probability": 0.9,
@@ -103,10 +97,10 @@
   "server_debug_output": true,
   "client_debug_stats": true,
   "server_debug_stats": true,
-  "client_experiment_length": 60,
+  "client_experiment_length": 30,
   "client_rand_sleep": 0,
-  "client_ramp_up": 20,
-  "client_ramp_down": 20,
+  "client_ramp_up": 10,
+  "client_ramp_down": 10,
   "default_remote_shell": "bash",
   "server_host_format_str": "%s%s%s",
   "client_host_format_str": "%s%s%s",
@@ -195,9 +189,9 @@
   "src_commit_hash": "HEAD",
   "stats_file_name": "stats.json",
   "base_local_exp_directory": "/users/lisirrx/whiptail/experiments/results",
-  "base_mounted_fs_path": "/users/lisirrx/mnt",
+  "base_mounted_fs_path": "/mnt/extra",
   "base_remote_bin_directory_nfs": "/users/lisirrx/whiptail",
-  "base_remote_exp_directory": "/users/lisirrx/mnt/experiments",
+  "base_remote_exp_directory": "/mnt/extra/experiments",
   "bin_directory_name": "bin",
   "client_bin_name": "benchmark",
   "client_name_format_str": "%s",
@@ -224,8 +218,9 @@
   "make_env": {},
   "server_rdma_port": 9087,
   "rxe_cfg_path": "",
-  "cc": ["occ","2pl"],
-
+  "cc": "2pl",
+  "client_read_percentage": 1000,
+  "client_write_percentage": 0,
   "client_conflict_percentage": 2,
   "client_max_processors": 2,
   "client_random_coordinator": false,
@@ -244,9 +239,7 @@
   "client_gc_debug_trace": false,
   "client_cpuprofile": false,
   "server_gc_debug_trace": false,
-  "client_zipf_coefficient":  0,
-  "client_read_percentage": 95,
-  "client_write_percentage": 0,
+  "client_zipf_coefficient": 0,
   "ycsbt_read_percentage": 95,
   "ycsbt_write_percentage": 0,
   "client_num_ops_txn": 1
