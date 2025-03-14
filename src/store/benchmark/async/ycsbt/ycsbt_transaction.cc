@@ -48,8 +48,10 @@ namespace ycsbt
             return BeginRW();
         } else if (op_index < batch_size ) {
             return coreWorkload->NextOp();
-        } else {
+        } else if (op_index == batch_size) {
             return Commit();
+        } else {
+            return Wait();
         }
     }
 

@@ -7,6 +7,7 @@ import re
 import matplotlib.pyplot as plt
 import sys
 import argparse
+import concurrent.futures
 
 TEST_TIMEOUT = 30
 DEFAULT_TIMEOUT = 500 * 1000  # seconds for SSH connection timeout
@@ -38,14 +39,16 @@ def build_ssh_command(target, config, remote_cmd=None):
     username = config["user"]
     # Add the ConnectTimeout option to the SSH command
     timeout_option = ["-o", f"ConnectTimeout={DEFAULT_TIMEOUT}"]
+    auth_option = [ '-o', 'StrictHostKeyChecking=no']
+
     if auth_method == "publickey":
         if config.get("keypath"):
-            base_cmd = ["ssh", "-i", config["keypath"]] + timeout_option + [f"{username}@{target}"]
+            base_cmd = ["ssh", "-i", config["keypath"]] + timeout_option + auth_option  + [f"{username}@{target}"]
         else:
-            base_cmd = ["ssh"] + timeout_option + [f"{username}@{target}"]
+            base_cmd = ["ssh"] + timeout_option + auth_option + [f"{username}@{target}"]
     elif auth_method == "password":
         # Use sshpass for password authentication
-        base_cmd = ["sshpass", "-p", config["password"], "ssh"] + timeout_option + [f"{username}@{target}"]
+        base_cmd = ["sshpass", "-p", config["password"], "ssh"] + timeout_option + auth_option +  [f"{username}@{target}"]
     else:
         raise ValueError("Unknown authentication method")
     if remote_cmd:
@@ -60,13 +63,14 @@ def build_scp_command(source, target, config, remote_path="."):
     auth_method = config["auth"].lower()
     remote_target = f"{username}@{target}:{remote_path}"
     timeout_option = ["-o", f"ConnectTimeout={DEFAULT_TIMEOUT}"]
+    auth_option = [ '-o', 'StrictHostKeyChecking=no']
     if auth_method == "publickey":
         if config.get("keypath"):
-            cmd = ["scp", "-i", config["keypath"]] + timeout_option + [source, remote_target]
+            cmd = ["scp", "-i", config["keypath"]] + timeout_option + auth_option + [source, remote_target]
         else:
-            cmd = ["scp"] + timeout_option + [source, remote_target]
+            cmd = ["scp"] + timeout_option + auth_option + [source, remote_target]
     elif auth_method == "password":
-        cmd = ["sshpass", "-p", config["password"], "scp"] + timeout_option + [source, remote_target]
+        cmd = ["sshpass", "-p", config["password"], "scp"] + timeout_option + auth_option + [source, remote_target]
     else:
         raise ValueError("Unknown authentication method")
     return cmd
@@ -176,6 +180,42 @@ def plot_cdf(latencies, output_file):
     plt.close()
     print(f"CDF chart saved as {output_file}")
 
+def handle_host_operations(host, config, config_file, local_download_dir):
+    target_address = host["target"]
+    print(f"Attempting to connect to {target_address} ...")
+    # Test SSH connection with a simple command
+    test_cmd = "echo 'Connection successful'"
+    res = run_remote_command(target_address, config, test_cmd, timeout=TEST_TIMEOUT)
+    if res.returncode != 0:
+        print(f"Failed to connect to {target_address}, skipping this host.")
+        return []
+
+    # Copy the configuration file and current script to the remote host
+    current_script = os.path.basename(sys.argv[0])
+    copy_files_to_remote(target_address, config, [config_file, sys.argv[0]])
+
+    # Generate the remote ping script content
+    remote_script_name = "run_ping.sh"
+    script_content, targets = create_remote_ping_script(target_address, config)
+    local_script_temp = f"temp_{target_address}_run_ping.sh"
+    write_local_temp_file(local_script_temp, script_content)
+
+    # Copy the generated ping script to the remote host
+    copy_files_to_remote(target_address, config, [local_script_temp], remote_path="./run_ping.sh")
+    os.remove(local_script_temp)  # Remove local temporary file
+
+    # Execute the ping script on the remote host
+    run_remote_command(target_address, config, f"bash {remote_script_name}")
+
+    # Retrieve the ping result files from the remote host
+    result_files = []
+    for tgt in targets:
+        remote_filename = f"ping_{target_address}_to_{tgt}.txt"
+        local_filename = os.path.join(local_download_dir, f"{target_address}_to_{tgt}.txt")
+        retrieve_file_from_remote(target_address, config, remote_filename, local_filename)
+        result_files.append(local_filename)
+
+    return result_files
 def main():
     parser = argparse.ArgumentParser(description="Ping test script")
     parser.add_argument("-c", "--config", required=True, help="Path to the configuration file")
@@ -190,42 +230,13 @@ def main():
 
     local_download_dir = "ping_results"
     os.makedirs(local_download_dir, exist_ok=True)
+
     all_result_files = []
 
-    # Iterate over each host to perform remote operations
-    for host in config["hosts"]:
-        target_address = host["target"]
-        print(f"Attempting to connect to {target_address} ...")
-        # Test SSH connection with a simple command
-        test_cmd = "echo 'Connection successful'"
-        res = run_remote_command(target_address, config, test_cmd, timeout=TEST_TIMEOUT)
-        if res.returncode != 0:
-            print(f"Failed to connect to {target_address}, skipping this host.")
-            continue
-
-        # Copy the configuration file and current script to the remote host
-        current_script = os.path.basename(sys.argv[0])
-        copy_files_to_remote(target_address, config, [config_file, sys.argv[0]])
-
-        # Generate the remote ping script content
-        remote_script_name = "run_ping.sh"
-        script_content, targets = create_remote_ping_script(target_address, config)
-        local_script_temp = f"temp_{target_address}_run_ping.sh"
-        write_local_temp_file(local_script_temp, script_content)
-
-        # Copy the generated ping script to the remote host
-        copy_files_to_remote(target_address, config, [local_script_temp], remote_path="./run_ping.sh")
-        os.remove(local_script_temp)  # Remove local temporary file
-
-        # Execute the ping script on the remote host
-        run_remote_command(target_address, config, f"bash {remote_script_name}")
-
-        # Retrieve the ping result files from the remote host
-        for tgt in targets:
-            remote_filename = f"ping_{target_address}_to_{tgt}.txt"
-            local_filename = os.path.join(local_download_dir, f"{target_address}_to_{tgt}.txt")
-            retrieve_file_from_remote(target_address, config, remote_filename, local_filename)
-            all_result_files.append(local_filename)
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        futures = [executor.submit(handle_host_operations, host, config, config_file, local_download_dir) for host in config["hosts"]]
+        for future in concurrent.futures.as_completed(futures):
+            all_result_files.extend(future.result())
 
     # Aggregate all ping latency data
     all_latencies = []
