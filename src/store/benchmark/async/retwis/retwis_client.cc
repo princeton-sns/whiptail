@@ -33,14 +33,14 @@ namespace retwis {
     AsyncTransaction *RetwisClient::GetNextTransaction() {
 //        lastOp = "one_shot_rw";
 //        return new OneShotRW(keySelector, GetRand());
-        int ttype = GetRand()() % 100;
-        if (ttype < 5) {
+//        int ttype = GetRand()() % 100;
+//        if (ttype < 5) {
             lastOp = "one_shot_writes";
             return new OneShotWrites(keySelector, GetRand());
-        } else {
-            lastOp = "one_shot_reads";
-            return new OneShotReads(keySelector, GetRand());
-        }
+//        } else {
+//            lastOp = "one_shot_reads";
+//            return new OneShotReads(keySelector, GetRand());
+//        }
     }
 
 }  //namespace retwis
