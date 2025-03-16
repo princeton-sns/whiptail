@@ -11,16 +11,15 @@ def get_master_host(config):
 
 def get_server_host(config, i):
     if isinstance(i, int):
-        return config['server_host_format_str'] % (config['server_names'][i], config['experiment_name'], config['project_name'])
+        return config['server_host_format_str'] % (config['server_names'][i])
     elif isinstance(i, str):
-        return config['server_host_format_str'] % (i, config['experiment_name'], config['project_name'])
+        return config['server_host_format_str'] % (i)
     else:
         raise ValueError("Unexpected value for i: {}".format(i))
 
 
 def get_client_host(config, client):
-    return config['client_host_format_str'] % (client, config['experiment_name'],
-                                               config['project_name'])
+    return config['client_host_format_str'] % (client)
 
 
 def get_ip_for_interface(interface, remote_user, remote_host):
