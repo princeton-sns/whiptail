@@ -36,7 +36,7 @@ def collect_exp_data(config, remote_exp_directory, local_directory_base,
                     executor.submit(copy_remote_directory_to_local,
                                     os.path.join(
                                         local_directory_base, 'server-%d-%d' % (
-                                        instance_idx, shard_idx)),
+                                            instance_idx, shard_idx)),
                                     config['emulab_user'], server_host,
                                     remote_directory,
                                     tar_file="server-{}-{}-{}.tar".format(
@@ -502,8 +502,8 @@ def run_experiment(config_file, client_config_idx, executor):
             config['client_cdf_plot_blacklist'] = []
 
         wan = 'server_emulate_wan' in config and (
-                    config['server_emulate_wan'] and (
-                    not 'run_locally' in config or not config['run_locally']))
+                config['server_emulate_wan'] and (
+                not 'run_locally' in config or not config['run_locally']))
         if not 'run_locally' in config or not config['run_locally']:
             print('Setting up emulated WAN latencies.')
             setup_delays(config, wan, executor)
@@ -708,12 +708,12 @@ def run_varying_clients_experiment(config_file, executor):
                 config_new['client_total'] = config['client_total'][i]
             if 'client_threads_per_process' in config:
                 config_new['client_threads_per_process'] = \
-                config['client_threads_per_process'][i]
+                    config['client_threads_per_process'][i]
             config_new['client_nodes_per_server'] = n
             config_new['client_processes_per_client_node'] = m
             config_file_new = os.path.join(exp_dir,
                                            '%s-cli-%d-%d.json' % (
-                                           config_name, n, m))
+                                               config_name, n, m))
             with open(config_file_new, 'w+') as f_new:
                 json.dump(config_new, f_new, indent=2, sort_keys=True)
             config_files.append(config_file_new)
@@ -773,11 +773,11 @@ def run_multiple_protocols_experiment(config_file, executor=None):
             server_replication_protocol = config['replication_protocol'][i]
             config_new['replication_protocol'] = server_replication_protocol
             config_new['plot_cdf_series_title'] = \
-            config['plot_cdf_series_title'][i]
+                config['plot_cdf_series_title'][i]
             config_new['plot_tput_lat_series_title'] = \
-            config['plot_tput_lat_series_title'][i]
+                config['plot_tput_lat_series_title'][i]
             config_new['replication_protocol_settings'] = \
-            config['replication_protocol_settings'][i]
+                config['replication_protocol_settings'][i]
             config_file_new = os.path.join(exp_dir,
                                            '%s-%s-%d.json' % (config_name,
                                                               server_replication_protocol.replace(
@@ -816,7 +816,7 @@ def run_multiple_tail_at_scale(config_file):
                     config_new = config.copy()
                     config_new['base_local_exp_directory'] = exp_dir
                     config_new['client_tail_at_scale'] = \
-                    config['client_tail_at_scale'][i]
+                        config['client_tail_at_scale'][i]
                     config_file_new = os.path.join(
                         exp_dir, '%s-%d.json' % (config_name, i))
                     with open(config_file_new, 'w+') as f_new:
