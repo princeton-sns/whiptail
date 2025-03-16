@@ -209,6 +209,10 @@ DEFINE_uint64(write_ops_txn, 1, "num of write ops in one-shot txn.");
 DEFINE_uint64(read_ops_txn, 1, "num of read ops in one-shot txn.");
 DEFINE_uint64(mixed_write_ops_txn, 1, "num of write ops in mixed one-shot txn.");
 DEFINE_uint64(mixed_read_ops_txn, 1, "num of read ops in mixed one-shot txn.");
+DEFINE_uint64(read_percent, 0, "perecentage of read-only one-shot txns in the workload");
+DEFINE_uint64(write_percent, 100, "percentage of write-only one-shot txns in the workload");
+DEFINE_uint64(mixed_rw_percent, 0, "percentage of mixed_rw_percent in the workload");
+
 
 const std::string partitioner_args[] = {"default", "warehouse_dist_items",
                                         "warehouse"};
@@ -683,7 +687,7 @@ int main(int argc, char **argv) {
                     FLAGS_tput_interval,
                     FLAGS_abort_backoff, FLAGS_retry_aborted, FLAGS_max_backoff,
                     FLAGS_max_attempts, FLAGS_write_ops_txn, FLAGS_read_ops_txn, FLAGS_mixed_write_ops_txn,
-                    FLAGS_mixed_read_ops_txn);
+                    FLAGS_mixed_read_ops_txn, FLAGS_read_percent, FLAGS_write_percent, FLAGS_mixed_rw_percent);
             break;
         default:
             NOT_REACHABLE();
