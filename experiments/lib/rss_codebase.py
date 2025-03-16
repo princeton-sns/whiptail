@@ -57,12 +57,21 @@ class RssCodebase:
 
         truetime_error = config[
             "truetime_error"] if "truetime_error" in config else 0
+
+        if (config['read_percent'] + config['write_percent'] + config[
+            'mixed_rw_percent'] != 100):
+            raise RuntimeError(
+                "read_percent + write_percent + mixed_rw_percent != 100")
+
         client_command = ' '.join([str(x) for x in [
             path_to_client_bin,
             '--write_ops_txn', config['write_ops_txn'],
             '--read_ops_txn', config['read_ops_txn'],
             '--mixed_write_ops_txn', config['mixed_write_ops_txn'],
             '--mixed_read_ops_txn', config['mixed_read_ops_txn'],
+            '--read_percent', config['read_percent'],
+            '--write_percent', config['write_percent'],
+            '--mixed_rw_percent', config['mixed_rw_percent'],
             '--client_id', client_id,
             '--client_host', client_host,
             '--replica_config_paths', ','.join(shard_config_paths),
@@ -153,7 +162,7 @@ class RssCodebase:
 
         if 'pin_client_processes' in config and isinstance(
                 config['pin_client_processes'], list) and len(
-                config['pin_client_processes']) > 0:
+            config['pin_client_processes']) > 0:
             core = config['pin_client_processes'][client_id %
                                                   len(config[
                                                           'pin_client_processes'])]
@@ -181,8 +190,8 @@ class RssCodebase:
             if 'default_remote_shell' in config and config[
                 'default_remote_shell'] == 'bash':
                 client_command = '%s 1> %s 2> %s' % (
-                client_command, stdout_file,
-                stderr_file)
+                    client_command, stdout_file,
+                    stderr_file)
             else:
                 client_command = tcsh_redirect_output_to_files(client_command,
                                                                stdout_file,
@@ -228,8 +237,8 @@ class RssCodebase:
                                       'server-%d-%d' % (instance_idx,
                                                         shard_idx),
                                       'server-%d-%d-%d-stats-%d.json' % (
-                                      instance_idx, shard_idx, replica_idx,
-                                      run))
+                                          instance_idx, shard_idx, replica_idx,
+                                          run))
         else:
             path_to_server_bin = os.path.join(
                 config['base_remote_bin_directory_nfs'],
@@ -242,8 +251,8 @@ class RssCodebase:
             stats_file = os.path.join(exp_directory,
                                       config['out_directory_name'],
                                       'server-%d-%d-%d-stats-%d.json' % (
-                                      instance_idx, shard_idx, replica_idx,
-                                      run))
+                                          instance_idx, shard_idx, replica_idx,
+                                          run))
 
         n = 2 * config['fault_tolerance'] + 1
         server_id = config['client_total'] + shard_idx * n + replica_idx
@@ -433,7 +442,7 @@ class RssCodebase:
 
         if 'pin_server_processes' in config and isinstance(
                 config['pin_server_processes'], list) and len(
-                config['pin_server_processes']) > 0:
+            config['pin_server_processes']) > 0:
             core = config['pin_server_processes'][server_id %
                                                   len(config[
                                                           'pin_server_processes'])]
@@ -446,15 +455,15 @@ class RssCodebase:
                                        'server-%d-%d' % (
                                            instance_idx, shard_idx),
                                        'server-%d-%d-%d-stdout-%d.log' % (
-                                       instance_idx, shard_idx, replica_idx,
-                                       run))
+                                           instance_idx, shard_idx, replica_idx,
+                                           run))
             stderr_file = os.path.join(exp_directory,
                                        config['out_directory_name'],
                                        'server-%d-%d' % (
                                            instance_idx, shard_idx),
                                        'server-%d-%d-%d-stderr-%d.log' % (
-                                       instance_idx, shard_idx, replica_idx,
-                                       run))
+                                           instance_idx, shard_idx, replica_idx,
+                                           run))
             replica_command = '%s 1> %s 2> %s' % (replica_command, stdout_file,
                                                   stderr_file)
         else:
@@ -472,8 +481,8 @@ class RssCodebase:
             if 'default_remote_shell' in config and config[
                 'default_remote_shell'] == 'bash':
                 replica_command = '%s 1> %s 2> %s' % (
-                replica_command, stdout_file,
-                stderr_file)
+                    replica_command, stdout_file,
+                    stderr_file)
             else:
                 replica_command = tcsh_redirect_output_to_files(replica_command,
                                                                 stdout_file,
@@ -486,8 +495,8 @@ class RssCodebase:
                 'default_remote_shell'] == 'bash':
                 if isinstance(config['server_debug_output'], str):
                     replica_command = 'DEBUG=%s %s' % (
-                    config['server_debug_output'],
-                    replica_command)
+                        config['server_debug_output'],
+                        replica_command)
                 else:
                     replica_command = 'DEBUG=all %s' % replica_command
             else:
