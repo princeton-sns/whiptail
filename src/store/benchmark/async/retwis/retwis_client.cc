@@ -17,6 +17,7 @@ namespace retwis {
                                int expDuration, int warmupSec, int cooldownSec, int tputInterval, uint32_t abortBackoff,
                                bool retryAborted, uint32_t maxBackoff, uint32_t maxAttempts, uint32_t writeOpsTxn,
                                uint32_t readOpsTxn, uint32_t mixedWriteOpsTxn, uint32_t mixedReadOpsTxn,
+                               uint32_t readPercent, uint32_t writePercent, uint32_t mixedRWPercent,
                                const std::string &latencyFilename)
             : BenchmarkClient(clients, timeout, transport, id,
                               mode,
@@ -29,7 +30,13 @@ namespace retwis {
               writeOpsTxn(writeOpsTxn),
               readOpsTxn(readOpsTxn),
               mixedWriteOpsTxn(mixedWriteOpsTxn),
-              mixedReadOpsTxn(mixedReadOpsTxn) {
+              mixedReadOpsTxn(mixedReadOpsTxn),
+              readPercent(readPercent),
+              writePercent(writePercent),
+              mixedRWPercent(mixedRWPercent){
+
+        ASSERT(readPercent + writePercent + mixedRWPercent == 100);
+        Debug("jenndebug read: %u, write: %u, mixedRW: %u", readPercent, writePercent, mixedRWPercent);
     }
 
     RetwisClient::~RetwisClient() {
@@ -39,10 +46,10 @@ namespace retwis {
 //        lastOp = "one_shot_rw";
 //        return new OneShotRW(keySelector, GetRand());
         int ttype = GetRand()() % 100;
-        if (ttype < 33) {
+        if (ttype < writePercent) {
             lastOp = "one_shot_writes";
             return new OneShotWrites(keySelector, GetRand(), writeOpsTxn);
-        } else if (ttype < 67) {
+        } else if (ttype < writePercent + mixedRWPercent) {
             lastOp = "one_shot_rw";
             return new OneShotRW(keySelector, GetRand(), mixedWriteOpsTxn, mixedReadOpsTxn);
         } else {
