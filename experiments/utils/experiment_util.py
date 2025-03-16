@@ -15,14 +15,16 @@ def is_using_master(config):
     return not 'use_master' in config or config['use_master']
 
 
-def collect_exp_data(config, remote_exp_directory, local_directory_base, executor):
+def collect_exp_data(config, remote_exp_directory, local_directory_base,
+                     executor):
     download_futures = []
     remote_directory = os.path.join(
         remote_exp_directory, config['out_directory_name'])
     if is_using_master(config):
         master_host = get_master_host(config)
         copy_remote_directory_to_local(os.path.join(
-            local_directory_base, 'master'), config['emulab_user'], master_host, remote_directory)
+            local_directory_base, 'master'), config['emulab_user'], master_host,
+            remote_directory)
 
     for instance_idx in range(config["num_instances"]):
         for shard_idx in range(len(config["shards"])):
@@ -30,15 +32,24 @@ def collect_exp_data(config, remote_exp_directory, local_directory_base, executo
             for replica_idx in range(len(shard)):
                 replica = shard[replica_idx]
                 server_host = get_server_host(config, replica)
-                download_futures.append(executor.submit(copy_remote_directory_to_local, os.path.join(
-                    local_directory_base, 'server-%d-%d' % (instance_idx, shard_idx)), config['emulab_user'], server_host, remote_directory,
-                    tar_file="server-{}-{}-{}.tar".format(instance_idx, shard_idx, replica_idx),
-                    file_filter="server-{}-{}-{}-*.*".format(instance_idx, shard_idx, replica_idx)))
+                download_futures.append(
+                    executor.submit(copy_remote_directory_to_local,
+                                    os.path.join(
+                                        local_directory_base, 'server-%d-%d' % (
+                                        instance_idx, shard_idx)),
+                                    config['emulab_user'], server_host,
+                                    remote_directory,
+                                    tar_file="server-{}-{}-{}.tar".format(
+                                        instance_idx, shard_idx, replica_idx),
+                                    file_filter="server-{}-{}-{}-*.*".format(
+                                        instance_idx, shard_idx, replica_idx)))
 
     for client in config['clients']:
         client_host = get_client_host(config, client)
-        download_futures.append(executor.submit(copy_remote_directory_to_local, os.path.join(
-            local_directory_base, client), config['emulab_user'], client_host, remote_directory))
+        download_futures.append(
+            executor.submit(copy_remote_directory_to_local, os.path.join(
+                local_directory_base, client), config['emulab_user'],
+                            client_host, remote_directory))
     return download_futures
 
 
@@ -66,7 +77,8 @@ def kill_servers(config, executor, kill_args=' -9'):
                                            config['emulab_user'], server_host))
         else:
             futures.append(executor.submit(subprocess.run, cmd,
-                                           stdout=subprocess.PIPE, universal_newlines=True, shell=True))
+                                           stdout=subprocess.PIPE,
+                                           universal_newlines=True, shell=True))
     concurrent.futures.wait(futures)
 
 
@@ -76,7 +88,8 @@ def kill_clients_no_config(config, executor):
         client_host = get_client_host(config, client)
         if is_exp_remote(config):
             futures.append(executor.submit(kill_remote_process_by_name,
-                                           config['client_bin_name'], config['emulab_user'],
+                                           config['client_bin_name'],
+                                           config['emulab_user'],
                                            client_host, ' -9'))
         else:
             futures.append(executor.submit(kill_process_by_name,
@@ -131,8 +144,9 @@ def wait_for_clients_to_terminate(config, client_ssh_threads):
 
 
 def start_clients(config, local_exp_directory, remote_exp_directory, run):
-    assert(config["client_total"] == (len(config["clients"])
-                                      * config["client_processes_per_client_node"]))
+    assert (config["client_total"] == (len(config["clients"])
+                                       * config[
+                                           "client_processes_per_client_node"]))
     client_processes = []
     for i in range(len(config["clients"])):
         client = config["clients"][i]
@@ -185,24 +199,28 @@ def start_servers(config, local_exp_directory, remote_exp_directory, run):
     fault_tolerance = config["fault_tolerance"]
     n = 2 * fault_tolerance + 1
     shards = config["shards"]
-    assert(len(shards) == config["num_shards"])
+    assert (len(shards) == config["num_shards"])
 
     start_commands = {}
     for instance_idx in range(num_instances):
         shard_idx = 0
         for shard in shards:
-            assert(len(shard) == n)
+            assert (len(shard) == n)
             replica_idx = 0
             for replica in shard:
-                assert(replica in server_names)
+                assert (replica in server_names)
                 server_idx = server_names.index(replica)
                 if is_exp_local(config):
                     out_dir = os.path.join(
-                        local_exp_directory, config['out_directory_name'], 'server-%d-%d' % (instance_idx, shard_idx))
+                        local_exp_directory, config['out_directory_name'],
+                        'server-%d-%d' % (instance_idx, shard_idx))
                     os.makedirs(out_dir, exist_ok=True)
 
-                server_command = get_replica_cmd(config, instance_idx, shard_idx,
-                                                 replica_idx, run, local_exp_directory, remote_exp_directory)
+                server_command = get_replica_cmd(config, instance_idx,
+                                                 shard_idx,
+                                                 replica_idx, run,
+                                                 local_exp_directory,
+                                                 remote_exp_directory)
                 if not server_idx in start_commands:
                     start_commands[server_idx] = '(%s)' % server_command
                 else:
@@ -214,7 +232,10 @@ def start_servers(config, local_exp_directory, remote_exp_directory, run):
         if is_exp_remote(config):
             server_host = get_server_host(config, idx)
             server_threads.append(run_remote_command_async(cmd,
-                                                           config['emulab_user'], server_host, detach=False))
+                                                           config[
+                                                               'emulab_user'],
+                                                           server_host,
+                                                           detach=False))
         else:
             server_threads.append(run_local_command_async(cmd))
         time.sleep(0.1)
@@ -235,13 +256,17 @@ def start_master(config, local_exp_directory, remote_exp_directory, run):
             config['bin_directory_name'], config['master_bin_name'])
 
     master_command = ' '.join([str(x) for x in [path_to_master_bin,
-                                                '-N', len(config['server_names']),
-                                                '-port', config['master_port']]])
+                                                '-N',
+                                                len(config['server_names']),
+                                                '-port',
+                                                config['master_port']]])
 
     stdout_file = os.path.join(exp_directory,
-                               config['out_directory_name'], 'master-stdout-%d.log' % run)
+                               config['out_directory_name'],
+                               'master-stdout-%d.log' % run)
     stderr_file = os.path.join(exp_directory,
-                               config['out_directory_name'], 'master-stderr-%d.log' % run)
+                               config['out_directory_name'],
+                               'master-stderr-%d.log' % run)
 
     if is_exp_remote(config):
         master_command = tcsh_redirect_output_to_files(master_command,
@@ -263,75 +288,92 @@ def start_master(config, local_exp_directory, remote_exp_directory, run):
 SERVERS_SETUP = {}
 
 
-def prepare_remote_server(config, server_host, local_exp_directory, remote_out_directory):
+def prepare_remote_server(config, server_host, local_exp_directory,
+                          remote_out_directory):
     if server_host not in SERVERS_SETUP:
         set_file_descriptor_limit(
             config['max_file_descriptors'], config['emulab_user'], server_host)
         change_mounted_fs_permissions(
-            config['project_name'], config['emulab_user'], server_host, config['base_mounted_fs_path'])
+            config['project_name'], config['emulab_user'], server_host,
+            config['base_mounted_fs_path'])
         SERVERS_SETUP[server_host] = True
     change_mounted_fs_permissions(
-        config['project_name'], config['emulab_user'], server_host, config['base_remote_exp_directory'])
+        config['project_name'], config['emulab_user'], server_host,
+        config['base_remote_exp_directory'])
     copy_path_to_remote_host(local_exp_directory, config['emulab_user'],
                              server_host, config['base_remote_exp_directory'])
     run_remote_command_sync(
-        'mkdir -p %s' % remote_out_directory, config['emulab_user'], server_host)
+        'mkdir -p %s' % remote_out_directory, config['emulab_user'],
+        server_host)
     prepare_remote_server_codebase(
         config, server_host, local_exp_directory, remote_out_directory)
 
 
-def prepare_remote_client(config, client_host, local_exp_directory, remote_out_directory):
+def prepare_remote_client(config, client_host, local_exp_directory,
+                          remote_out_directory):
     if client_host not in SERVERS_SETUP:
         set_file_descriptor_limit(
             config['max_file_descriptors'], config['emulab_user'], client_host)
         change_mounted_fs_permissions(
-            config['project_name'], config['emulab_user'], client_host, config['base_mounted_fs_path'])
+            config['project_name'], config['emulab_user'], client_host,
+            config['base_mounted_fs_path'])
         SERVERS_SETUP[client_host] = True
     change_mounted_fs_permissions(
-        config['project_name'], config['emulab_user'], client_host, config['base_remote_exp_directory'])
+        config['project_name'], config['emulab_user'], client_host,
+        config['base_remote_exp_directory'])
     copy_path_to_remote_host(local_exp_directory, config['emulab_user'],
                              client_host, config['base_remote_exp_directory'])
     run_remote_command_sync(
-        'mkdir -p %s' % remote_out_directory, config['emulab_user'], client_host)
+        'mkdir -p %s' % remote_out_directory, config['emulab_user'],
+        client_host)
     prepare_remote_server_codebase(
         config, client_host, local_exp_directory, remote_out_directory)
 
 
 def prepare_remote_exp_directories(config, local_exp_directory, executor):
     remote_directory = os.path.join(
-        config['base_remote_exp_directory'], os.path.basename(local_exp_directory))
+        config['base_remote_exp_directory'],
+        os.path.basename(local_exp_directory))
     remote_out_directory = os.path.join(
         remote_directory, config['out_directory_name'])
     if is_using_master(config):
         master_host = get_master_host(config)
         if master_host not in SERVERS_SETUP:
             set_file_descriptor_limit(
-                config['max_file_descriptors'], config['emulab_user'], master_host)
+                config['max_file_descriptors'], config['emulab_user'],
+                master_host)
             change_mounted_fs_permissions(
-                config['project_name'], config['emulab_user'], master_host, config['base_mounted_fs_path'])
+                config['project_name'], config['emulab_user'], master_host,
+                config['base_mounted_fs_path'])
             SERVERS_SETUP[master_host] = True
         change_mounted_fs_permissions(
-            config['project_name'], config['emulab_user'], master_host, config['base_remote_exp_directory'])
+            config['project_name'], config['emulab_user'], master_host,
+            config['base_remote_exp_directory'])
         copy_path_to_remote_host(local_exp_directory, config['emulab_user'],
-                                 master_host, config['base_remote_exp_directory'])
+                                 master_host,
+                                 config['base_remote_exp_directory'])
         run_remote_command_sync(
-            'mkdir -p %s' % remote_out_directory, config['emulab_user'], master_host)
+            'mkdir -p %s' % remote_out_directory, config['emulab_user'],
+            master_host)
     futures = []
     for i in range(len(config['server_names'])):
         server_host = get_server_host(config, i)
-        futures.append(executor.submit(prepare_remote_server, config, server_host,
-                                       local_exp_directory, remote_out_directory))
+        futures.append(
+            executor.submit(prepare_remote_server, config, server_host,
+                            local_exp_directory, remote_out_directory))
         # prepare_remote_server(config, server_host,
         #                      local_exp_directory, remote_out_directory)
     for client in config['clients']:
         client_host = get_client_host(config, client)
-        futures.append(executor.submit(prepare_remote_client, config, client_host,
-                                       local_exp_directory, remote_out_directory))
+        futures.append(
+            executor.submit(prepare_remote_client, config, client_host,
+                            local_exp_directory, remote_out_directory))
     concurrent.futures.wait(futures)
     return remote_directory
 
 
-def collect_and_calculate(config, client_config_idx, remote_exp_directory, local_out_directory, executor):
+def collect_and_calculate(config, client_config_idx, remote_exp_directory,
+                          local_out_directory, executor):
     if is_exp_remote(config):
         download_futures = collect_exp_data(config, remote_exp_directory,
                                             local_out_directory, executor)
@@ -361,10 +403,12 @@ def setup_delays(config, wan, executor):
                                                  master_host)
         if wan:
             add_delays_for_ips(master_ip_to_delay, master_interface,
-                               config['max_bandwidth'], config['emulab_user'], master_host)
+                               config['max_bandwidth'], config['emulab_user'],
+                               master_host)
         else:
             run_remote_command_sync('sudo tc qdisc del dev %s root' %
-                                    master_interface, config['emulab_user'], master_host)
+                                    master_interface, config['emulab_user'],
+                                    master_host)
 
     for i in range(len(config['server_names'])):
         server_host = get_server_host(config, i)
@@ -372,7 +416,8 @@ def setup_delays(config, wan, executor):
             config, name_to_ip, config['server_names'][i], True)
         if wan:
             futures.append(executor.submit(get_iface_add_delays,
-                                           server_ip_to_delay, config['max_bandwidth'],
+                                           server_ip_to_delay,
+                                           config['max_bandwidth'],
                                            config['emulab_user'], server_host))
         else:
             futures.append(executor.submit(remove_delays, config['emulab_user'],
@@ -383,7 +428,8 @@ def setup_delays(config, wan, executor):
         client_ip_to_delay = get_ip_to_delay(config, name_to_ip, client)
         if wan:
             futures.append(executor.submit(get_iface_add_delays,
-                                           client_ip_to_delay, config['max_bandwidth'],
+                                           client_ip_to_delay,
+                                           config['max_bandwidth'],
                                            config['emulab_user'], client_host))
         else:
             futures.append(executor.submit(remove_delays,
@@ -409,16 +455,23 @@ def copy_binaries_to_nfs(config, executor):
         if server_host not in SERVERS_SETUP:
             futures.append(executor.submit(copy_path_to_remote_host,
                                            os.path.join(config['src_directory'],
-                                                        config['bin_directory_name']), config['emulab_user'],
-                                           server_host, config['base_remote_bin_directory_nfs']))
+                                                        config[
+                                                            'bin_directory_name']),
+                                           config['emulab_user'],
+                                           server_host, config[
+                                               'base_remote_bin_directory_nfs']))
     if not nfs_enabled:
         for client in config['clients']:
             client_host = get_client_host(config, client)
             if client_host not in SERVERS_SETUP:
                 futures.append(executor.submit(copy_path_to_remote_host,
-                                               os.path.join(config['src_directory'],
-                                                            config['bin_directory_name']), config['emulab_user'],
-                                               client_host, config['base_remote_bin_directory_nfs']))
+                                               os.path.join(
+                                                   config['src_directory'],
+                                                   config[
+                                                       'bin_directory_name']),
+                                               config['emulab_user'],
+                                               client_host, config[
+                                                   'base_remote_bin_directory_nfs']))
     concurrent.futures.wait(futures)
 
 
@@ -448,8 +501,9 @@ def run_experiment(config_file, client_config_idx, executor):
         if not 'client_cdf_plot_blacklist' in config:
             config['client_cdf_plot_blacklist'] = []
 
-        wan = 'server_emulate_wan' in config and (config['server_emulate_wan'] and (
-            not 'run_locally' in config or not config['run_locally']))
+        wan = 'server_emulate_wan' in config and (
+                    config['server_emulate_wan'] and (
+                    not 'run_locally' in config or not config['run_locally']))
         if not 'run_locally' in config or not config['run_locally']:
             print('Setting up emulated WAN latencies.')
             setup_delays(config, wan, executor)
@@ -514,7 +568,8 @@ def run_experiment(config_file, client_config_idx, executor):
                 master_thread.terminate()
                 kill_master(config, remote_exp_directory)
         return executor.submit(collect_and_calculate, config,
-                               client_config_idx, remote_exp_directory, local_out_directory,
+                               client_config_idx, remote_exp_directory,
+                               local_out_directory,
                                executor)
 
 
@@ -535,14 +590,22 @@ def run_multiple_experiments(config_file, executor):
                 'Need at least 1 independent variable to run multiple experiments.\n')
             sys.exit(1)
         if not 'experiment_independent_vars_unused' in config:
-            config['experiment_independent_vars_unused'] = config['experiment_independent_vars']
+            config['experiment_independent_vars_unused'] = config[
+                'experiment_independent_vars']
         for i in range(len(config['experiment_independent_vars_unused'])):
-            for j in range(len(config['experiment_independent_vars_unused'][i])):
+            for j in range(
+                    len(config['experiment_independent_vars_unused'][i])):
                 for k in range(j):
-                    if len(config[config['experiment_independent_vars_unused'][i][j]]) != len(config[config['experiment_independent_vars_unused'][i][k]]):
-                        sys.stderr.write('%s and %s arrays in config file must have same length.\n' % (
-                            config['experiment_independent_vars_unused'][i][j],
-                            config['experiment_independent_vars_unused'][i][k]))
+                    if len(config[
+                               config['experiment_independent_vars_unused'][i][
+                                   j]]) != len(config[config[
+                        'experiment_independent_vars_unused'][i][k]]):
+                        sys.stderr.write(
+                            '%s and %s arrays in config file must have same length.\n' % (
+                                config['experiment_independent_vars_unused'][i][
+                                    j],
+                                config['experiment_independent_vars_unused'][i][
+                                    k]))
                         sys.exit(1)
 
         config_name = os.path.splitext(os.path.basename(config_file))[0]
@@ -557,14 +620,19 @@ def run_multiple_experiments(config_file, executor):
 
         out_dirs = []
         sub_out_dirs = []
-        for i in range(len(config[config['experiment_independent_vars_unused'][0][0]])):
+        for i in range(len(
+                config[config['experiment_independent_vars_unused'][0][0]])):
             config_new = config.copy()
             config_new['base_local_exp_directory'] = exp_dir
-            config_new['experiment_independent_vars_unused'] = config['experiment_independent_vars_unused'][1:]
+            config_new['experiment_independent_vars_unused'] = config[
+                                                                   'experiment_independent_vars_unused'][
+                                                               1:]
 
-            for j in range(len(config['experiment_independent_vars_unused'][0])):
+            for j in range(
+                    len(config['experiment_independent_vars_unused'][0])):
                 config_new[config['experiment_independent_vars_unused'][0][j]
-                           ] = config[config['experiment_independent_vars_unused'][0][j]][i]
+                ] = config[config['experiment_independent_vars_unused'][0][j]][
+                    i]
 
             config_file_new = os.path.join(
                 exp_dir, '%s-%d.json' % (config_name, i))
@@ -582,7 +650,9 @@ def run_multiple_experiments(config_file, executor):
                 sub_out_dirs.append(sub_out_directories)
 
         retries = 0
-        while len(out_dirs) < len(config[config['experiment_independent_vars_unused'][0][0]]) and retries <= config['max_retries']:
+        while len(out_dirs) < len(config[config[
+            'experiment_independent_vars_unused'][0][0]]) and retries <= config[
+            'max_retries']:
             retry_exp_futs = []
             for i in range(len(exp_futs)):
                 try:
@@ -593,7 +663,8 @@ def run_multiple_experiments(config_file, executor):
                           (config_files[exp_futs_idxs[i]], exp_futs_idxs[i]))
                     print(traceback.format_exc())
                     retry_exp_futs.append(exp_futs_idxs[i])
-            if len(out_dirs) == len(config[config['experiment_independent_vars_unused'][0][0]]):
+            if len(out_dirs) == len(
+                    config[config['experiment_independent_vars_unused'][0][0]]):
                 break
             exp_futs = []
             exp_futs_idxs = []
@@ -616,9 +687,11 @@ def run_varying_clients_experiment(config_file, executor):
     out_dirs = None
     with open(config_file) as f:
         config = json.load(f)
-        if len(config['client_nodes_per_server']) != len(config['client_processes_per_client_node']):
-            sys.stderr.write('%s and %s arrays in config file must have same length.\n' % (
-                'client_nodes_per_server', 'client_processes_per_node'))
+        if len(config['client_nodes_per_server']) != len(
+                config['client_processes_per_client_node']):
+            sys.stderr.write(
+                '%s and %s arrays in config file must have same length.\n' % (
+                    'client_nodes_per_server', 'client_processes_per_node'))
 
         config_name = os.path.splitext(os.path.basename(config_file))[0]
         exp_futs = []
@@ -634,11 +707,13 @@ def run_varying_clients_experiment(config_file, executor):
             if 'client_total' in config:
                 config_new['client_total'] = config['client_total'][i]
             if 'client_threads_per_process' in config:
-                config_new['client_threads_per_process'] = config['client_threads_per_process'][i]
+                config_new['client_threads_per_process'] = \
+                config['client_threads_per_process'][i]
             config_new['client_nodes_per_server'] = n
             config_new['client_processes_per_client_node'] = m
             config_file_new = os.path.join(exp_dir,
-                                           '%s-cli-%d-%d.json' % (config_name, n, m))
+                                           '%s-cli-%d-%d.json' % (
+                                           config_name, n, m))
             with open(config_file_new, 'w+') as f_new:
                 json.dump(config_new, f_new, indent=2, sort_keys=True)
             config_files.append(config_file_new)
@@ -647,7 +722,9 @@ def run_varying_clients_experiment(config_file, executor):
 
         retries = 0
         out_dirs = {}
-        while len(out_dirs) < len(config['client_nodes_per_server']) and retries < config['max_retries']:
+        while len(out_dirs) < len(
+                config['client_nodes_per_server']) and retries < config[
+            'max_retries']:
             retry_exp_futs = []
             for i in range(len(exp_futs)):
                 try:
@@ -695,11 +772,16 @@ def run_multiple_protocols_experiment(config_file, executor=None):
             config_new['base_local_exp_directory'] = exp_dir
             server_replication_protocol = config['replication_protocol'][i]
             config_new['replication_protocol'] = server_replication_protocol
-            config_new['plot_cdf_series_title'] = config['plot_cdf_series_title'][i]
-            config_new['plot_tput_lat_series_title'] = config['plot_tput_lat_series_title'][i]
-            config_new['replication_protocol_settings'] = config['replication_protocol_settings'][i]
+            config_new['plot_cdf_series_title'] = \
+            config['plot_cdf_series_title'][i]
+            config_new['plot_tput_lat_series_title'] = \
+            config['plot_tput_lat_series_title'][i]
+            config_new['replication_protocol_settings'] = \
+            config['replication_protocol_settings'][i]
             config_file_new = os.path.join(exp_dir,
-                                           '%s-%s-%d.json' % (config_name, server_replication_protocol.replace('_', '-'), i))
+                                           '%s-%s-%d.json' % (config_name,
+                                                              server_replication_protocol.replace(
+                                                                  '_', '-'), i))
             with open(config_file_new, 'w+') as f_new:
                 json.dump(config_new, f_new, indent=2, sort_keys=True)
             protocol_out_directory, protocol_sub_out_dirs = run_varying_clients_experiment(
@@ -733,7 +815,8 @@ def run_multiple_tail_at_scale(config_file):
                 for i in range(len(config['client_tail_at_scale'])):
                     config_new = config.copy()
                     config_new['base_local_exp_directory'] = exp_dir
-                    config_new['client_tail_at_scale'] = config['client_tail_at_scale'][i]
+                    config_new['client_tail_at_scale'] = \
+                    config['client_tail_at_scale'][i]
                     config_file_new = os.path.join(
                         exp_dir, '%s-%d.json' % (config_name, i))
                     with open(config_file_new, 'w+') as f_new:
