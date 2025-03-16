@@ -40,8 +40,8 @@ def main():
     call("apt update")
     call("apt install gnuplot -y")
     call("apt install feh -y")
-    call("apt install python3-pip")
-    call("pip3 install numpy")
+    call("apt install -y python3-pip")
+    call("pip3 install -y numpy")
 
     setup_vimrc()
 
