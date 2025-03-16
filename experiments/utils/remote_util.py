@@ -6,25 +6,32 @@ import shutil
 
 def get_master_host(config):
     return config['server_host_format_str'] % (config['master_server_name'],
-                                               config['experiment_name'], config['project_name'])
+                                               config['experiment_name'],
+                                               config['project_name'])
 
 
 def get_server_host(config, i):
     if isinstance(i, int):
-        return config['server_host_format_str'] % (config['server_names'][i], config['experiment_name'], config['project_name'])
+        return config['server_host_format_str'] % (
+        config['server_names'][i], config['experiment_name'],
+        config['project_name'])
     elif isinstance(i, str):
-        return config['server_host_format_str'] % (i, config['experiment_name'], config['project_name'])
+        return config['server_host_format_str'] % (
+        i, config['experiment_name'], config['project_name'])
     else:
         raise ValueError("Unexpected value for i: {}".format(i))
 
 
 def get_client_host(config, client):
-    return config['client_host_format_str'] % (client, config['experiment_name'],
-                                               config['project_name'])
+    return config['client_host_format_str'] % (
+    client, config['experiment_name'],
+    config['project_name'])
 
 
 def get_ip_for_interface(interface, remote_user, remote_host):
-    return run_remote_command_sync('ip address show %s | awk \'/inet / {print $2}\'' % interface, remote_user, remote_host).rstrip()
+    return run_remote_command_sync(
+        'ip address show %s | awk \'/inet / {print $2}\'' % interface,
+        remote_user, remote_host).rstrip()
 
 
 def run_local_command_sync(command):
@@ -49,7 +56,8 @@ def ssh_args(command, remote_user, remote_host):
 def run_remote_command_sync(command, remote_user, remote_host):
     print("{}@{}: {}".format(remote_user, remote_host, command))
     return subprocess.run(ssh_args(command, remote_user, remote_host),
-                          stdout=subprocess.PIPE, universal_newlines=True).stdout
+                          stdout=subprocess.PIPE,
+                          universal_newlines=True).stdout
 
 
 def run_remote_command_async(command, remote_user, remote_host, detach=True):
@@ -59,7 +67,8 @@ def run_remote_command_async(command, remote_user, remote_host, detach=True):
     return subprocess.Popen(ssh_args(command, remote_user, remote_host))
 
 
-def change_mounted_fs_permissions(remote_group, remote_user, remote_host, remote_path):
+def change_mounted_fs_permissions(remote_group, remote_user, remote_host,
+                                  remote_path):
     run_remote_command_sync('sudo chown %s %s; sudo chmod 775 %s' % (
         remote_user, remote_path, remote_path), remote_user, remote_host)
 
@@ -76,13 +85,17 @@ def copy_path_to_remote_host(local_path, remote_user,
     subprocess.call(args)
 
 
-def copy_remote_directory_to_local(local_directory, remote_user, remote_host, remote_directory, tar_file='logs.tar', file_filter='.'):
+def copy_remote_directory_to_local(local_directory, remote_user, remote_host,
+                                   remote_directory, tar_file='logs.tar',
+                                   file_filter='.'):
     os.makedirs(local_directory, exist_ok=True)
     tar_file_path = os.path.join(remote_directory, tar_file)
-    run_remote_command_sync('cd %s && tar -czf %s %s' % (remote_directory, tar_file_path, file_filter),
+    run_remote_command_sync('cd %s && tar -czf %s %s' % (
+    remote_directory, tar_file_path, file_filter),
                             remote_user, remote_host)
     subprocess.call(["scp", "-r", "-p", '%s@%s:%s' %
-                     (remote_user, remote_host, tar_file_path), local_directory])
+                     (remote_user, remote_host, tar_file_path),
+                     local_directory])
     subprocess.call(['tar', '-xzf', os.path.join(local_directory, tar_file),
                      '-C', local_directory])
     subprocess.call(['rm', '-rf', os.path.join(local_directory, tar_file)])
@@ -105,9 +118,11 @@ def kill_remote_process_by_name_cmd(remote_process_name, kill_args):
     return cmd
 
 
-def kill_remote_process_by_name(remote_process_name, remote_user, remote_host, kill_args):
+def kill_remote_process_by_name(remote_process_name, remote_user, remote_host,
+                                kill_args):
     run_remote_command_sync(kill_remote_process_by_name_cmd(remote_process_name,
-                                                            kill_args), remote_user, remote_host)
+                                                            kill_args),
+                            remote_user, remote_host)
 
 
 def kill_remote_process_by_port_cmd(port, kill_args):
@@ -135,15 +150,21 @@ def get_timestamped_exp_dir(config):
 
 
 def get_interface_for_ip(ip, remote_user, remote_host):
-    return run_remote_command_sync('ifconfig | grep -B1 "inet addr:%s" | awk \'$1!="inet" && $1!="--" {print $1}\'' % ip, remote_user, remote_host).rstrip()
+    return run_remote_command_sync(
+        'ifconfig | grep -B1 "inet addr:%s" | awk \'$1!="inet" && $1!="--" {print $1}\'' % ip,
+        remote_user, remote_host).rstrip()
 
 
 def get_exp_net_interface(remote_user, remote_host):
-    return run_remote_command_sync('cat /var/emulab/boot/ifmap | awk \'{ print $1 }\'', remote_user, remote_host).rstrip()
+    return run_remote_command_sync(
+        'cat /var/emulab/boot/ifmap | awk \'{ print $1 }\'', remote_user,
+        remote_host).rstrip()
 
 
 def get_ip_for_server_name(server_name, remote_user, remote_host):
-    return run_remote_command_sync('getent hosts %s | awk \'{ print $1 }\'' % server_name, remote_user, remote_host).rstrip()
+    return run_remote_command_sync(
+        'getent hosts %s | awk \'{ print $1 }\'' % server_name, remote_user,
+        remote_host).rstrip()
 
 
 def remove_delays(remote_user, remote_host):
@@ -158,7 +179,8 @@ def get_iface_add_delays(ip_to_delay, max_bandwidth, remote_user, remote_host):
                        remote_host)
 
 
-def add_delays_for_ips(ip_to_delay, interface, max_bandwidth, remote_user, remote_host):
+def add_delays_for_ips(ip_to_delay, interface, max_bandwidth, remote_user,
+                       remote_host):
     command = 'sudo tc qdisc del dev %s root; ' % interface
     command += 'sudo tc qdisc add dev %s root handle 1: htb; ' % interface
     command += 'sudo tc class add dev %s parent 1: classid 1:1 htb rate %s; ' % (
