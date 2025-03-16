@@ -14,12 +14,16 @@ namespace retwis {
     class OneShotRW : public retwis::RetwisTransaction {
 
     public:
-        OneShotRW(KeySelector *keySelector, std::mt19937 &rand);
+        OneShotRW(KeySelector *keySelector, std::mt19937 &rand, uint64_t mixedWriteOpsTxn, uint64_t mixedReadOpsTxn);
 
         virtual ~OneShotRW();
 
     protected:
         Operation GetNextOperation(std::size_t op_index) override;
+
+    private:
+        uint64_t mixedWriteOpsTxn;
+        uint64_t mixedReadOpsTxn;
 
     };
 
