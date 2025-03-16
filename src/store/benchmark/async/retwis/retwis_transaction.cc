@@ -27,21 +27,25 @@
  **********************************************************************/
 #include "store/benchmark/async/retwis/retwis_transaction.h"
 
-namespace retwis
-{
+namespace retwis {
 
     RetwisTransaction::RetwisTransaction(
-        KeySelector *keySelector,
-        int numKeys, std::mt19937 &rand, const std::string ttype) : keySelector(keySelector), ttype_{ttype}
-    {
-        for (int i = 0; i < numKeys; ++i)
-        {
-            keyIdxs.push_back(keySelector->GetKey(rand));
+            KeySelector *keySelector,
+            int numKeys, std::mt19937 &rand, const std::string ttype) : keySelector(keySelector), ttype_{ttype} {
+        std::set<int> seen_before;
+        for (int i = 0; i < numKeys; ++i) {
+            int new_key = keySelector->GetKey(rand);
+            while(seen_before.find(new_key) != seen_before.end()) {
+                new_key = keySelector->GetKey(rand);
+                Debug("jenndebug duplicate keys");
+            }
+            seen_before.insert(new_key);
+
+            keyIdxs.push_back(new_key);
         }
     }
 
-    RetwisTransaction::~RetwisTransaction()
-    {
+    RetwisTransaction::~RetwisTransaction() {
     }
 
 } // namespace retwis

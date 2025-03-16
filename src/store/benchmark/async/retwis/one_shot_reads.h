@@ -13,12 +13,15 @@ namespace retwis {
 
     class OneShotReads : public retwis::RetwisTransaction {
     public:
-        OneShotReads(KeySelector *keySelector, std::mt19937 &rand);
+        OneShotReads(KeySelector *keySelector, std::mt19937 &rand, uint64_t readOpsTxn);
 
         virtual ~OneShotReads();
 
     protected:
         Operation GetNextOperation(std::size_t op_index) override;
+
+    private:
+        uint64_t readOpsTxn;
     };
 
 }  // namespace retwis

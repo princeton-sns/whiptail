@@ -5,8 +5,9 @@
 #include "store/benchmark/async/retwis/one_shot_reads.h"
 
 namespace retwis {
-    OneShotReads::OneShotReads(KeySelector *keySelector, std::mt19937 &rand)
-            : RetwisTransaction(keySelector, 1, rand, "one_shot_reads") {}
+    OneShotReads::OneShotReads(KeySelector *keySelector, std::mt19937 &rand, uint64_t readOpsTxn)
+            : RetwisTransaction(keySelector, readOpsTxn, rand, "one_shot_reads")
+            , readOpsTxn(readOpsTxn){}
 
     OneShotReads::~OneShotReads() {
     }
@@ -15,9 +16,9 @@ namespace retwis {
         Debug("ONE_SHOT_READS %lu", op_index);
         if (op_index == 0) {
             return BeginRW();
-        } else if (op_index == 1) {
-            return Get(GetKey(0));
-        } else if (op_index == 2) {
+        } else if (op_index < this->readOpsTxn + 1) {
+            return Get(GetKey(op_index - 1));
+        } else if (op_index == this->readOpsTxn + 1) {
             return Commit();
         } else {
             return Wait();
