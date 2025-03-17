@@ -177,6 +177,7 @@ DEFINE_validator(strong_consistency, &ValidateStrongConsistency);
  */
 DEFINE_uint64(clock_error, 0, "maximum error for clock");
 DEFINE_string(stats_file, "", "path to file for server stats");
+DEFINE_uint64(network_latency_window, 0, "network latency window");
 
 /**
  * Benchmark settings.
@@ -333,7 +334,7 @@ int main(int argc, char **argv)
         server = new strongstore::Server(consistency, shard_config,
                                          replica_config, FLAGS_server_id,
                                          FLAGS_group_idx, FLAGS_replica_idx,
-                                         tport, tt, FLAGS_debug_stats);
+                                         tport, tt, FLAGS_debug_stats, FLAGS_network_latency_window);
         break;
     }
     default:

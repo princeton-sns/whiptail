@@ -15,10 +15,12 @@ namespace strongstore {
                    const transport::Configuration &shard_config,
                    const transport::Configuration &replica_config,
                    uint64_t server_id, int shard_idx, int replica_idx,
-                   Transport *transport, const TrueTime &tt, bool debug_stats)
+                   Transport *transport, const TrueTime &tt, bool debug_stats,
+                   uint64_t network_latency_window)
             : PingServer(transport),
               tt_{tt},
               transactions_{shard_idx, consistency, tt_},
+              store_(network_latency_window),
               shard_config_{shard_config},
               replica_config_{replica_config},
               transport_{transport},
@@ -535,15 +537,16 @@ namespace strongstore {
         const Transaction transaction{msg.transaction()};
         const Timestamp nonblock_ts{msg.nonblock_timestamp()};
 
-        Debug("[%lu] Coordinator for transaction", transaction_id);
+//        Debug("[%lu] Coordinator for transaction", transaction_id);
 
         const TrueTimeInterval now = tt_.Now();
+        Debug("jenndebug [%lu] now %lu", transaction_id, now.latest());
         const Timestamp start_ts{now.latest(), client_id};
         TransactionState s = transactions_.StartCoordinatorPrepare(transaction_id, start_ts, shard_idx_,
                                                                    participants, transaction, nonblock_ts);
 
         if (s == PREPARING) {
-            Debug("[%lu] Coordinator preparing", transaction_id);
+//            Debug("[%lu] Coordinator preparing", transaction_id);
 
             // for (LockAcquireResult ar = locks_.AcquireLocks(transaction_id, transaction);
             // ar.status != LockStatus::ACQUIRED; ar = locks_.AcquireLocks(transaction_id, transaction)) {}
@@ -571,7 +574,10 @@ namespace strongstore {
                 PendingOp pendingOp(PUT, write.first, write.second, commit_ts, transaction_id, nonblock_ts,
                                     network_latency_window);
 
-                if (pendingOp.execute_time() < tt_.GetTime()) {
+                TrueTimeInterval now_tt = tt_.Now();
+                if (pendingOp.execute_time() < now_tt.latest()) {
+                    Debug("jenndebug [%lu] commit_ts %lu, execute_time %lu < tt_.Now().latest() %lu", transaction_id,
+                          pendingOp.commit_ts().getTimestamp(), pendingOp.execute_time(), now_tt.latest());
                     if (pendingOp.pendingOpType() == PUT) {
                         stats_.Increment("write_missed_latency_window");
                     } else {
