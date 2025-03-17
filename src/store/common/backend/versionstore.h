@@ -41,45 +41,55 @@
 #include "lib/message.h"
 #include "store/common/timestamp.h"
 
-template <class T, class V>
-class VersionedKVStore
-{
+template<class T, class V>
+class VersionedKVStore {
 public:
-    VersionedKVStore();
+    VersionedKVStore(uint64_t network_latency_window = 0);
+
     ~VersionedKVStore();
 
     bool get(const std::string &key, std::pair<T, V> &value);
+
     bool get(const std::string &key, const T &t, std::pair<T, V> &value);
+
     bool getRange(const std::string &key, const T &t, std::pair<T, T> &range);
+
     bool getLastRead(const std::string &key, T &readTime);
+
     bool getLastRead(const std::string &key, const T &t, T &readTime);
+
     bool getCommittedAfter(const std::string &key, const T &t,
                            std::vector<std::pair<T, V>> &values);
+
     bool remove(const std::string &key, const T &t);
+
     void put(const std::string &key, const V &v, const T &t);
-    void put(const std::string& key, const V &v, const T &t, std::chrono::microseconds network_latency_window);
+
+    void put(const std::string &key, const V &v, const T &t, std::chrono::microseconds network_latency_window);
+
     void commitGet(const std::string &key, const T &readTime, const T &commit);
+
     bool getUpperBound(const std::string &key, const T &t, T &result);
-    std::chrono::microseconds get_network_latency_window(const std::string& key) const;
+
+    std::chrono::microseconds get_network_latency_window(const std::string &key) const;
 
 private:
-    struct VersionedValue
-    {
+    struct VersionedValue {
         T write;
         V value;
 
-        VersionedValue(const T &commit) : write(commit){};
+        VersionedValue(const T &commit) : write(commit) {};
+
         VersionedValue(const T &commit, const V &val)
-            : write(commit), value(val){};
+                : write(commit), value(val) {};
 
         friend bool operator>(const VersionedValue &v1,
-                              const VersionedValue &v2)
-        {
+                              const VersionedValue &v2) {
             return v1.write > v2.write;
         };
+
         friend bool operator<(const VersionedValue &v1,
-                              const VersionedValue &v2)
-        {
+                              const VersionedValue &v2) {
             return v1.write < v2.write;
         };
     };
@@ -90,52 +100,49 @@ private:
     std::unordered_map<std::string, std::chrono::microseconds> network_latency_windows;
 
     bool inStore(const std::string &key);
+
     void getValue(
-        const std::string &key, const T &t,
-        typename std::set<VersionedKVStore<T, V>::VersionedValue>::iterator
+            const std::string &key, const T &t,
+            typename std::set<VersionedKVStore<T, V>::VersionedValue>::iterator
             &it);
+
+    uint64_t network_latency_window_;
 };
 
-template <class T, class V>
-VersionedKVStore<T, V>::VersionedKVStore() {}
+template<class T, class V>
+VersionedKVStore<T, V>::VersionedKVStore(uint64_t network_latency_window) : network_latency_window_(
+        network_latency_window) {}
 
-template <class T, class V>
+template<class T, class V>
 VersionedKVStore<T, V>::~VersionedKVStore() {}
 
-template <class T, class V>
-bool VersionedKVStore<T, V>::inStore(const std::string &key)
-{
+template<class T, class V>
+bool VersionedKVStore<T, V>::inStore(const std::string &key) {
     return store.find(key) != store.end() && store[key].size() > 0;
 }
 
-template <class T, class V>
+template<class T, class V>
 void VersionedKVStore<T, V>::getValue(
-    const std::string &key, const T &t,
-    typename std::set<VersionedKVStore<T, V>::VersionedValue>::iterator &it)
-{
+        const std::string &key, const T &t,
+        typename std::set<VersionedKVStore<T, V>::VersionedValue>::iterator &it) {
     VersionedKVStore<T, V>::VersionedValue v(t);
     it = store[key].upper_bound(v);
 
     // if there is no valid version at this timestamp
-    if (it == store[key].begin())
-    {
+    if (it == store[key].begin()) {
         it = store[key].end();
-    }
-    else
-    {
+    } else {
         it--;
     }
 }
 
 /* Returns the most recent value and timestamp for given key.
  * Error if key does not exist. */
-template <class T, class V>
+template<class T, class V>
 bool VersionedKVStore<T, V>::get(const std::string &key,
-                                 std::pair<T, V> &value)
-{
+                                 std::pair<T, V> &value) {
     // check for existence of key in store
-    if (inStore(key))
-    {
+    if (inStore(key)) {
         VersionedKVStore<T, V>::VersionedValue v = *(store[key].rbegin());
         value = std::make_pair(v.write, v.value);
         return true;
@@ -145,16 +152,13 @@ bool VersionedKVStore<T, V>::get(const std::string &key,
 
 /* Returns the value valid at given timestamp.
  * Error if key did not exist at the timestamp. */
-template <class T, class V>
+template<class T, class V>
 bool VersionedKVStore<T, V>::get(const std::string &key, const T &t,
-                                 std::pair<T, V> &value)
-{
-    if (inStore(key))
-    {
+                                 std::pair<T, V> &value) {
+    if (inStore(key)) {
         typename std::set<VersionedKVStore<T, V>::VersionedValue>::iterator it;
         getValue(key, t, it);
-        if (it != store[key].end())
-        {
+        if (it != store[key].end()) {
             value = std::make_pair((*it).write, (*it).value);
             return true;
         }
@@ -162,28 +166,24 @@ bool VersionedKVStore<T, V>::get(const std::string &key, const T &t,
     return false;
 }
 
-template <class T, class V>
-std::chrono::microseconds VersionedKVStore<T, V>::get_network_latency_window(const std::string& key) const {
+template<class T, class V>
+std::chrono::microseconds VersionedKVStore<T, V>::get_network_latency_window(const std::string &key) const {
 
-    // TODO jenndebug don't hardcode
-    std::chrono::microseconds duration(2000); // TODO jenndebug configure this to be per-key
+    std::chrono::microseconds duration(this->network_latency_window_);
     return duration;
 }
 
-template <class T, class V>
-bool VersionedKVStore<T, V>::remove(const std::string &key, const T &t)
-{
+template<class T, class V>
+bool VersionedKVStore<T, V>::remove(const std::string &key, const T &t) {
     auto storeKeyItr = store.find(key);
-    if (storeKeyItr == store.end())
-    {
+    if (storeKeyItr == store.end()) {
         return false;
     }
 
     typename std::set<VersionedKVStore<T, V>::VersionedValue>::iterator it;
     getValue(key, t, it);
 
-    if (it == storeKeyItr->second.end() || it->write != t)
-    {
+    if (it == storeKeyItr->second.end() || it->write != t) {
         return false;
     }
 
@@ -191,21 +191,17 @@ bool VersionedKVStore<T, V>::remove(const std::string &key, const T &t)
     return true;
 }
 
-template <class T, class V>
+template<class T, class V>
 bool VersionedKVStore<T, V>::getRange(const std::string &key, const T &t,
-                                      std::pair<T, T> &range)
-{
-    if (inStore(key))
-    {
+                                      std::pair<T, T> &range) {
+    if (inStore(key)) {
         typename std::set<VersionedKVStore<T, V>::VersionedValue>::iterator it;
         getValue(key, t, it);
 
-        if (it != store[key].end())
-        {
+        if (it != store[key].end()) {
             range.first = (*it).write;
             it++;
-            if (it != store[key].end())
-            {
+            if (it != store[key].end()) {
                 range.second = (*it).write;
             }
             return true;
@@ -214,37 +210,31 @@ bool VersionedKVStore<T, V>::getRange(const std::string &key, const T &t,
     return false;
 }
 
-template <class T, class V>
+template<class T, class V>
 bool VersionedKVStore<T, V>::getUpperBound(const std::string &key, const T &t,
-                                           T &result)
-{
+                                           T &result) {
     VersionedKVStore<T, V>::VersionedValue v(t);
     auto it = store[key].upper_bound(v);
 
     // if there is no valid version at this timestamp
-    if (it == store[key].end())
-    {
+    if (it == store[key].end()) {
         return false;
-    }
-    else
-    {
+    } else {
         result = (*it).write;
         return true;
     }
 }
 
-template <class T, class V>
+template<class T, class V>
 void VersionedKVStore<T, V>::put(const std::string &key, const V &value,
-                                 const T &t)
-{
+                                 const T &t) {
     // Key does not exist. Create a list and an entry.
     store[key].insert(VersionedKVStore<T, V>::VersionedValue(t, value));
 }
 
-template <class T, class V>
+template<class T, class V>
 void VersionedKVStore<T, V>::put(const std::string &key, const V &value,
-                                 const T &t, std::chrono::microseconds network_latency_window)
-{
+                                 const T &t, std::chrono::microseconds network_latency_window) {
     // Key does not exist. Create a list and an entry.
     store[key].insert(VersionedKVStore<T, V>::VersionedValue(t, value));
     this->network_latency_windows[key] = network_latency_window;
@@ -254,39 +244,32 @@ void VersionedKVStore<T, V>::put(const std::string &key, const V &value,
  * Commit a read by updating the timestamp of the latest read txn for
  * the version of the key that the txn read.
  */
-template <class T, class V>
+template<class T, class V>
 void VersionedKVStore<T, V>::commitGet(const std::string &key,
-                                       const T &readTime, const T &commit)
-{
+                                       const T &readTime, const T &commit) {
     // Hmm ... could read a key we don't have if we are behind ... do we commit
     // this or wait for the log update?
-    if (inStore(key))
-    {
+    if (inStore(key)) {
         typename std::set<VersionedKVStore<T, V>::VersionedValue>::iterator it;
         getValue(key, readTime, it);
 
-        if (it != store[key].end())
-        {
+        if (it != store[key].end()) {
             // figure out if anyone has read this version before
             if (lastReads.find(key) != lastReads.end() &&
                 lastReads[key].find((*it).write) != lastReads[key].end() &&
-                lastReads[key][(*it).write] < commit)
-            {
+                lastReads[key][(*it).write] < commit) {
                 lastReads[key][(*it).write] = commit;
             }
         }
     } // otherwise, ignore the read
 }
 
-template <class T, class V>
-bool VersionedKVStore<T, V>::getLastRead(const std::string &key, T &lastRead)
-{
-    if (inStore(key))
-    {
+template<class T, class V>
+bool VersionedKVStore<T, V>::getLastRead(const std::string &key, T &lastRead) {
+    if (inStore(key)) {
         VersionedValue v = *(store[key].rbegin());
         if (lastReads.find(key) != lastReads.end() &&
-            lastReads[key].find(v.write) != lastReads[key].end())
-        {
+            lastReads[key].find(v.write) != lastReads[key].end()) {
             lastRead = lastReads[key][v.write];
             return true;
         }
@@ -297,12 +280,10 @@ bool VersionedKVStore<T, V>::getLastRead(const std::string &key, T &lastRead)
 /*
  * Get the latest read for the write valid at timestamp t
  */
-template <class T, class V>
+template<class T, class V>
 bool VersionedKVStore<T, V>::getLastRead(const std::string &key, const T &t,
-                                         T &lastRead)
-{
-    if (inStore(key))
-    {
+                                         T &lastRead) {
+    if (inStore(key)) {
         typename std::set<VersionedKVStore<T, V>::VersionedValue>::iterator it;
         getValue(key, t, it);
         // TODO: this ASSERT seems incorrect. Why should we expect to find a
@@ -313,8 +294,7 @@ bool VersionedKVStore<T, V>::getLastRead(const std::string &key, const T &t,
 
         // figure out if anyone has read this version before
         if (lastReads.find(key) != lastReads.end() &&
-            lastReads[key].find((*it).write) != lastReads[key].end())
-        {
+            lastReads[key].find((*it).write) != lastReads[key].end()) {
             lastRead = lastReads[key][(*it).write];
             return true;
         }
@@ -322,17 +302,14 @@ bool VersionedKVStore<T, V>::getLastRead(const std::string &key, const T &t,
     return false;
 }
 
-template <class T, class V>
+template<class T, class V>
 bool VersionedKVStore<T, V>::getCommittedAfter(
-    const std::string &key, const T &t, std::vector<std::pair<T, V>> &values)
-{
+        const std::string &key, const T &t, std::vector<std::pair<T, V>> &values) {
     VersionedKVStore<T, V>::VersionedValue v(t);
     const auto itr = store.find(key);
-    if (itr != store.end())
-    {
+    if (itr != store.end()) {
         auto setItr = itr->second.upper_bound(v);
-        while (setItr != itr->second.end())
-        {
+        while (setItr != itr->second.end()) {
             values.push_back(std::make_pair(setItr->write, setItr->value));
             setItr++;
         }

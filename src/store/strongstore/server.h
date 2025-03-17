@@ -107,7 +107,7 @@ namespace strongstore {
                const transport::Configuration &shard_config,
                const transport::Configuration &replica_config, uint64_t server_id,
                int groupIdx, int idx, Transport *transport, const TrueTime &tt,
-               bool debug_stats);
+               bool debug_stats, uint64_t network_latency_window);
 
         ~Server();
 

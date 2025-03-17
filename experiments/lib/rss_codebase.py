@@ -261,6 +261,7 @@ class RssCodebase:
             "truetime_error"] if "truetime_error" in config else 0
         replica_command = ' '.join([str(x) for x in [
             path_to_server_bin,
+            '--network_latency_window', config['network_latency_window'],
             '--server_id', server_id,
             '--replica_config_path', replica_config_path,
             '--shard_config_path', shard_config_path,
