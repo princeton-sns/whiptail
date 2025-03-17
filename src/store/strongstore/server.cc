@@ -571,6 +571,18 @@ namespace strongstore {
                 PendingOp pendingOp(PUT, write.first, write.second, commit_ts, transaction_id, nonblock_ts,
                                     network_latency_window);
 
+                if (pendingOp.execute_time() < tt_.GetTime()) {
+                    if (pendingOp.pendingOpType() == PUT) {
+                        stats_.Increment("write_missed_latency_window");
+                    } else {
+                        stats_.Increment("read_missed_latency_window");
+                    }
+                    SendRWCommmitCoordinatorReplyFail(remote, client_id, client_req_id);
+                    return;
+                }
+
+                stats_.Increment("on_time");
+
                 this->queue_.push(pendingOp);
 
 //                Debug("jenndebug [%lu] enqueued PUT %s, %s", transaction_id, write.first.c_str(), write.second.c_str());
