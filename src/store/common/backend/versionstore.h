@@ -166,7 +166,7 @@ template <class T, class V>
 std::chrono::microseconds VersionedKVStore<T, V>::get_network_latency_window(const std::string& key) const {
 
     // TODO jenndebug don't hardcode
-    std::chrono::microseconds duration(450); // TODO jenndebug configure this to be per-key
+    std::chrono::microseconds duration(2000); // TODO jenndebug configure this to be per-key
     return duration;
 }
 

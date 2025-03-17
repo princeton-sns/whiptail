@@ -571,7 +571,9 @@ namespace strongstore {
                 PendingOp pendingOp(PUT, write.first, write.second, commit_ts, transaction_id, nonblock_ts,
                                     network_latency_window);
 
-                if (pendingOp.execute_time() < tt_.GetTime()) {
+                TrueTimeInterval now_tt = tt_.Now();
+                if (pendingOp.execute_time() < now_tt.mid()) {
+                    Debug("jenndebug [%lu] execute_time %lu < tt_.Now().mid() %lu", transaction_id, pendingOp.execute_time(), now_tt.mid());
                     if (pendingOp.pendingOpType() == PUT) {
                         stats_.Increment("write_missed_latency_window");
                     } else {

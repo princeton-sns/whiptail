@@ -81,7 +81,7 @@ namespace strongstore {
                            !session.has_quorum(shard_idx_, config_.QuorumSize())) {
                     Debug("jenndebug [%lu] OOPS no majority, do something wrong for now", session.transaction_id());
                     session.clear_reply_values(shard_idx_);
-                    ccb(REPLY_OK, {}, commit_ts, nonblock_ts); // TODO jenndebug WRONG
+                    ccb(REPLY_FAIL, {}, commit_ts, nonblock_ts);
                 }
             } else {
                 // just writes
@@ -90,7 +90,8 @@ namespace strongstore {
             }
             session.mark_successfully_replicated(shard_idx_);
         } else if (session.failure_count(shard_idx_) >= config_.QuorumSize()) {
-            Panic("Failed txn! Not enough replicas replied");
+            Debug("jenndebug [%lu] txn failed", session.transaction_id());
+            ccb(REPLY_FAIL, {}, commit_ts, nonblock_ts);
         }
     }
 
