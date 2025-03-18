@@ -46,6 +46,7 @@
 #include <unistd.h>
 
 #include <cstdio>
+#include <store/common/truetime.h>
 
 #include "lib/assert.h"
 #include "lib/configuration.h"
@@ -678,6 +679,8 @@ void TCPTransport::SignalCallback(evutil_socket_t fd, short what, void *arg)
 
 void TCPTransport::TCPAcceptCallback(evutil_socket_t fd, short what, void *arg)
 {
+    TrueTime tt_;
+    Debug("jenndebug server received at %lu", tt_.Now().mid());
     TCPTransportTCPListener *info = (TCPTransportTCPListener *)arg;
     TCPTransport *transport = info->transport;
 
