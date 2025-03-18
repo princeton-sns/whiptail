@@ -804,6 +804,7 @@ void TCPTransport::TCPReadableCallback(struct bufferevent *bev, void *arg)
         }
         else
         {
+            Debug("jenndebug callback in tcptransport %lu", tt_.Now().mid());
             // Dispatch
             Debug("Received %lu bytes %s message.", totalSize, msgType.c_str());
             info->receiver->ReceiveMessage(addr->second.first, msgType, msg,
