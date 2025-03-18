@@ -341,7 +341,7 @@ namespace strongstore {
             uint64_t transaction_id, const Timestamp &commit_ts,
             const std::set<int> participants, Timestamp &nonblock_timestamp,
             rw_coord_commit_callback ccb, rw_coord_commit_timeout_callback ctcb, uint32_t timeout) {
-        Debug("[%lu] [shard %i] Sending RWCommitCoordinator", transaction_id, shard_idx_);
+        // Debug("[%lu] [shard %i] Sending RWCommitCoordinator", transaction_id, shard_idx_);
 
         auto search = transactions_.find(transaction_id);
         ASSERT(search != transactions_.end());

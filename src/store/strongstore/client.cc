@@ -576,6 +576,7 @@ namespace strongstore {
                               std::placeholders::_4);
         auto cctcb = [](int) {};
 
+        Debug("jenndebug [%lu] assign commit ts %lu", tid, tt_.Now().mid());
         const Timestamp commit_ts{tt_.Now().mid(), client_id_};
 
         for (auto p: participants) {
@@ -589,6 +590,7 @@ namespace strongstore {
             //     sclients_[p]->RWCommitParticipant(tid, coordinator_shard, nonblock_timestamp, pccb, pctcb, timeout);
             // }
         }
+        Debug("jenndebug [%lu] sent to servers ts %lu", tid, tt_.Now().mid());
     }
 
     void Client::CommitCallback(StrongSession &session, uint64_t req_id, int status, const std::vector<Value> &values,
