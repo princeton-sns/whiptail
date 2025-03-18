@@ -541,7 +541,7 @@ namespace strongstore {
 //        Debug("[%lu] Coordinator for transaction", transaction_id);
 
         const TrueTimeInterval now = tt_.Now();
-        Debug("jenndebug [%lu] now %lu", transaction_id, now.latest());
+        Debug("jenndebug [%lu] now %lu", transaction_id, now.mid());
         const Timestamp start_ts{now.latest(), client_id};
         TransactionState s = transactions_.StartCoordinatorPrepare(transaction_id, start_ts, shard_idx_,
                                                                    participants, transaction, nonblock_ts);
