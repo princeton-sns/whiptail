@@ -679,8 +679,6 @@ void TCPTransport::SignalCallback(evutil_socket_t fd, short what, void *arg)
 
 void TCPTransport::TCPAcceptCallback(evutil_socket_t fd, short what, void *arg)
 {
-    TrueTime tt_;
-    Debug("jenndebug server received at %lu", tt_.Now().mid());
     TCPTransportTCPListener *info = (TCPTransportTCPListener *)arg;
     TCPTransport *transport = info->transport;
 
@@ -739,6 +737,8 @@ void TCPTransport::TCPAcceptCallback(evutil_socket_t fd, short what, void *arg)
 
 void TCPTransport::TCPReadableCallback(struct bufferevent *bev, void *arg)
 {
+    TrueTime tt_;
+    Debug("jenndebug server received %lu", tt_.Now().mid());
     TCPTransportTCPListener *info = (TCPTransportTCPListener *)arg;
     TCPTransport *transport = info->transport;
     struct evbuffer *evbuf = bufferevent_get_input(bev);
