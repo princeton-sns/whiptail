@@ -72,6 +72,7 @@ namespace strongstore {
             HandleGet(remote, get_);
         } else if (type == rw_commit_c_.GetTypeName()) {
             rw_commit_c_.ParseFromString(data);
+            Debug("jenndebug calling EnqueueOps %lu", tt_.Now().mid());
             EnqueueOps(remote, rw_commit_c_);
         } else if (type == rw_commit_p_.GetTypeName()) {
             rw_commit_p_.ParseFromString(data);
