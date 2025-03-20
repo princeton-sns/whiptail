@@ -40,6 +40,14 @@
 #include "lib/assert.h"
 #include "lib/message.h"
 #include "store/common/timestamp.h"
+#include <functional>
+
+template <typename V>
+std::size_t hashFunction(const V& value, std::size_t previousHash) {
+    std::hash<V> hasher;
+    std::size_t valueHash = hasher(value);
+    return valueHash ^ (previousHash << 1); // Combine the hashes
+}
 
 template<class T, class V>
 class VersionedKVStore {
@@ -51,6 +59,8 @@ public:
     bool get(const std::string &key, std::pair<T, V> &value);
 
     bool get(const std::string &key, const T &t, std::pair<T, V> &value);
+
+    bool getWithHash(const std::string &key, const T &t, std::tuple<T, V, size_t> &valueWithHash);
 
     bool getRange(const std::string &key, const T &t, std::pair<T, T> &range);
 
@@ -77,11 +87,15 @@ private:
     struct VersionedValue {
         T write;
         V value;
+        size_t rolling_hash;
 
         VersionedValue(const T &commit) : write(commit) {};
 
         VersionedValue(const T &commit, const V &val)
                 : write(commit), value(val) {};
+
+        VersionedValue(const T &commit, const V &val, const size_t &rolling_hash)
+            : write(commit), value(val), rolling_hash(rolling_hash) {};
 
         friend bool operator>(const VersionedValue &v1,
                               const VersionedValue &v2) {
@@ -167,6 +181,20 @@ bool VersionedKVStore<T, V>::get(const std::string &key, const T &t,
 }
 
 template<class T, class V>
+bool VersionedKVStore<T, V>::getWithHash(const std::string &key, const T &t,
+                                 std::tuple<T, V, size_t> &value) {
+    if (inStore(key)) {
+        typename std::set<VersionedKVStore<T, V>::VersionedValue>::iterator it;
+        getValue(key, t, it);
+        if (it != store[key].end()) {
+            value = std::make_tuple((*it).write, (*it).value, (*it).rolling_hash);
+            return true;
+        }
+    }
+    return false;
+}
+
+template<class T, class V>
 std::chrono::microseconds VersionedKVStore<T, V>::get_network_latency_window(const std::string &key) const {
 
     std::chrono::microseconds duration(this->network_latency_window_);
@@ -228,15 +256,27 @@ bool VersionedKVStore<T, V>::getUpperBound(const std::string &key, const T &t,
 template<class T, class V>
 void VersionedKVStore<T, V>::put(const std::string &key, const V &value,
                                  const T &t) {
+    size_t hash_value = 0;
+    std::tuple<T, V, size_t> v_tuple;
+    if (this->getWithHash(key, t, v_tuple)) {
+        size_t prev_hash = std::get<2>(v_tuple);
+        hash_value = hashFunction(value, prev_hash);
+    }
     // Key does not exist. Create a list and an entry.
-    store[key].insert(VersionedKVStore<T, V>::VersionedValue(t, value));
+    store[key].insert(VersionedKVStore<T, V>::VersionedValue(t, value, hash_value));
 }
 
 template<class T, class V>
 void VersionedKVStore<T, V>::put(const std::string &key, const V &value,
                                  const T &t, std::chrono::microseconds network_latency_window) {
+
+    size_t hash_value = 0;
+    std::pair<T, V> v_pair;
+    if (this->get(key, t, v_pair)) {
+        hash_value = hashFunction(value, v_pair.second.rolling_hash);
+    }
     // Key does not exist. Create a list and an entry.
-    store[key].insert(VersionedKVStore<T, V>::VersionedValue(t, value));
+    store[key].insert(VersionedKVStore<T, V>::VersionedValue(t, value, hash_value));
     this->network_latency_windows[key] = network_latency_window;
 }
 

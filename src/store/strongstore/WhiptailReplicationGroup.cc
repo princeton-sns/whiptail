@@ -7,8 +7,8 @@
 namespace strongstore {
 
     WhiptailReplicationGroup::WhiptailReplicationGroup(transport::Configuration &config, Transport *transport,
-                                                       int shard_idx, uint64_t client_id)
-            : shard_idx_(shard_idx), config_(config), transport_(transport) {
+                                                       int shard_idx, uint64_t client_id, Stats& stats)
+            : shard_idx_(shard_idx), config_(config), transport_(transport), stats_(stats) {
 
         for (int repl_idx = 0; repl_idx < config_.n; repl_idx++) {
             shard_clients_.push_back(new ShardClient(config_, transport_, client_id, shard_idx_,
@@ -63,15 +63,22 @@ namespace strongstore {
                                                             const Timestamp &commit_ts,
                                                             const Timestamp &nonblock_ts) {
         session.mark_success_or_fail_reply(shard_idx_, status);
+        if (status == REPLY_OK) {
+            stats_.Increment("shard_" + std::to_string(shard_idx_) + "_REPLY_OK");
+        } else if (status == REPLY_FAIL) {
+            stats_.Increment("shard_" + std::to_string(shard_idx_) + "_REPLY_FAIL");
+        } else {
+            stats_.Increment("shard_" + std::to_string(shard_idx_) + "_REPLY_" + std::to_string(status));
+        }
         session.add_reply_values(shard_idx_, values);
 
 //        Debug("jenndebug [%lu] values %s", session.transaction_id(), stringify(values).c_str());
 
         if (session.success_count(shard_idx_) >= config_.QuorumSize()) {
 
-//            Debug("[%lu] successful replication count %d", session.transaction_id(), session.success_count(shard_idx_));
+//            Debug("[%lu] successful
+                // has readsreplication count %d", session.transaction_id(), session.success_count(shard_idx_));
             if (!values.empty()) {
-                // has reads
                 if (session.has_quorum(shard_idx_, config_.QuorumSize())) {
                     const std::vector<Value> majority_values = session.quorum_resp(shard_idx_, config_.QuorumSize());
                     session.clear_success_count(shard_idx_);
