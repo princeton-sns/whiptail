@@ -418,14 +418,17 @@ void BenchmarkClient::ExecuteCallback(uint64_t session_id,
     auto &ttype = transaction->GetTransactionType();
     auto n_attempts = ss.n_attempts();
 
-    if (result == COMMITTED || result == ABORTED_USER ||
+    if (result == COMMITTED || result == ABORTED_USER || result == ABORTED_SYSTEM ||
         (maxAttempts != -1 && n_attempts >= static_cast<uint64_t>(maxAttempts)) ||
         !retryAborted)
     {
         bool erase_session = true;
-        if (result == COMMITTED)
+        if (result == COMMITTED || result == ABORTED_SYSTEM)
         {
-            stats.Increment(ttype + "_committed", 1);
+            if (result == COMMITTED)
+                stats.Increment(ttype + "_committed", 1);
+            else
+                stats.Increment(ttype + "_aborted", 1);
 
             if (!cooldownStarted)
             {
