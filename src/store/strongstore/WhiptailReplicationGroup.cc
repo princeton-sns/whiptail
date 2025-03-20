@@ -115,7 +115,6 @@ namespace strongstore {
         };
 
         session.clear_success_count(shard_idx_);
-        session.begin_new_shot(shard_idx_);
         for (ShardClient *shard_client: shard_clients_) {
             shard_client->RWCommitCoordinator(transaction_id, commit_ts, participants, nonblock_ts, ccbw, ctcb,
                                               timeout);
