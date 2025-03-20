@@ -79,7 +79,7 @@ namespace strongstore {
                const std::string &client_region, transport::Configuration &config,
                uint64_t id, int nshards, int closestReplic, Transport *transport,
                Partitioner *part, TrueTime &tt, bool debug_stats,
-               double nb_time_alpha);
+               double nb_time_alpha, uint8_t sent_redundancy);
 
         virtual ~Client();
 

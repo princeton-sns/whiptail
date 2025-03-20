@@ -16,7 +16,7 @@ namespace strongstore {
                    const transport::Configuration &replica_config,
                    uint64_t server_id, int shard_idx, int replica_idx,
                    Transport *transport, const TrueTime &tt, bool debug_stats,
-                   uint64_t network_latency_window)
+                   uint64_t network_latency_window, uint8_t sent_redundancy)
             : PingServer(transport),
               tt_{tt},
               transactions_{shard_idx, consistency, tt_},
@@ -29,7 +29,8 @@ namespace strongstore {
               shard_idx_{shard_idx},
               replica_idx_{replica_idx},
               consistency_{consistency},
-              debug_stats_{debug_stats} {
+              debug_stats_{debug_stats},
+              sent_redundancy_ {sent_redundancy} {
 
         transport_->Register(this, shard_config_, shard_idx_, replica_idx_);
 
@@ -526,10 +527,25 @@ namespace strongstore {
     }
 
     void Server::EnqueueOps(const TransportAddress &remote, proto::RWCommitCoordinator &msg) {
+
+
         uint64_t client_id = msg.rid().client_id();
         uint64_t client_req_id = msg.rid().client_req_id();
 
         uint64_t transaction_id = msg.transaction_id();
+
+        const RequestID requestId(client_id, client_req_id, &remote);
+        if (multi_sent_reqs_recvd_yet_.find(requestId) != multi_sent_reqs_recvd_yet_.end()) {
+
+            // already seen this request, don't need to process it again
+            multi_sent_reqs_recvd_yet_[requestId]++;
+
+            if (sent_redundancy_ <= multi_sent_reqs_recvd_yet_[requestId]) {
+                multi_sent_reqs_recvd_yet_.erase(requestId);
+            }
+            return;
+        }
+        multi_sent_reqs_recvd_yet_[requestId] = 1;
 
         std::unordered_set<int> participants{msg.participants().begin(),
                                              msg.participants().end()};
@@ -540,7 +556,6 @@ namespace strongstore {
 //        Debug("[%lu] Coordinator for transaction", transaction_id);
 
         const TrueTimeInterval now = tt_.Now();
-        Debug("jenndebug [%lu] now %lu", transaction_id, now.mid());
         const Timestamp start_ts{now.mid(), client_id};
         TransactionState s = transactions_.StartCoordinatorPrepare(transaction_id, start_ts, shard_idx_,
                                                                    participants, transaction, nonblock_ts);
@@ -576,8 +591,6 @@ namespace strongstore {
 
                 TrueTimeInterval now_tt = tt_.Now();
                 if (pendingOp.execute_time() < now_tt.mid()) {
-                    Debug("jenndebug [%lu] commit_ts %lu, execute_time %lu < tt_.Now().mid() %lu", transaction_id,
-                          pendingOp.commit_ts().getTimestamp(), pendingOp.execute_time(), now_tt.mid());
                     if (pendingOp.pendingOpType() == PUT) {
                         stats_.Increment("missed_latency_window_" + std::to_string(client_id));
                     } else {

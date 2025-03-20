@@ -46,7 +46,7 @@ namespace strongstore {
                    transport::Configuration &config, uint64_t client_id,
                    int nShards, int closestReplica, Transport *transport,
                    Partitioner *part, TrueTime &tt, bool debug_stats,
-                   double nb_time_alpha)
+                   double nb_time_alpha, uint8_t sent_redundancy)
             : coord_choices_{},
               min_lats_{},
               sessions_{},
@@ -70,7 +70,7 @@ namespace strongstore {
 
         /* Start a client for each shard. */
         for (uint64_t i = 0; i < nshards_; i++) {
-            auto *wrg = new WhiptailReplicationGroup(config_, transport_, i, client_id_, stats);
+            auto *wrg = new WhiptailReplicationGroup(config_, transport_, i, client_id_, stats, sent_redundancy);
             sclients_.push_back(wrg);
         }
 

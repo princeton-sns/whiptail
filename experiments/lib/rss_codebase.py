@@ -72,6 +72,7 @@ class RssCodebase:
             '--read_percent', config['read_percent'],
             '--write_percent', config['write_percent'],
             '--mixed_rw_percent', config['mixed_rw_percent'],
+            '--sent_redundancy', config['sent_redundancy'],
             '--client_id', client_id,
             '--client_host', client_host,
             '--replica_config_paths', ','.join(shard_config_paths),
@@ -262,6 +263,7 @@ class RssCodebase:
         replica_command = ' '.join([str(x) for x in [
             path_to_server_bin,
             '--network_latency_window', config['network_latency_window'],
+            '--sent_redundancy', config['sent_redundancy'],
             '--server_id', server_id,
             '--replica_config_path', replica_config_path,
             '--shard_config_path', shard_config_path,
