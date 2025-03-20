@@ -540,8 +540,8 @@ namespace strongstore {
 //        Debug("[%lu] Coordinator for transaction", transaction_id);
 
         const TrueTimeInterval now = tt_.Now();
-        Debug("jenndebug [%lu] now %lu", transaction_id, now.latest());
-        const Timestamp start_ts{now.latest(), client_id};
+        Debug("jenndebug [%lu] now %lu", transaction_id, now.mid());
+        const Timestamp start_ts{now.mid(), client_id};
         TransactionState s = transactions_.StartCoordinatorPrepare(transaction_id, start_ts, shard_idx_,
                                                                    participants, transaction, nonblock_ts);
 
@@ -575,14 +575,16 @@ namespace strongstore {
                                     network_latency_window);
 
                 TrueTimeInterval now_tt = tt_.Now();
-                if (pendingOp.execute_time() < now_tt.latest()) {
-                    Debug("jenndebug [%lu] commit_ts %lu, execute_time %lu < tt_.Now().latest() %lu", transaction_id,
-                          pendingOp.commit_ts().getTimestamp(), pendingOp.execute_time(), now_tt.latest());
+                if (pendingOp.execute_time() < now_tt.mid()) {
+                    Debug("jenndebug [%lu] commit_ts %lu, execute_time %lu < tt_.Now().mid() %lu", transaction_id,
+                          pendingOp.commit_ts().getTimestamp(), pendingOp.execute_time(), now_tt.mid());
                     if (pendingOp.pendingOpType() == PUT) {
                         stats_.Increment("missed_latency_window_" + std::to_string(client_id));
                     } else {
                         stats_.Increment("read_missed_latency_window");
                     }
+
+                    stats_.Add("missed_by_" + std::to_string(client_id) + "_us", now_tt.mid()-pendingOp.execute_time());
                     SendRWCommmitCoordinatorReplyFail(remote, client_id, client_req_id);
                     return;
                 }
@@ -1582,7 +1584,7 @@ namespace strongstore {
                     const Timestamp start_ts{request.prepare().timestamp()};
 
                     // const TrueTimeInterval now = tt_.Now();
-                    // const Timestamp start_ts{now.latest(), client_id};
+                    // const Timestamp start_ts{now.mid(), client_id};
                     int coordinator = request.prepare().coordinator();
                     const std::unordered_set<int> participants{request.prepare().participants().begin(),
                                                                request.prepare().participants().end()};

@@ -70,7 +70,7 @@ namespace strongstore {
 
         /* Start a client for each shard. */
         for (uint64_t i = 0; i < nshards_; i++) {
-            auto *wrg = new WhiptailReplicationGroup(config_, transport_, i, client_id_);
+            auto *wrg = new WhiptailReplicationGroup(config_, transport_, i, client_id_, stats);
             sclients_.push_back(wrg);
         }
 
