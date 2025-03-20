@@ -580,7 +580,7 @@ namespace strongstore {
                     Debug("jenndebug [%lu] commit_ts %lu, execute_time %lu < tt_.Now().latest() %lu", transaction_id,
                           pendingOp.commit_ts().getTimestamp(), pendingOp.execute_time(), now_tt.latest());
                     if (pendingOp.pendingOpType() == PUT) {
-                        stats_.Increment("write_missed_latency_window");
+                        stats_.Increment("missed_latency_window_" + std::to_string(client_id));
                     } else {
                         stats_.Increment("read_missed_latency_window");
                     }
