@@ -212,6 +212,7 @@ DEFINE_uint64(mixed_read_ops_txn, 1, "num of read ops in mixed one-shot txn.");
 DEFINE_uint64(read_percent, 0, "perecentage of read-only one-shot txns in the workload");
 DEFINE_uint64(write_percent, 100, "percentage of write-only one-shot txns in the workload");
 DEFINE_uint64(mixed_rw_percent, 0, "percentage of mixed_rw_percent in the workload");
+DEFINE_uint32(sent_redundancy, 1, "how many times a client sends a request msg to a server");
 
 
 const std::string partitioner_args[] = {"default", "warehouse_dist_items",
@@ -655,7 +656,7 @@ int main(int argc, char **argv) {
                 client = new strongstore::Client(
                         consistency, net_config, client_region, shard_config,
                         FLAGS_client_id, FLAGS_num_shards, FLAGS_closest_replica,
-                        tport, part, tt, FLAGS_debug_stats, FLAGS_nb_time_alpha);
+                        tport, part, tt, FLAGS_debug_stats, FLAGS_nb_time_alpha, FLAGS_sent_redundancy);
                 break;
             }
             default:

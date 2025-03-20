@@ -7,12 +7,12 @@
 namespace strongstore {
 
     WhiptailReplicationGroup::WhiptailReplicationGroup(transport::Configuration &config, Transport *transport,
-                                                       int shard_idx, uint64_t client_id, Stats& stats)
+                                                       int shard_idx, uint64_t client_id, Stats& stats, uint8_t sent_redundancy)
             : shard_idx_(shard_idx), config_(config), transport_(transport), stats_(stats) {
 
         for (int repl_idx = 0; repl_idx < config_.n; repl_idx++) {
             shard_clients_.push_back(new ShardClient(config_, transport_, client_id, shard_idx_,
-                                                     [](uint64_t transaction_id) {}, repl_idx));
+                                                     [](uint64_t transaction_id) {}, repl_idx, sent_redundancy));
         }
     }
 

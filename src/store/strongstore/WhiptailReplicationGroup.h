@@ -15,7 +15,7 @@ namespace strongstore {
 
     public:
         WhiptailReplicationGroup(transport::Configuration &config, Transport *transport, int shard_idx,
-                                 uint64_t client_id, Stats& stats);
+                                 uint64_t client_id, Stats& stats, uint8_t sent_redundancy);
 
         void PutCallbackWhiptail(StrongSession &session, const put_callback &pcb, int status, const std::string &key,
                                  const std::string &value);

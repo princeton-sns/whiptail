@@ -38,7 +38,7 @@ namespace strongstore {
 
     ShardClient::ShardClient(const transport::Configuration &config,
                              Transport *transport, uint64_t client_id, int shard,
-                             wound_callback wcb, int replica)
+                             wound_callback wcb, int replica, uint8_t sent_redundancy)
             : last_req_id_{0},
               config_{config},
               transport_{transport},
@@ -46,7 +46,8 @@ namespace strongstore {
               shard_idx_{shard},
               wcb_{wcb},
               replica_(replica),
-              tt_{0} {
+              tt_{0},
+              sent_redundancy_ {sent_redundancy} {
         transport_->Register(this, config_, -1, -1);
 
         // TODO: Remove hardcoding
@@ -373,7 +374,9 @@ namespace strongstore {
             rw_commit_c_.add_participants(p);
         }
 
-        transport_->SendMessageToReplica(this, shard_idx_, replica_, rw_commit_c_);
+        for (int i = 0; i < sent_redundancy_; i++)
+            transport_->SendMessageToReplica(this, shard_idx_, replica_, rw_commit_c_);
+
     }
 
     void ShardClient::HandleRWCommitCoordinatorReply(const proto::RWCommitCoordinatorReply &reply) {
@@ -381,6 +384,7 @@ namespace strongstore {
 
         auto itr = pendingRWCoordCommits.find(req_id);
         if (itr == pendingRWCoordCommits.end()) {
+            // jenndebug also handles double sent requests.
             Debug("[%d][%lu] RWCommitCoordinatorReply for stale request.", shard_idx_, req_id);
             return; // stale request
         }

@@ -61,7 +61,7 @@ namespace strongstore {
     class RequestID {
     public:
         RequestID(uint64_t client_id, uint64_t client_req_id,
-                  TransportAddress *addr)
+                  const TransportAddress *addr)
                 : client_id_{client_id}, client_req_id_{client_req_id}, addr_{addr} {}
 
         ~RequestID() {}
@@ -72,10 +72,14 @@ namespace strongstore {
 
         const TransportAddress *addr() const { return addr_; }
 
+        std::string toString() const {
+            return "RequestID(client_id=" + std::to_string(client_id_) + ", client_req_id=" + std::to_string(client_req_id_) + ")";
+        }
+
     private:
         uint64_t client_id_;
         uint64_t client_req_id_;
-        TransportAddress *addr_;
+        const TransportAddress *addr_;
     };
 
     inline bool operator==(const strongstore::RequestID &lhs,
@@ -107,7 +111,7 @@ namespace strongstore {
                const transport::Configuration &shard_config,
                const transport::Configuration &replica_config, uint64_t server_id,
                int groupIdx, int idx, Transport *transport, const TrueTime &tt,
-               bool debug_stats, uint64_t network_latency_window);
+               bool debug_stats, uint64_t network_latency_window, uint8_t sent_redundancy = 1);
 
         ~Server();
 
@@ -194,6 +198,12 @@ namespace strongstore {
                                   const TimestampID &t2) {
                 return t1.timestamp < t2.timestamp;
             };
+        };
+
+        struct CompareRequestIDMessage {
+            bool operator()(const proto::RequestIDMessage& a, const proto::RequestIDMessage& b) const {
+                return a.client_id() == b.client_id() ? a.client_req_id() < b.client_req_id() : a.client_id() < b.client_id();
+            }
         };
 
         void HandleGet(const TransportAddress &remote, proto::Get &msg);
@@ -335,6 +345,9 @@ namespace strongstore {
         int replica_idx_;
         Consistency consistency_;
         bool debug_stats_;
+
+        std::unordered_map<RequestID, uint8_t> multi_sent_reqs_recvd_yet_;
+        uint8_t sent_redundancy_;
 
     };
 
