@@ -760,8 +760,8 @@ namespace strongstore {
 
         Debug("[%lu] ROCommit callback", tid);
 
-        for (const Value value: values) {
-            Debug("jenndebug value: %s, %s", value.key().c_str(), value.val().c_str());
+        for (const Value& value: values) {
+            Debug("jenndebug value: %s, %s, %lu", value.key().c_str(), value.val().c_str(), value.rolling_hash());
         }
 
         auto search = pending_reqs_.find(req_id);

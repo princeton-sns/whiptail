@@ -42,7 +42,7 @@ namespace strongstore {
     class Value {
     public:
         Value(uint64_t transaction_id, const Timestamp &ts,
-              const std::string &key, const std::string &val);
+              std::string key, std::string val, uint64_t rolling_hash);
 
         Value(const proto::ReadReply &msg);
 
@@ -57,9 +57,11 @@ namespace strongstore {
 
         const std::string &val() const { return val_; }
 
+        uint64_t rolling_hash() const { return rolling_hash_; }
+
         bool operator==(const Value &other) const {
             return transaction_id_ == other.transaction_id() && ts_ == other.ts() && key_ == other.key() &&
-                   val_ == other.val();
+                   val_ == other.val() && rolling_hash_ == other.rolling_hash();
         }
 
         bool operator!=(const Value &other) const {
@@ -67,7 +69,7 @@ namespace strongstore {
         }
 
         std::string to_string() const {
-            return "(" + key_ + ", " + val_ + ", " + ts_.to_string() + ")";
+            return "(" + key_ + ", " + val_ + ", " + ts_.to_string() + ", " + std::to_string(rolling_hash_) + ")";
         }
 
     private:
@@ -75,6 +77,7 @@ namespace strongstore {
         Timestamp ts_;
         std::string key_;
         std::string val_;
+        uint64_t rolling_hash_;
     };
 
     // Custom hash function for Value class
@@ -85,6 +88,7 @@ namespace strongstore {
             seed ^= std::hash<Timestamp>{}(v.ts()) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
             seed ^= std::hash<std::string>{}(v.key()) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
             seed ^= std::hash<std::string>{}(v.val()) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+            seed ^= std::hash<uint64_t>{}(v.rolling_hash()) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
             return seed;
         }
     };
@@ -125,7 +129,7 @@ namespace strongstore {
 
 // Specialize std::hash for Value class
 namespace std {
-    template <>  // Explicit specialization (only for non-template types)
+    template<>  // Explicit specialization (only for non-template types)
     struct hash<strongstore::Value> {
         size_t operator()(const strongstore::Value &v) const {
             return strongstore::ValueHash{}(v);

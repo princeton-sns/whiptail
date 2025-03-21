@@ -86,7 +86,7 @@ namespace strongstore {
                     ccb(REPLY_OK, majority_values, commit_ts, nonblock_ts);
                 } else if (session.success_count(shard_idx_) == config_.n &&
                            !session.has_quorum(shard_idx_, config_.QuorumSize())) {
-                    Debug("jenndebug [%lu] OOPS no majority, do something wrong for now", session.transaction_id());
+                    Debug("jenndebug [%lu] no majority", session.transaction_id());
                     session.clear_reply_values(shard_idx_);
                     ccb(REPLY_FAIL, {}, commit_ts, nonblock_ts);
                 }

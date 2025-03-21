@@ -73,7 +73,8 @@ namespace strongstore {
         const TransportAddress *addr() const { return addr_; }
 
         std::string toString() const {
-            return "RequestID(client_id=" + std::to_string(client_id_) + ", client_req_id=" + std::to_string(client_req_id_) + ")";
+            return "RequestID(client_id=" + std::to_string(client_id_) + ", client_req_id=" +
+                   std::to_string(client_req_id_) + ")";
         }
 
     private:
@@ -201,8 +202,9 @@ namespace strongstore {
         };
 
         struct CompareRequestIDMessage {
-            bool operator()(const proto::RequestIDMessage& a, const proto::RequestIDMessage& b) const {
-                return a.client_id() == b.client_id() ? a.client_req_id() < b.client_req_id() : a.client_id() < b.client_id();
+            bool operator()(const proto::RequestIDMessage &a, const proto::RequestIDMessage &b) const {
+                return a.client_id() == b.client_id() ? a.client_req_id() < b.client_req_id() : a.client_id() <
+                                                                                                b.client_id();
             }
         };
 
@@ -218,7 +220,7 @@ namespace strongstore {
         void SendRWCommmitCoordinatorReplyOK(uint64_t transaction_id,
                                              const Timestamp &commit_ts,
                                              const Timestamp &nonblock_ts,
-                                             std::unordered_map<std::string, std::string> reads);
+                                             std::unordered_map<std::string, std::pair<std::string, uint64_t> > reads);
 
         void SendRWCommmitCoordinatorReplyFail(const TransportAddress &remote,
                                                uint64_t client_id,

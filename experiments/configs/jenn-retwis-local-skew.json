@@ -73,7 +73,7 @@
   "truetime_error": 10,
   "client_num_keys": 1000000,
   "benchmark_name": "retwis",
-  "bench_mode": "closed",
+  "bench_mode": "open",
   "mpl": 140,
   "client_key_selector": "zipf",
   "client_zipf_coefficient": 0.01,
@@ -83,14 +83,14 @@
   "client_think_time": 0,
   "nb_time_alpha": 1.0,
   "write_ops_txn": 1,
-  "read_ops_txn": 6,
+  "read_ops_txn": 1,
   "mixed_write_ops_txn": 3,
   "mixed_read_ops_txn": 2,
-  "read_percent": 0,
-  "write_percent": 100,
+  "read_percent": 50,
+  "write_percent": 50,
   "mixed_rw_percent": 0,
   "network_latency_window": 5000,
-  "sent_redundancy": 5,
+  "sent_redundancy": 2,
   "server_preload_keys": true,
   "client_abort_backoff": 1,
   "client_retry_aborted": true,
@@ -256,3 +256,4 @@
   "client_cpuprofile": false,
   "server_gc_debug_trace": false
 }
+

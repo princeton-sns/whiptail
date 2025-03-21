@@ -45,7 +45,7 @@ class Transaction {
 
     uint8_t still_pending_ops_;
 
-    std::unordered_map<std::string, std::string> read_results_;
+    std::unordered_map<std::string, std::pair<std::string, uint64_t> > read_results_;
 
    public:
     Transaction();
@@ -71,11 +71,11 @@ class Transaction {
     uint8_t &still_pending_ops() { return still_pending_ops_; }
     uint8_t still_pending_ops() const { return still_pending_ops_; }
 
-    const std::unordered_map<std::string, std::string>& read_results() const {
+    const std::unordered_map<std::string, std::pair<std::string, uint64_t> >& read_results() const {
         return read_results_;
     }
 
-    std::unordered_map<std::string, std::string>& read_results() {
+    std::unordered_map<std::string, std::pair<std::string, uint64_t> >& read_results() {
         return read_results_;
     }
 };
