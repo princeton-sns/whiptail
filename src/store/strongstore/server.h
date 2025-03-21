@@ -203,7 +203,8 @@ namespace strongstore
 
         void SendRWCommmitCoordinatorReplyOK(uint64_t transaction_id,
                                              const Timestamp &commit_ts,
-                                             const Timestamp &nonblock_ts);
+                                             const Timestamp &nonblock_ts,
+                                             std::unordered_map<std::string, std::pair<std::string, uint64_t> > reads);
         void SendRWCommmitCoordinatorReplyFail(const TransportAddress &remote,
                                                uint64_t client_id,
                                                uint64_t client_req_id);

@@ -30,12 +30,15 @@
  *
  **********************************************************************/
 #include "store/strongstore/server.h"
+#include "lib/message.h"
 #include "store/common/frontend/client.h"
 
 #include <algorithm>
 #include <functional>
 #include <memory>
+#include <string>
 #include <unordered_set>
+#include <utility>
 
 namespace strongstore
 {
@@ -567,13 +570,17 @@ namespace strongstore
 
         const Transaction transaction{msg.transaction()};
         const Timestamp nonblock_ts{msg.nonblock_timestamp()};
-
+        
         Debug("[%lu] Coordinator for transaction", transaction_id);
 
         const TrueTimeInterval now = tt_.Now();
         const Timestamp start_ts{now.latest(), client_id};
         TransactionState s = transactions_.StartCoordinatorPrepare(transaction_id, start_ts, shard_idx_,
                                                                    participants, transaction, nonblock_ts);
+
+        for(auto &key : transaction.getPendingReadSet()){
+            transactions_.StartGet(transaction_id, remote, key, false);
+        }
 
         if (s == PREPARING)
         {
@@ -740,7 +747,8 @@ namespace strongstore
 
     void Server::SendRWCommmitCoordinatorReplyOK(uint64_t transaction_id,
                                                  const Timestamp &commit_ts,
-                                                 const Timestamp &nonblock_ts)
+                                                 const Timestamp &nonblock_ts,
+                                                 std::unordered_map<std::string, std::pair<std::string, uint64_t> > reads)
     {
         auto search = pending_rw_commit_c_replies_.find(transaction_id);
         if (search == pending_rw_commit_c_replies_.end())
@@ -761,6 +769,19 @@ namespace strongstore
         commit_ts.serialize(rw_commit_c_reply_.mutable_commit_timestamp());
         nonblock_ts.serialize(rw_commit_c_reply_.mutable_nonblock_timestamp());
 
+
+        for (const auto &kv: reads) {
+            const std::string &k = kv.first;
+            const std::string &value = kv.second.first;
+            
+            proto::ReadReply *rreply = rw_commit_c_reply_.add_values();
+            rreply->set_transaction_id(transaction_id);
+            commit_ts.serialize(rreply->mutable_timestamp());
+            rreply->set_key(k);
+            rreply->set_val(value);
+           
+//            Debug("jenndebug [%lu] rreply %s, %s",transaction_id,  rreply->key().c_str(), rreply->val().c_str());
+        }
         transport_->SendMessage(this, *remote, rw_commit_c_reply_);
 
         delete remote;
@@ -1545,6 +1566,15 @@ namespace strongstore
             store_.put(write.first, write.second, {commit_ts, transaction_id});
         }
 
+        for (auto &read: transaction.getPendingReadSet()){
+            std::pair<TimestampID, std::string> value;
+
+            Assert(store_.get(read, value));
+            transactions_.read_results(transaction_id)[read] = std::pair<std::string, uint64_t>(std::string(value.second), value.first.timestamp.getTimestamp());     
+        }
+
+        auto result = transactions_.read_results(transaction_id);
+
         if (transaction.getWriteSet().size() > 0)
         {
             min_prepare_timestamp_ = std::max(min_prepare_timestamp_, commit_ts);
@@ -1553,8 +1583,10 @@ namespace strongstore
         LockReleaseResult rr = locks_.ReleaseLocks(transaction_id, transaction);
         TransactionFinishResult fr = transactions_.Commit(transaction_id);
 
+        Debug("HAN FINISH COMMIT %lu", transaction_id); 
+
         // Reply to client
-        SendRWCommmitCoordinatorReplyOK(transaction_id, commit_ts, nonblock_ts);
+        SendRWCommmitCoordinatorReplyOK(transaction_id, commit_ts, nonblock_ts, result);
 
         // Reply to participants
         SendPrepareOKRepliesOK(transaction_id, commit_ts);

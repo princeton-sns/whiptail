@@ -6,8 +6,3 @@ add_library(StoreStrong ${SourceFiles} ${PROTO_SRCS} ${PROTO_HDRS})
 
 target_include_directories(StoreStrong PUBLIC ${CMAKE_SOURCE_DIR} ${CMAKE_BINARY_DIR})
 target_link_libraries(StoreStrong ReplicationVR rss Common StoreCommon StoreCommonFrontend)
-
-
-add_executable(SimpleTest simple_test.cc)
-target_include_directories(SimpleTest PUBLIC ${CMAKE_SOURCE_DIR} ${CMAKE_BINARY_DIR})
-target_link_libraries(SimpleTest StoreStrong Common)

@@ -34,6 +34,8 @@ class Transaction {
     // many times this key has been read
     std::unordered_map<std::string, Timestamp> readSet;
     // record the timestamp read by the transaction
+    std::set<std::string> pendingReadSet;
+
     std::unordered_map<std::string, Timestamp> versionedReadSet;
 
     // map between key and value(s)
@@ -41,6 +43,9 @@ class Transaction {
 
     // Start time (used for deadlock prevention)
     Timestamp start_time_;
+    uint8_t still_pending_ops_;
+
+    std::unordered_map<std::string, std::pair<std::string, uint64_t> > read_results_;
 
    public:
     Transaction();
@@ -50,6 +55,8 @@ class Transaction {
     const Timestamp &start_time() const;
     const std::unordered_map<std::string, Timestamp> &getReadSet() const;
     const std::unordered_map<std::string, Timestamp> &getVersionedReadSet() const;
+    const std::set<std::string>& getPendingReadSet() const;
+    std::set<std::string>& getPendingReadSet();
     const std::unordered_map<std::string, std::string> &getWriteSet() const;
     std::unordered_map<std::string, std::string> &getWriteSet();
     void serialize(TransactionMessage *msg) const;
@@ -57,9 +64,20 @@ class Transaction {
     void addReadSet(const std::string &key, const Timestamp &readTime);
     void addVersionedReadSet(const std::string &key, const Timestamp &readTime);
     void addWriteSet(const std::string &key, const std::string &value);
+
+    void addPendingReadSet(const std::string& key);
     void set_start_time(const Timestamp &ts);
 
     void add_read_write_sets(const Transaction &other);
+    uint8_t &still_pending_ops() { return still_pending_ops_; }
+    uint8_t still_pending_ops() const { return still_pending_ops_; }
+    const std::unordered_map<std::string, std::pair<std::string, uint64_t> >& read_results() const {
+        return read_results_;
+    }
+
+    std::unordered_map<std::string, std::pair<std::string, uint64_t> >& read_results() {
+        return read_results_;
+    }
 };
 
 #endif /* _TRANSACTION_H_ */

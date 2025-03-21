@@ -210,7 +210,8 @@ namespace strongstore
         void Get(uint64_t transaction_id, const std::string &key,
                  get_callback gcb, get_timeout_callback gtcb,
                  uint32_t timeout, bool for_update);
-
+        void GetBuffered(uint64_t transaction_id, const std::string &key,
+                    get_callback gc, get_timeout_callback gtcb, uint32_t timeout);
         void HandleGetReply(const proto::GetReply &reply);
         void HandleRWCommitCoordinatorReply(const proto::RWCommitCoordinatorReply &reply);
         void HandleRWCommitParticipantReply(const proto::RWCommitParticipantReply &reply);

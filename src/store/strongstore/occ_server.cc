@@ -565,7 +565,8 @@
  
      void OCCServer::SendRWCommmitCoordinatorReplyOK(uint64_t transaction_id,
                                                   const Timestamp &commit_ts,
-                                                  const Timestamp &nonblock_ts)
+                                                  const Timestamp &nonblock_ts,
+                                                  std::unordered_map<std::string, std::pair<std::string, uint64_t> > reads)
      {
          auto search = pending_rw_commit_c_replies_.find(transaction_id);
          if (search == pending_rw_commit_c_replies_.end())
@@ -1337,7 +1338,7 @@
          TransactionFinishResult fr = transactions_.Commit(transaction_id);
  
          // Reply to client
-         SendRWCommmitCoordinatorReplyOK(transaction_id, commit_ts, nonblock_ts);
+         SendRWCommmitCoordinatorReplyOK(transaction_id, commit_ts, nonblock_ts, transactions_.read_results(transaction_id));
  
          // Reply to participants
          SendPrepareOKRepliesOK(transaction_id, commit_ts);

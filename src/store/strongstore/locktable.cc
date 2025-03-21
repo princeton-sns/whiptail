@@ -97,6 +97,22 @@ namespace strongstore
         int ret = REPLY_OK;
 
         // get read locks
+        for (auto &key : transaction.getPendingReadSet())
+        {
+            int status = locks_.LockForRead(key, transaction_id, start_ts,
+                                            r.wound_rws);
+            Debug("[%lu] LockForRead returned status %d", transaction_id, status);
+            if (ret == REPLY_OK && status == REPLY_WAIT)
+            {
+                ret = REPLY_WAIT;
+            }
+            else if (status == REPLY_FAIL)
+            {
+                ret = REPLY_FAIL;
+            }
+        }
+
+        // get read locks
         for (auto &read : transaction.getReadSet())
         {
             int status = locks_.LockForRead(read.first, transaction_id, start_ts,

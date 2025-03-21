@@ -169,6 +169,19 @@ namespace strongstore
         Get(transaction_id, key, gcb, gtcb, timeout, false);
     }
 
+    void ShardClient::GetBuffered(uint64_t transaction_id, const std::string &key,
+        get_callback gc, get_timeout_callback gtcb, uint32_t timeout) {
+Debug("[shard %i] GET_BUFFERED [%s]", shard_idx_, key.c_str());
+
+auto search = transactions_.find(transaction_id);
+ASSERT(search != transactions_.end());
+
+auto &t = search->second;
+t.addPendingReadSet(key);
+
+gc(REPLY_OK, key, "", Timestamp());
+}
+
     void ShardClient::GetForUpdate(uint64_t transaction_id, const std::string &key,
                                    get_callback gcb, get_timeout_callback gtcb,
                                    uint32_t timeout)
@@ -416,9 +429,15 @@ namespace strongstore
         transactions_.erase(transaction_id);
         read_sets_.erase(transaction_id);
 
+
+        std::vector<Value> values;
+        for (const auto &v: reply.values()){
+            values.push_back(Value(v));
+        }
+
         Debug("[shard %i] COMMIT timestamp %lu.%lu", shard_idx_,
               reply.commit_timestamp().timestamp(), reply.commit_timestamp().id());
-        ccb(reply.status(), Timestamp(reply.commit_timestamp()), Timestamp(reply.nonblock_timestamp()));
+        ccb(reply.status(),Timestamp(reply.commit_timestamp()), Timestamp(reply.nonblock_timestamp()));
     }
 
     void ShardClient::RWCommitParticipant(uint64_t transaction_id,
