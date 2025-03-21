@@ -44,11 +44,9 @@
 #include "store/strongstore/common.h"
 #include "store/strongstore/preparedtransaction.h"
 
-namespace strongstore
-{
+namespace strongstore {
 
-    enum TransactionState
-    {
+    enum TransactionState {
         NOT_FOUND,
         READING,
         READ_WAIT,
@@ -62,64 +60,86 @@ namespace strongstore
         SLOW_PATH
     };
 
-    struct TransactionFinishResult
-    {
+    struct TransactionFinishResult {
         std::unordered_set<uint64_t> notify_ros;
         std::unordered_set<uint64_t> notify_slow_path_ros;
     };
 
-    class TransactionStore
-    {
+    class TransactionStore {
     public:
         TransactionStore(int this_shard, Consistency consistency, const TrueTime &tt);
+
         ~TransactionStore();
 
         TransactionState GetRWTransactionState(uint64_t transaction_id);
+
         TransactionState GetROTransactionState(uint64_t transaction_id);
 
         const Transaction &GetTransaction(uint64_t transaction_id);
+
         const Timestamp &GetPrepareTimestamp(uint64_t transaction_id);
+
         const Timestamp &GetRWCommitTimestamp(uint64_t transaction_id);
+
         const Timestamp &GetStartTimestamp(uint64_t transaction_id);
+
         const std::unordered_set<int> &GetParticipants(uint64_t transaction_id);
+
         const Timestamp &GetNonBlockTimestamp(uint64_t transaction_id);
+
         int GetCoordinator(uint64_t transaction_id);
+
         std::shared_ptr<TransportAddress> GetClientAddr(uint64_t transaction_id);
 
         const Timestamp &GetROCommitTimestamp(uint64_t transaction_id);
+
         const std::unordered_set<std::string> &GetROKeys(uint64_t transaction_id);
 
         TransactionState StartRO(uint64_t transaction_id,
                                  const std::unordered_set<std::string> &keys,
                                  const Timestamp &min_ts,
                                  const Timestamp &commit_ts);
+
         void ContinueRO(uint64_t transaction_id);
+
         void CommitRO(uint64_t transaction_id);
 
         void StartROSlowPath(uint64_t transaction_id);
+
         void FinishROSlowPath(uint64_t transaction_id);
+
         std::vector<PreparedTransaction> GetROSkippedRWTransactions(uint64_t transaction_id);
+
         uint64_t GetRONumberSkipped(uint64_t transaction_id);
 
         void StartGet(uint64_t transaction_id, const TransportAddress &remote, const std::string &key, bool for_update);
+
         void FinishGet(uint64_t transaction_id, const std::string &key);
+
         void AbortGet(uint64_t transaction_id, const std::string &key);
+
         void PauseGet(uint64_t transaction_id, const std::string &key);
+
         TransactionState ContinueGet(uint64_t transaction_id, const std::string &key);
 
         TransactionState StartCoordinatorPrepare(uint64_t transaction_id, const Timestamp &start_ts,
                                                  int coordinator, const std::unordered_set<int> participants,
                                                  const Transaction &transaction,
                                                  const Timestamp &nonblock_ts);
+
         void FinishCoordinatorPrepare(uint64_t transaction_id, const Timestamp &prepare_ts);
 
         TransactionState StartParticipantPrepare(uint64_t transaction_id, int coordinator,
                                                  const Transaction &transaction, const Timestamp &nonblock_ts);
+
         void SetParticipantPrepareTimestamp(uint64_t transaction_id, const Timestamp &prepare_ts);
+
         TransactionState FinishParticipantPrepare(uint64_t transaction_id);
 
         void AbortPrepare(uint64_t transaction_id);
+
         void PausePrepare(uint64_t transaction_id);
+
         TransactionState ContinuePrepare(uint64_t transaction_id);
 
         TransactionState CoordinatorReceivePrepareOK(uint64_t transaction_id, int participant_shard,
@@ -129,6 +149,7 @@ namespace strongstore
         TransactionState ParticipantReceivePrepareOK(uint64_t transaction_id);
 
         TransactionFinishResult Commit(uint64_t transaction_id);
+
         TransactionFinishResult Abort(uint64_t transaction_id);
 
         Stats &GetStats() { return stats_; };
@@ -139,60 +160,70 @@ namespace strongstore
             return search->second.transaction().still_pending_ops();
         }
 
-        uint8_t& still_pending_ops(uint64_t transaction_id) {
+        uint8_t &still_pending_ops(uint64_t transaction_id) {
             auto search = pending_rw_.find(transaction_id);
             ASSERT(search != pending_rw_.end());
             return search->second.mutable_transaction().still_pending_ops();
         }
 
-        const std::unordered_map<std::string, std::string>& read_results(uint64_t transaction_id) const {
+        const std::unordered_map<std::string, std::pair<std::string, uint64_t> > &
+        read_results(uint64_t transaction_id) const {
             auto search = pending_rw_.find(transaction_id);
             ASSERT(search != pending_rw_.end());
             return search->second.transaction().read_results();
         }
 
-        std::unordered_map<std::string, std::string>& read_results(uint64_t transaction_id) {
+        std::unordered_map<std::string, std::pair<std::string, uint64_t> > &read_results(uint64_t transaction_id) {
             auto search = pending_rw_.find(transaction_id);
             ASSERT(search != pending_rw_.end());
             return search->second.mutable_transaction().read_results();
         }
 
     private:
-        class PendingRWTransaction
-        {
+        class PendingRWTransaction {
         public:
             PendingRWTransaction() : client_addr_{nullptr}, coordinator_{-1}, state_{READING}, wait_start_{0} {}
+
             ~PendingRWTransaction() {}
 
             TransactionState state() const { return state_; }
+
             void set_state(TransactionState s) { state_ = s; }
 
             const Timestamp &nonblock_ts() const { return nonblock_ts_; }
+
             void advance_nonblock_ts(uint64_t d) { nonblock_ts_.setTimestamp(nonblock_ts_.getTimestamp() + d); }
 
             const Timestamp &start_ts() const { return start_ts_; }
+
             const Timestamp &prepare_ts() const { return prepare_ts_; }
+
             const Timestamp &commit_ts() const { return commit_ts_; }
+
             const Transaction &transaction() const { return transaction_; }
-            Transaction& mutable_transaction() { return transaction_; }
+
+            Transaction &mutable_transaction() { return transaction_; }
+
             int coordinator() const { return coordinator_; }
+
             std::shared_ptr<TransportAddress> client_addr() const { return client_addr_; }
 
             const std::unordered_set<int> &participants() const { return participants_; }
 
             const std::unordered_set<uint64_t> &waiting_ros() const { return waiting_ros_; }
-            void add_waiting_ro(uint64_t transaction_id)
-            {
+
+            void add_waiting_ro(uint64_t transaction_id) {
                 waiting_ros_.insert(transaction_id);
             }
 
             const std::unordered_set<uint64_t> &slow_path_ros() const { return slow_path_ros_; }
-            void add_slow_path_ro(uint64_t transaction_id)
-            {
+
+            void add_slow_path_ro(uint64_t transaction_id) {
                 slow_path_ros_.insert(transaction_id);
             }
 
             const uint64_t wait_start() const { return wait_start_; }
+
             void set_wait_start(uint64_t w) { wait_start_ = w; }
 
             void StartGet(const TransportAddress &remote, const std::string &key, bool for_update);
@@ -211,7 +242,9 @@ namespace strongstore
             void StartParticipantPrepare(int coordinator,
                                          const Transaction &transaction,
                                          const Timestamp &nonblock_ts);
+
             void SetParticipantPrepareTimestamp(const Timestamp &prepare_ts);
+
             void FinishParticipantPrepare();
 
         private:
@@ -230,23 +263,28 @@ namespace strongstore
             uint64_t wait_start_;
         };
 
-        class PendingROTransaction
-        {
+        class PendingROTransaction {
         public:
             PendingROTransaction() : state_{PREPARING} {}
+
             ~PendingROTransaction() {}
 
             TransactionState state() const { return state_; }
+
             void set_state(TransactionState s) { state_ = s; }
 
             uint64_t n_conflicts() const { return n_conflicts_; }
+
             void decr_conflicts() { n_conflicts_ -= 1; }
 
             const std::unordered_set<uint64_t> &skipped_rws() const { return skipped_rws_; }
+
             void add_skipped_rw(uint64_t transaction_id) { skipped_rws_.insert(transaction_id); }
 
             const Timestamp &min_ts() const { return min_ts_; }
+
             const Timestamp &commit_ts() const { return commit_ts_; }
+
             const std::unordered_set<std::string> &keys() const { return keys_; }
 
             void StartRO(const std::unordered_set<std::string> &keys,

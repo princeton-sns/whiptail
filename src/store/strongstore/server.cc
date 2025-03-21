@@ -30,7 +30,7 @@ namespace strongstore {
               replica_idx_{replica_idx},
               consistency_{consistency},
               debug_stats_{debug_stats},
-              sent_redundancy_ {sent_redundancy} {
+              sent_redundancy_{sent_redundancy} {
 
         transport_->Register(this, shard_config_, shard_idx_, replica_idx_);
 
@@ -494,9 +494,10 @@ namespace strongstore {
                 store_.put(key, val, {commit_ts, transaction_id});
             } else if (pendingOpType == GET) {
 
-                std::pair<TimestampID, std::string> value;
-                ASSERT(store_.get(key, {commit_ts, transaction_id}, value));
-                transactions_.read_results(transaction_id)[key] = value.second;
+                std::tuple<TimestampID, std::string, uint64_t> value;
+                ASSERT(store_.getWithHash(key, {commit_ts, transaction_id}, value));
+                transactions_.read_results(transaction_id)[key] = std::pair<std::string, uint64_t>(std::get<1>(value),
+                                                                                                   std::get<2>(value));
 
 //                Debug("jenndebug [%lu] executing GET %s, %s, %s", transaction_id, key.c_str(), value.second.c_str(),
 //                      commit_ts.to_string().c_str());
@@ -528,7 +529,6 @@ namespace strongstore {
     }
 
     void Server::EnqueueOps(const TransportAddress &remote, proto::RWCommitCoordinator &msg) {
-
 
         uint64_t client_id = msg.rid().client_id();
         uint64_t client_req_id = msg.rid().client_req_id();
@@ -598,7 +598,8 @@ namespace strongstore {
                         stats_.Increment("read_missed_latency_window");
                     }
 
-                    stats_.Add("missed_by_" + std::to_string(client_id) + "_us", now_tt.mid()-pendingOp.execute_time());
+                    stats_.Add("missed_by_" + std::to_string(client_id) + "_us",
+                               now_tt.mid() - pendingOp.execute_time());
                     SendRWCommmitCoordinatorReplyFail(remote, client_id, client_req_id);
                     return;
                 }
@@ -771,7 +772,7 @@ namespace strongstore {
     void Server::SendRWCommmitCoordinatorReplyOK(uint64_t transaction_id,
                                                  const Timestamp &commit_ts,
                                                  const Timestamp &nonblock_ts,
-                                                 std::unordered_map<std::string, std::string> reads) {
+                                                 std::unordered_map<std::string, std::pair<std::string, uint64_t> > reads) {
         Debug("[%lu] Sending RW Commit Coordinator reply", transaction_id);
         auto search = pending_rw_commit_c_replies_.find(transaction_id);
         if (search == pending_rw_commit_c_replies_.end()) {
@@ -793,12 +794,14 @@ namespace strongstore {
 
         for (const auto &kv: reads) {
             const std::string &k = kv.first;
-            const std::string &value = kv.second;
+            const std::string &value = kv.second.first;
+            uint64_t rolling_hash = kv.second.second;
             proto::ReadReply *rreply = rw_commit_c_reply_.add_values();
             rreply->set_transaction_id(transaction_id);
             commit_ts.serialize(rreply->mutable_timestamp());
             rreply->set_key(k);
             rreply->set_val(value);
+            rreply->set_rolling_hash(rolling_hash);
 //            Debug("jenndebug [%lu] rreply %s, %s",transaction_id,  rreply->key().c_str(), rreply->val().c_str());
         }
 

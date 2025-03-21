@@ -108,6 +108,7 @@ message ReadReply {
     required TimestampMessage timestamp = 2;
     required string key = 3;
     required string val = 4;
+    optional uint64 rolling_hash = 5;
 }
 
 message PreparedTransactionMessage {
