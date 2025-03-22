@@ -53,8 +53,9 @@ namespace strongstore {
 
         std::cerr << "jenndebug shardClient config " << config_.to_string() << " config_.n " << config_.n << std::endl;
 
-        for (int i = 0; i < sent_redundancy; i++) {
+        for (int i = sent_redundancy_-1; i >= 0; i--) {
             transports_[i]->Register(this, configs_[i], -1, -1);
+//            transport_->Register(this, configs_[i], -1, -1);
         }
         // transport_->Register(this, config_, -1, -1);
 

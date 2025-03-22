@@ -32,6 +32,8 @@
 
 #include <csignal>
 
+    #include <thread>
+
 #include "lib/io_utils.h"
 #include "lib/tcptransport.h"
 #include "lib/transport.h"
@@ -494,11 +496,32 @@ int main(int argc, char **argv) {
     std::signal(SIGINT, Cleanup);
 
     CALLGRIND_START_INSTRUMENTATION;
-    tport->Run();
-    tport1->Run();
-    tport2->Run();
-    tport3->Run();
-    tport4->Run();
+    std::thread thread1([&]() {
+        tport->Run();
+    });
+
+    std::thread thread2([&]() {
+        tport1->Run();
+    });
+
+    std::thread thread3([&]() {
+        tport2->Run();
+    });
+
+    std::thread thread4([&]() {
+        tport3->Run();
+    });
+
+    std::thread thread5([&]() {
+        tport4->Run();
+    });
+
+    // Wait for all threads to finish
+    thread1.join();
+    thread2.join();
+    thread3.join();
+    thread4.join();
+    thread5.join();
     CALLGRIND_STOP_INSTRUMENTATION;
     CALLGRIND_DUMP_STATS;
 
@@ -513,10 +536,10 @@ int main(int argc, char **argv) {
 void Cleanup(int signal) {
     Notice("Gracefully exiting after signal %d.", signal);
     tport->Stop();
-    tport1->Stop();
-    tport2->Stop();
-    tport3->Stop();
-    tport4->Stop();
+   tport1->Stop();
+   tport2->Stop();
+   tport3->Stop();
+   tport4->Stop();
     if (FLAGS_stats_file.size() > 0) {
         Notice("Exporting stats to %s.", FLAGS_stats_file.c_str());
         server->GetStats().ExportJSON(FLAGS_stats_file);
