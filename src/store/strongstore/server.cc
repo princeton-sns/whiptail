@@ -512,6 +512,7 @@ namespace strongstore {
             // Reply to client
 //            if (this->transaction_still_pending_ops_[transaction_id] == 0) {
             if (0 == transactions_.still_pending_ops(transaction_id)) {
+                Debug("jenndebug sent");
                 SendRWCommmitCoordinatorReplyOK(transaction_id, commit_ts, nonblock_ts,
                                                 transactions_.read_results(transaction_id));
             }
@@ -539,23 +540,25 @@ namespace strongstore {
 
         uint64_t transaction_id = msg.transaction_id();
 
-        Debug("jenndebug [%lu] arrived", transaction_id);
+//        Debug("jenndebug [%lu] arrived", transaction_id);
 
         const RequestID requestId(client_id, client_req_id, &remote);
-        if (multi_sent_reqs_recvd_yet_.find(requestId) != multi_sent_reqs_recvd_yet_.end()) {
+        {
+            std::lock_guard<std::mutex> lock(multi_sent_reqs_recvd_yet_mutex_);
+            if (multi_sent_reqs_recvd_yet_.find(requestId) != multi_sent_reqs_recvd_yet_.end()) {
 
-            // already seen this request, don't need to process it again
-            multi_sent_reqs_recvd_yet_[requestId]++;
-            Debug("jenndebug [%lu] redundancy %d", transaction_id, multi_sent_reqs_recvd_yet_[requestId]);
+                // already seen this request, don't need to process it again
+                multi_sent_reqs_recvd_yet_[requestId]++;
+//            Debug("jenndebug [%lu] redundancy %d", transaction_id, multi_sent_reqs_recvd_yet_[requestId]);
 
-            if (sent_redundancy_ <= multi_sent_reqs_recvd_yet_[requestId]) {
-                multi_sent_reqs_recvd_yet_.erase(requestId);
+                if (sent_redundancy_ <= multi_sent_reqs_recvd_yet_[requestId]) {
+                    multi_sent_reqs_recvd_yet_.erase(requestId);
+                }
+
+                return;
             }
-
-            return;
+            multi_sent_reqs_recvd_yet_[requestId] = 1;
         }
-
-        multi_sent_reqs_recvd_yet_[requestId] = 1;
 
         std::unordered_set<int> participants{msg.participants().begin(),
                                              msg.participants().end()};
@@ -563,7 +566,7 @@ namespace strongstore {
         const Transaction transaction{msg.transaction()};
         const Timestamp nonblock_ts{msg.nonblock_timestamp()};
 
-        Debug("jenndebug [%lu] Coordinator for transaction", transaction_id);
+//        Debug("jenndebug [%lu] Coordinator for transaction", transaction_id);
 
         const TrueTimeInterval now = tt_.Now();
         const Timestamp start_ts{now.mid(), client_id};
@@ -571,7 +574,7 @@ namespace strongstore {
                                                                    participants, transaction, nonblock_ts);
 
         if (s == PREPARING) {
-            Debug("jenndebug [%lu] Coordinator preparing", transaction_id);
+//            Debug("jenndebug [%lu] Coordinator preparing", transaction_id);
 
             // for (LockAcquireResult ar = locks_.AcquireLocks(transaction_id, transaction);
             // ar.status != LockStatus::ACQUIRED; ar = locks_.AcquireLocks(transaction_id, transaction)) {}
@@ -593,7 +596,7 @@ namespace strongstore {
             // const Transaction &transaction = transactions_.GetTransaction(transaction_id);
 
             uint64_t latest_execution_time = 0;
-            Debug("jenndebug [%lu] write_set size %lu", transaction_id, transaction.getWriteSet().size());
+//            Debug("jenndebug [%lu] write_set size %lu", transaction_id, transaction.getWriteSet().size());
             for (auto &write: transaction.getWriteSet()) {
                 const std::chrono::microseconds network_latency_window = store_.get_network_latency_window(write.first);
 
@@ -610,13 +613,13 @@ namespace strongstore {
 
                     stats_.Add("missed_by_" + std::to_string(client_id) + "_us",
                                now_tt.mid() - pendingOp.execute_time());
-                    Debug("jennbdebug [%lu] missed latency_window by a bit", transaction_id);
+//                    Debug("jennbdebug [%lu] missed latency_window by a bit", transaction_id);
                     SendRWCommmitCoordinatorReplyFail(remote, client_id, client_req_id);
                     return;
                 }
 
                 stats_.Increment("on_time");
-                Debug("jenndebug [%lu] on time", transaction_id);
+//                Debug("jenndebug [%lu] on time", transaction_id);
 
                 this->queue_.push(pendingOp);
 
@@ -627,7 +630,7 @@ namespace strongstore {
                     latest_execution_time = pendingOp.execute_time();
                 }
             }
-            Debug("jenndebug [%lu] ooo...k?", transaction_id);
+//            Debug("jenndebug [%lu] ooo...k?", transaction_id);
             //
             if (!transaction.getWriteSet().empty()) {
                 min_prepare_timestamp_ = std::max(min_prepare_timestamp_, commit_ts);
@@ -641,7 +644,7 @@ namespace strongstore {
 
                 this->queue_.push(pendingOp);
 
-                Debug("jenndebug [%lu] enqueued GET %s", transaction_id, key.c_str());
+//                Debug("jenndebug [%lu] enqueued GET %s", transaction_id, key.c_str());
 
                 if (pendingOp.execute_time() > latest_execution_time) {
                     latest_execution_time = pendingOp.execute_time();
@@ -656,7 +659,7 @@ namespace strongstore {
 //        Debug("jenndebug latest_execution_time [%lu], tt_.Now().mid() [%lu]", latest_execution_time, tt_.Now().mid());
 
             transport_->TimerMicro(wait_until_us, std::bind(&Server::HandleRWCommitCoordinator, this));
-            Debug("[%lu] Coordinator for wait_until_us %lu", transaction_id, wait_until_us);
+//            Debug("[%lu] Coordinator for wait_until_us %lu", transaction_id, wait_until_us);
             //
             // LockReleaseResult rr = locks_.ReleaseLocks(transaction_id, transaction);
 

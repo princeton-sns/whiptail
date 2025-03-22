@@ -351,6 +351,7 @@ namespace strongstore {
         bool debug_stats_;
 
         std::unordered_map<RequestID, uint8_t> multi_sent_reqs_recvd_yet_;
+        std::mutex multi_sent_reqs_recvd_yet_mutex_;
         uint8_t sent_redundancy_;
 
     };

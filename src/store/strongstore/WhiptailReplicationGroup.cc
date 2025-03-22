@@ -14,7 +14,7 @@ namespace strongstore {
                                                        uint8_t sent_redundancy)
             : shard_idx_(shard_idx), configs_(configs), config_(configs[0]), transports_(std::move(transports)), stats_(stats) {
 
-        Debug("jenndebug WRG config_.n %d", config_.n);
+//        Debug("jenndebug WRG config_.n %d", config_.n);
         for (int repl_idx = 0; repl_idx < config_.n; repl_idx++) {
             shard_clients_.push_back(new ShardClient(configs_, transports_, client_id, shard_idx_,
                                                      [](uint64_t transaction_id) {}, repl_idx, sent_redundancy));
@@ -28,8 +28,8 @@ namespace strongstore {
 
         session.mark_success_or_fail_reply(shard_idx_, status);
 
-        Debug("jenndebug [%lu] config_.n %d", session.transaction_id(), config_.n);
-        std::cerr << "jenndebug WRG PutCallback config " << config_.to_string() << std::endl;
+//        Debug("jenndebug [%lu] config_.n %d", session.transaction_id(), config_.n);
+//        std::cerr << "jenndebug WRG PutCallback config " << config_.to_string() << std::endl;
         if (session.success_count(shard_idx_) >= config_.n) {
             session.mark_successfully_replicated(shard_idx_);
 //            Debug("[%lu] replication count %d", session.transaction_id(), session.success_count(shard_idx_));
@@ -51,7 +51,7 @@ namespace strongstore {
 
         session.clear_success_count(shard_idx_);
         for (ShardClient *shard_client: shard_clients_) {
-            Debug("jenndebug [%lu] put from wrg", tid);
+//            Debug("jenndebug [%lu] put from wrg", tid);
             shard_client->Put(tid, key, value, pcbw, putTimeoutCallback, timeout);
         }
     }
