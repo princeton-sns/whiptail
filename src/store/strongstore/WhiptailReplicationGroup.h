@@ -14,7 +14,7 @@ namespace strongstore {
     class WhiptailReplicationGroup {
 
     public:
-        WhiptailReplicationGroup(transport::Configuration &config, Transport *transport, int shard_idx,
+        WhiptailReplicationGroup(std::vector<transport::Configuration> &config, std::vector<Transport *>transport, int shard_idx,
                                  uint64_t client_id, Stats& stats, uint8_t sent_redundancy);
 
         void PutCallbackWhiptail(StrongSession &session, const put_callback &pcb, int status, const std::string &key,
@@ -62,8 +62,9 @@ namespace strongstore {
     private:
 
         int shard_idx_;
-        transport::Configuration &config_;
-        Transport *transport_;
+        std::vector<transport::Configuration> &configs_;
+        transport::Configuration& config_;
+        std::vector<Transport *> transports_;
 
         std::vector<ShardClient *> shard_clients_;
 

@@ -43,8 +43,8 @@ namespace strongstore {
 
     Client::Client(Consistency consistency, const NetworkConfiguration &net_config,
                    const std::string &client_region,
-                   transport::Configuration &config, uint64_t client_id,
-                   int nShards, int closestReplica, Transport *transport,
+                   std::vector<transport::Configuration> &configs, uint64_t client_id,
+                   int nShards, int closestReplica, std::vector<Transport *> transports,
                    Partitioner *part, TrueTime &tt, bool debug_stats,
                    double nb_time_alpha, uint8_t sent_redundancy)
             : coord_choices_{},
@@ -54,10 +54,12 @@ namespace strongstore {
               net_config_{net_config},
               client_region_{client_region},
               service_name_{"spanner-" + std::to_string(client_id) + "-" + std::to_string(std::rand())},
-              config_{config},
+              configs_{configs},
+              config_{configs[0]},
               client_id_{client_id},
               nshards_(nShards),
-              transport_{transport},
+              transports_{transports},
+              transport_{transports[0]},
               part_(part),
               tt_{tt},
               next_transaction_id_{client_id_ << 26},
@@ -67,10 +69,11 @@ namespace strongstore {
         Debug("Initializing StrongStore client with id [%lu]", client_id_);
 
 //        auto wcb = std::bind(&Client::HandleWound, this, std::placeholders::_1);
+        std::cerr << "jenndebug " << config_.to_string() << " config_.n " << config_.n << std::endl;
 
         /* Start a client for each shard. */
         for (uint64_t i = 0; i < nshards_; i++) {
-            auto *wrg = new WhiptailReplicationGroup(config_, transport_, i, client_id_, stats, sent_redundancy);
+            auto *wrg = new WhiptailReplicationGroup(configs_, transports_, i, client_id_, stats, sent_redundancy);
             sclients_.push_back(wrg);
         }
 
@@ -80,9 +83,6 @@ namespace strongstore {
             _Latency_Init(&op_lat_, "op_lat");
             _Latency_Init(&commit_lat_, "commit_lat");
         }
-
-        std::cerr << "jenndebug " << config_.to_string() << std::endl;
-
         // CalculateCoordinatorChoices();
 
         rss::RegisterRSSService(service_name_, std::bind(&Client::RealTimeBarrier, this, std::placeholders::_1,
