@@ -109,9 +109,9 @@ namespace strongstore {
                    public PingServer {
     public:
         Server(Consistency consistency,
-               const transport::Configuration &shard_config,
+               const std::vector<transport::Configuration> &shard_configs,
                const transport::Configuration &replica_config, uint64_t server_id,
-               int groupIdx, int idx, Transport *transport, const TrueTime &tt,
+               int groupIdx, int idx, std::vector<Transport*> transports, const TrueTime &tt,
                bool debug_stats, uint64_t network_latency_window, uint8_t sent_redundancy = 1);
 
         ~Server();
@@ -299,13 +299,15 @@ namespace strongstore {
         LockTable locks_;
         VersionedKVStore<TimestampID, std::string> store_;
 
-        const transport::Configuration &shard_config_;
+        const std::vector<transport::Configuration> &shard_configs_;
+        const transport::Configuration& shard_config_;
         const transport::Configuration &replica_config_;
 
         std::vector<ShardClient *> shard_clients_;
         ReplicaClient *replica_client_;
 
-        Transport *transport_;
+        std::vector<Transport *> transports_;
+        Transport* transport_;
 
         uint64_t server_id_;
 

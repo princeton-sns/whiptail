@@ -76,10 +76,10 @@ namespace strongstore {
     class Client : public ::Client {
     public:
         Client(Consistency consistency, const NetworkConfiguration &net_config,
-               const std::string &client_region, transport::Configuration &config,
-               uint64_t id, int nshards, int closestReplic, Transport *transport,
+               const std::string &client_region, std::vector<transport::Configuration> &configs,
+               uint64_t id, int nShards, int closestReplica, std::vector<Transport *> transports,
                Partitioner *part, TrueTime &tt, bool debug_stats,
-               double nb_time_alpha, uint8_t sent_redundancy);
+               double nb_time_alpha, uint8_t);
 
         virtual ~Client();
 
@@ -205,7 +205,8 @@ namespace strongstore {
 
         const std::string service_name_;
 
-        transport::Configuration &config_;
+        std::vector<transport::Configuration> &configs_;
+        transport::Configuration& config_;
 
         // Unique ID for this client.
         uint64_t client_id_;
@@ -214,6 +215,7 @@ namespace strongstore {
         uint64_t nshards_;
 
         // Transport used by paxos client proxies.
+        std::vector<Transport *> transports_;
         Transport *transport_;
 
         // Client for each shard.
