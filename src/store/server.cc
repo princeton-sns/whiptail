@@ -32,6 +32,8 @@
 
 #include <csignal>
 
+    #include <thread>
+
 #include "lib/io_utils.h"
 #include "lib/tcptransport.h"
 #include "lib/transport.h"
@@ -39,14 +41,12 @@
 #include "store/common/partitioner.h"
 #include "store/strongstore/server.h"
 
-enum protocol_t
-{
+enum protocol_t {
     PROTO_UNKNOWN,
     PROTO_STRONG
 };
 
-enum transmode_t
-{
+enum transmode_t {
     TRANS_UNKNOWN,
     TRANS_UDP,
     TRANS_TCP,
@@ -66,18 +66,16 @@ DEFINE_uint64(num_shards, 1, "number of shards in the system");
 DEFINE_bool(debug_stats, false, "record stats related to debugging");
 
 const std::string protocol_args[] = {
-    "strong",
+        "strong",
 };
 const protocol_t protos[]{
-    PROTO_STRONG,
+        PROTO_STRONG,
 };
-static bool ValidateProtocol(const char *flagname, const std::string &value)
-{
+
+static bool ValidateProtocol(const char *flagname, const std::string &value) {
     int n = sizeof(protocol_args);
-    for (int i = 0; i < n; ++i)
-    {
-        if (value == protocol_args[i])
-        {
+    for (int i = 0; i < n; ++i) {
+        if (value == protocol_args[i]) {
             return true;
         }
     }
@@ -85,6 +83,7 @@ static bool ValidateProtocol(const char *flagname, const std::string &value)
               << std::endl;
     return false;
 }
+
 DEFINE_string(protocol, protocol_args[0],
               "the protocol to use during this"
               " experiment");
@@ -93,13 +92,11 @@ DEFINE_validator(protocol, &ValidateProtocol);
 const std::string trans_args[] = {"udp", "tcp"};
 
 const transmode_t transmodes[]{TRANS_UDP, TRANS_TCP};
-static bool ValidateTransMode(const char *flagname, const std::string &value)
-{
+
+static bool ValidateTransMode(const char *flagname, const std::string &value) {
     int n = sizeof(trans_args);
-    for (int i = 0; i < n; ++i)
-    {
-        if (value == trans_args[i])
-        {
+    for (int i = 0; i < n; ++i) {
+        if (value == trans_args[i]) {
             return true;
         }
     }
@@ -107,6 +104,7 @@ static bool ValidateTransMode(const char *flagname, const std::string &value)
               << std::endl;
     return false;
 }
+
 DEFINE_string(trans_protocol, trans_args[0],
               "transport protocol to use for"
               " passing messages");
@@ -115,14 +113,12 @@ DEFINE_validator(trans_protocol, &ValidateTransMode);
 const std::string partitioner_args[] = {"default", "warehouse_dist_items",
                                         "warehouse"};
 const partitioner_t parts[]{DEFAULT, WAREHOUSE_DIST_ITEMS, WAREHOUSE};
+
 static bool ValidatePartitioner(const char *flagname,
-                                const std::string &value)
-{
+                                const std::string &value) {
     int n = sizeof(partitioner_args);
-    for (int i = 0; i < n; ++i)
-    {
-        if (value == partitioner_args[i])
-        {
+    for (int i = 0; i < n; ++i) {
+        if (value == partitioner_args[i]) {
             return true;
         }
     }
@@ -130,6 +126,7 @@ static bool ValidatePartitioner(const char *flagname,
               << std::endl;
     return false;
 }
+
 DEFINE_string(partitioner, partitioner_args[0],
               "the partitioner to use during this"
               " experiment");
@@ -149,17 +146,15 @@ DEFINE_int64(strong_max_dep_depth, -1,
 
 const std::string strong_consistency_args[] = {"ss", "rss"};
 const strongstore::Consistency strong_consistency[]{
-    strongstore::Consistency::SS,
-    strongstore::Consistency::RSS,
+        strongstore::Consistency::SS,
+        strongstore::Consistency::RSS,
 };
+
 static bool ValidateStrongConsistency(const char *flagname,
-                                      const std::string &value)
-{
+                                      const std::string &value) {
     int n = sizeof(strong_consistency_args);
-    for (int i = 0; i < n; ++i)
-    {
-        if (value == strong_consistency_args[i])
-        {
+    for (int i = 0; i < n; ++i) {
+        if (value == strong_consistency_args[i]) {
             return true;
         }
     }
@@ -167,6 +162,7 @@ static bool ValidateStrongConsistency(const char *flagname,
               << std::endl;
     return false;
 }
+
 DEFINE_string(strong_consistency, strong_consistency_args[0],
               "the consistency model to use during this"
               " experiment");
@@ -191,15 +187,18 @@ DEFINE_bool(preload_keys, false, "load keys into server if generating keys");
 Server *server = nullptr;
 TransportReceiver *replica = nullptr;
 ::Transport *tport = nullptr;
+::Transport *tport1 = nullptr;
+::Transport *tport2 = nullptr;
+::Transport *tport3 = nullptr;
+::Transport *tport4 = nullptr;
 Partitioner *part = nullptr;
 
 void Cleanup(int signal);
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
     gflags::SetUsageMessage(
-        "runs a replica for a distributed replicated transaction\n"
-        "           processing system.");
+            "runs a replica for a distributed replicated transaction\n"
+            "           processing system.");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
     Notice("Starting server.");
@@ -208,27 +207,47 @@ int main(int argc, char **argv)
 
     // parse replication configuration
     std::ifstream replica_config_stream(FLAGS_replica_config_path);
-    if (replica_config_stream.fail())
-    {
+    if (replica_config_stream.fail()) {
         std::cerr << "Unable to read configuration file: "
                   << FLAGS_replica_config_path << std::endl;
     }
 
     // parse shard configuration
     std::ifstream shard_config_stream(FLAGS_shard_config_path);
-    if (shard_config_stream.fail())
-    {
+    if (shard_config_stream.fail()) {
         std::cerr << "Unable to read configuration file: "
                   << FLAGS_shard_config_path << std::endl;
+    }
+
+    std::ifstream shard_config_stream_1(FLAGS_shard_config_path + "_1");
+    if (shard_config_stream_1.fail()) {
+        std::cerr << "Unable to read configuration file: "
+                  << FLAGS_shard_config_path << "_1" << std::endl;
+    }
+
+    std::ifstream shard_config_stream_2(FLAGS_shard_config_path + "_2");
+    if (shard_config_stream_2.fail()) {
+        std::cerr << "Unable to read configuration file: "
+                  << FLAGS_shard_config_path << "_2" << std::endl;
+    }
+
+    std::ifstream shard_config_stream_3(FLAGS_shard_config_path + "_3");
+    if (shard_config_stream_3.fail()) {
+        std::cerr << "Unable to read configuration file: "
+                  << FLAGS_shard_config_path << "_3" << std::endl;
+    }
+
+    std::ifstream shard_config_stream_4(FLAGS_shard_config_path + "_4");
+    if (shard_config_stream_4.fail()) {
+        std::cerr << "Unable to read configuration file: "
+                  << FLAGS_shard_config_path << "_4" << std::endl;
     }
 
     // parse protocol and mode
     protocol_t proto = PROTO_UNKNOWN;
     int numProtos = sizeof(protocol_args);
-    for (int i = 0; i < numProtos; ++i)
-    {
-        if (FLAGS_protocol == protocol_args[i])
-        {
+    for (int i = 0; i < numProtos; ++i) {
+        if (FLAGS_protocol == protocol_args[i]) {
             proto = protos[i];
             break;
         }
@@ -237,10 +256,8 @@ int main(int argc, char **argv)
     // parse consistency
     strongstore::Consistency consistency = strongstore::Consistency::SS;
     int n_consistencies = sizeof(strong_consistency);
-    for (int i = 0; i < n_consistencies; ++i)
-    {
-        if (FLAGS_strong_consistency == strong_consistency_args[i])
-        {
+    for (int i = 0; i < n_consistencies; ++i) {
+        if (FLAGS_strong_consistency == strong_consistency_args[i]) {
             consistency = strong_consistency[i];
             break;
         }
@@ -249,23 +266,19 @@ int main(int argc, char **argv)
     // parse transport protocol
     transmode_t trans = TRANS_UNKNOWN;
     int numTransModes = sizeof(trans_args);
-    for (int i = 0; i < numTransModes; ++i)
-    {
-        if (FLAGS_trans_protocol == trans_args[i])
-        {
+    for (int i = 0; i < numTransModes; ++i) {
+        if (FLAGS_trans_protocol == trans_args[i]) {
             trans = transmodes[i];
             break;
         }
     }
-    if (trans == TRANS_UNKNOWN)
-    {
+    if (trans == TRANS_UNKNOWN) {
         std::cerr << "Unknown transport protocol." << std::endl;
         return 1;
     }
 
     transport::Configuration replica_config(replica_config_stream);
-    if (FLAGS_replica_idx >= static_cast<uint64_t>(replica_config.n))
-    {
+    if (FLAGS_replica_idx >= static_cast<uint64_t>(replica_config.n)) {
         std::cerr << "Replica index " << FLAGS_replica_idx
                   << " is out of bounds"
                      "; only "
@@ -273,74 +286,110 @@ int main(int argc, char **argv)
     }
 
     transport::Configuration shard_config(shard_config_stream);
-    if (FLAGS_replica_idx >= static_cast<uint64_t>(shard_config.n))
-    {
+    if (FLAGS_replica_idx >= static_cast<uint64_t>(shard_config.n)) {
         std::cerr << "Replica index " << FLAGS_replica_idx
                   << " is out of bounds"
                      "; only "
                   << shard_config.n << " replicas defined" << std::endl;
     }
+    transport::Configuration shard_config_1(shard_config_stream_1);
+    if (FLAGS_replica_idx >= static_cast<uint64_t>(shard_config_1.n)) {
+        std::cerr << "Replica index " << FLAGS_replica_idx
+                  << " is out of bounds"
+                     "; only "
+                  << shard_config_1.n << " replicas defined" << std::endl;
+    }
+    transport::Configuration shard_config_2(shard_config_stream_2);
+    if (FLAGS_replica_idx >= static_cast<uint64_t>(shard_config_2.n)) {
+        std::cerr << "Replica index " << FLAGS_replica_idx
+                  << " is out of bounds"
+                     "; only "
+                  << shard_config_2.n << " replicas defined" << std::endl;
+    }
+    transport::Configuration shard_config_3(shard_config_stream_3);
+    if (FLAGS_replica_idx >= static_cast<uint64_t>(shard_config_3.n)) {
+        std::cerr << "Replica index " << FLAGS_replica_idx
+                  << " is out of bounds"
+                     "; only "
+                  << shard_config_3.n << " replicas defined" << std::endl;
+    }
+    transport::Configuration shard_config_4(shard_config_stream_4);
+    if (FLAGS_replica_idx >= static_cast<uint64_t>(shard_config_4.n)) {
+        std::cerr << "Replica index " << FLAGS_replica_idx
+                  << " is out of bounds"
+                     "; only "
+                  << shard_config_4.n << " replicas defined" << std::endl;
+    }
 
-    if (proto == PROTO_UNKNOWN)
-    {
+    if (proto == PROTO_UNKNOWN) {
         std::cerr << "Unknown protocol." << std::endl;
         return 1;
     }
 
-    switch (trans)
-    {
-    case TRANS_TCP:
-        tport = new TCPTransport(0.0, 0.0, 0, false);
-        break;
-    case TRANS_UDP:
-        tport = new UDPTransport(0.0, 0.0, 0, false);
-        break;
-    default:
-        NOT_REACHABLE();
+    switch (trans) {
+        case TRANS_TCP:
+            tport = new TCPTransport(0.0, 0.0, 0, false);
+            tport1 = new TCPTransport(0.0, 0.0, 0, false);
+            tport2 = new TCPTransport(0.0, 0.0, 0, false);
+            tport3 = new TCPTransport(0.0, 0.0, 0, false);
+            tport4 = new TCPTransport(0.0, 0.0, 0, false);
+            break;
+        case TRANS_UDP:
+            tport = new UDPTransport(0.0, 0.0, 0, false);
+            tport1 = new UDPTransport(0.0, 0.0, 0, false);
+            tport2 = new UDPTransport(0.0, 0.0, 0, false);
+            tport3 = new UDPTransport(0.0, 0.0, 0, false);
+            tport4 = new UDPTransport(0.0, 0.0, 0, false);
+            break;
+        default:
+            NOT_REACHABLE();
     }
 
     // parse protocol and mode
     partitioner_t partType = DEFAULT;
     int numParts = sizeof(partitioner_args);
-    for (int i = 0; i < numParts; ++i)
-    {
-        if (FLAGS_partitioner == partitioner_args[i])
-        {
+    for (int i = 0; i < numParts; ++i) {
+        if (FLAGS_partitioner == partitioner_args[i]) {
             partType = parts[i];
             break;
         }
     }
 
     std::mt19937 unused;
-    switch (partType)
-    {
-    case DEFAULT:
-        part = new DefaultPartitioner();
-        break;
-    case WAREHOUSE_DIST_ITEMS:
-        part = new WarehouseDistItemsPartitioner(FLAGS_tpcc_num_warehouses);
-        break;
-    case WAREHOUSE:
-        part = new WarehousePartitioner(FLAGS_tpcc_num_warehouses, unused);
-        break;
-    default:
-        NOT_REACHABLE();
+    switch (partType) {
+        case DEFAULT:
+            part = new DefaultPartitioner();
+            break;
+        case WAREHOUSE_DIST_ITEMS:
+            part = new WarehouseDistItemsPartitioner(FLAGS_tpcc_num_warehouses);
+            break;
+        case WAREHOUSE:
+            part = new WarehousePartitioner(FLAGS_tpcc_num_warehouses, unused);
+            break;
+        default:
+            NOT_REACHABLE();
     }
 
-    switch (proto)
-    {
-    case PROTO_STRONG:
-    {
-        server = new strongstore::Server(consistency, shard_config,
-                                         replica_config, FLAGS_server_id,
-                                         FLAGS_group_idx, FLAGS_replica_idx,
-                                         tport, tt, FLAGS_debug_stats, FLAGS_network_latency_window, FLAGS_sent_redundancy);
-        break;
-    }
-    default:
-    {
-        NOT_REACHABLE();
-    }
+    std::vector<transport::Configuration> shard_configs = {shard_config, shard_config_1, shard_config_2, shard_config_3,
+                                                           shard_config_4};
+    std::vector<::Transport *> transports = {tport, tport1, tport2, tport3, tport4};
+
+    std::vector<::Transport *> necessary_transports(transports.begin(), transports.begin() + FLAGS_sent_redundancy);
+    std::vector<transport::Configuration> necessary_shard_configs(shard_configs.begin(),
+                                                                  shard_configs.begin() + FLAGS_sent_redundancy);
+
+    switch (proto) {
+        case PROTO_STRONG: {
+            server = new strongstore::Server(consistency, necessary_shard_configs,
+                                             replica_config, FLAGS_server_id,
+                                             FLAGS_group_idx, FLAGS_replica_idx,
+                                             necessary_transports, tt, FLAGS_debug_stats, FLAGS_network_latency_window,
+                                             FLAGS_sent_redundancy);
+            break;
+        }
+        default: {
+            NOT_REACHABLE();
+        }
     }
     Debug("Created server");
 
@@ -348,37 +397,27 @@ int main(int argc, char **argv)
     size_t loaded = 0;
     size_t stored = 0;
     std::vector<int> txnGroups;
-    if (FLAGS_data_file_path.empty() && FLAGS_keys_path.empty())
-    {
-        if (FLAGS_num_keys > 0)
-        {
-            if (FLAGS_preload_keys)
-            {
+    if (FLAGS_data_file_path.empty() && FLAGS_keys_path.empty()) {
+        if (FLAGS_num_keys > 0) {
+            if (FLAGS_preload_keys) {
                 std::string key = "0000000000";
-                for (size_t i = 0; i < FLAGS_num_keys; ++i)
-                {
+                for (size_t i = 0; i < FLAGS_num_keys; ++i) {
                     if ((*part)(key, FLAGS_num_shards, FLAGS_group_idx,
-                                txnGroups) == FLAGS_group_idx)
-                    {
+                                txnGroups) == FLAGS_group_idx) {
                         server->Load(key, key, Timestamp());
                         ++stored;
                     }
-                    if (i % 100000 == 0)
-                    {
+                    if (i % 100000 == 0) {
                         Debug("Loaded key %s", key.c_str());
                     }
 
                     ++loaded;
 
-                    for (int j = key.size() - 1; j >= 0; --j)
-                    {
-                        if (key[j] < '9')
-                        {
+                    for (int j = key.size() - 1; j >= 0; --j) {
+                        if (key[j] < '9') {
                             key[j] += static_cast<char>(1);
                             break;
-                        }
-                        else
-                        {
+                        } else {
                             key[j] = '0';
                         }
                     }
@@ -387,37 +426,29 @@ int main(int argc, char **argv)
 
             Debug("Stored %lu out of %lu key-value pairs from [0,%lu).", stored,
                   loaded, FLAGS_num_keys);
-        }
-        else
-        {
+        } else {
             std::cerr << "Specified neither keys file nor number of keys."
                       << std::endl;
             return 1;
         }
-    }
-    else if (FLAGS_data_file_path.length() > 0 && FLAGS_keys_path.empty())
-    {
+    } else if (FLAGS_data_file_path.length() > 0 && FLAGS_keys_path.empty()) {
         std::ifstream in;
         in.open(FLAGS_data_file_path);
-        if (!in)
-        {
+        if (!in) {
             std::cerr << "Could not read data from: " << FLAGS_data_file_path
                       << std::endl;
             return 1;
         }
 
         Debug("Populating with data from %s.", FLAGS_data_file_path.c_str());
-        while (!in.eof())
-        {
+        while (!in.eof()) {
             std::string key;
             std::string value;
             int i = ReadBytesFromStream(&in, key);
-            if (i == 0)
-            {
+            if (i == 0) {
                 ReadBytesFromStream(&in, value);
                 if ((*part)(key, FLAGS_num_shards, FLAGS_group_idx,
-                            txnGroups) == FLAGS_group_idx)
-                {
+                            txnGroups) == FLAGS_group_idx) {
                     server->Load(key, value, Timestamp());
                     ++stored;
                 }
@@ -426,24 +457,19 @@ int main(int argc, char **argv)
         }
         Debug("Stored %lu out of %lu key-value pairs from file %s.", stored,
               loaded, FLAGS_data_file_path.c_str());
-    }
-    else
-    {
+    } else {
         std::ifstream in;
         in.open(FLAGS_keys_path);
-        if (!in)
-        {
+        if (!in) {
             std::cerr << "Could not read keys from: " << FLAGS_keys_path
                       << std::endl;
             return 1;
         }
         std::string key;
         std::vector<int> txnGroups;
-        while (std::getline(in, key))
-        {
+        while (std::getline(in, key)) {
             if ((*part)(key, FLAGS_num_shards, FLAGS_group_idx, txnGroups) ==
-                FLAGS_group_idx)
-            {
+                FLAGS_group_idx) {
                 server->Load(key, "", Timestamp(0, 0));
             }
         }
@@ -451,20 +477,17 @@ int main(int argc, char **argv)
     }
     Notice("Done loading server.");
 
-    switch (proto)
-    {
-    case PROTO_STRONG:
-    {
-        replica = new replication::vr::VRReplica(
-            replica_config, FLAGS_group_idx, FLAGS_replica_idx, tport, 1,
-            dynamic_cast<replication::AppReplica *>(server),
-            FLAGS_debug_stats);
-        break;
-    }
-    default:
-    {
-        NOT_REACHABLE();
-    }
+    switch (proto) {
+        case PROTO_STRONG: {
+            replica = new replication::vr::VRReplica(
+                    replica_config, FLAGS_group_idx, FLAGS_replica_idx, tport, 1,
+                    dynamic_cast<replication::AppReplica *>(server),
+                    FLAGS_debug_stats);
+            break;
+        }
+        default: {
+            NOT_REACHABLE();
+        }
     }
     Debug("Created replica");
 
@@ -473,12 +496,36 @@ int main(int argc, char **argv)
     std::signal(SIGINT, Cleanup);
 
     CALLGRIND_START_INSTRUMENTATION;
-    tport->Run();
+    std::thread thread1([&]() {
+        tport->Run();
+    });
+
+    std::thread thread2([&]() {
+        tport1->Run();
+    });
+
+    std::thread thread3([&]() {
+        tport2->Run();
+    });
+
+    std::thread thread4([&]() {
+        tport3->Run();
+    });
+
+    std::thread thread5([&]() {
+        tport4->Run();
+    });
+
+    // Wait for all threads to finish
+    thread1.join();
+    thread2.join();
+    thread3.join();
+    thread4.join();
+    thread5.join();
     CALLGRIND_STOP_INSTRUMENTATION;
     CALLGRIND_DUMP_STATS;
 
-    if (FLAGS_stats_file.size() > 0)
-    {
+    if (FLAGS_stats_file.size() > 0) {
         Notice("Exporting stats to %s.", FLAGS_stats_file.c_str());
         server->GetStats().ExportJSON(FLAGS_stats_file);
     }
@@ -486,12 +533,14 @@ int main(int argc, char **argv)
     return 0;
 }
 
-void Cleanup(int signal)
-{
+void Cleanup(int signal) {
     Notice("Gracefully exiting after signal %d.", signal);
     tport->Stop();
-    if (FLAGS_stats_file.size() > 0)
-    {
+    tport1->Stop();
+    tport2->Stop();
+    tport3->Stop();
+    tport4->Stop();
+    if (FLAGS_stats_file.size() > 0) {
         Notice("Exporting stats to %s.", FLAGS_stats_file.c_str());
         server->GetStats().ExportJSON(FLAGS_stats_file);
     }

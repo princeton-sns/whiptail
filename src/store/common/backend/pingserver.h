@@ -34,14 +34,14 @@
 class PingServer
 {
 public:
-  PingServer(Transport *transport);
+  PingServer(std::vector<Transport *> transports);
   virtual ~PingServer();
 
   void HandlePingMessage(TransportReceiver *receiver,
                          const TransportAddress &remote, const PingMessage &ping);
 
 private:
-  Transport *transport;
+  std::vector<Transport *> transports;
 };
 
 #endif /* PING_SERVER_H */

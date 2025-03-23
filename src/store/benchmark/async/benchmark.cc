@@ -369,6 +369,10 @@ std::vector<Client *> clients;
 std::vector<BenchmarkClient *> benchClients;
 std::vector<std::thread *> threads;
 Transport *tport;
+Transport *tport1;
+Transport *tport2;
+Transport *tport3;
+Transport *tport4;
 Partitioner *part;
 KeySelector *keySelector;
 
@@ -534,11 +538,20 @@ int main(int argc, char **argv) {
     }
 
     switch (trans) {
-        case TRANS_TCP:
+        case TRANS_TCP: {
             tport = new TCPTransport(0.0, 0.0, 0, false);
+            tport1 = new TCPTransport(0.0, 0.0, false);
+            tport2 = new TCPTransport(0.0, 0.0, false);
+            tport3 = new TCPTransport(0.0, 0.0, false);
+            tport4 = new TCPTransport(0.0, 0.0, false);
             break;
+        }
         case TRANS_UDP:
             tport = new UDPTransport(0.0, 0.0, 0, false);
+            tport1 = new UDPTransport(0.0, 0.0, 0, false);
+            tport2 = new UDPTransport(0.0, 0.0, 0, false);
+            tport3 = new UDPTransport(0.0, 0.0, 0, false);
+            tport4 = new UDPTransport(0.0, 0.0, 0, false);
             break;
         default:
             NOT_REACHABLE();
@@ -602,6 +615,10 @@ int main(int argc, char **argv) {
                 }
             }
             tport->Stop();
+            tport1->Stop();
+            tport2->Stop();
+            tport3->Stop();
+            tport4->Stop();
         }
     };
 
@@ -613,12 +630,10 @@ int main(int argc, char **argv) {
 
     std::string buf;
     std::stringstream f{FLAGS_replica_config_paths};
-
     std::vector<transport::Configuration> replica_configs;
     std::vector<strongstore::NetworkConfiguration> net_configs;
     std::vector<std::string> client_regions;
-    int i = 0;
-    while (std::getline(f, buf, ',')) {
+    for (int i = 0; std::getline(f, buf, ','); i++) {
         std::ifstream replica_config_stream{buf};
         if (replica_config_stream.fail()) {
             std::cerr << "Unable to read configuration file: " << buf << std::endl;
@@ -631,8 +646,53 @@ int main(int argc, char **argv) {
             net_configs.emplace_back(replica_configs[i], net_config_stream);
             client_regions.emplace_back(net_configs[i].GetRegion(FLAGS_client_host));
         }
+    }
 
-        i++;
+    std::string buf1;
+    std::stringstream f1{FLAGS_replica_config_paths + "_1"};
+    std::vector<transport::Configuration> replica_configs_1;
+    for (int i = 0; std::getline(f1, buf1, ','); i++) {
+        std::ifstream replica_config_stream_1{buf1};
+        if (replica_config_stream_1.fail()) {
+            std::cerr << "Unable to read configuration file: " << buf1 << std::endl;
+            return -1;
+        }
+        replica_configs_1.emplace_back(replica_config_stream_1);
+    }
+
+    std::string buf2;
+    std::stringstream f2{FLAGS_replica_config_paths + "_2"};
+    std::vector<transport::Configuration> replica_configs_2;
+    for (int i = 0; std::getline(f2, buf2, ','); i++) {
+        std::ifstream replica_config_stream_2{buf2};
+        if (replica_config_stream_2.fail()) {
+            std::cerr << "Unable to read configuration file: " << buf2 << std::endl;
+            return -1;
+        }
+        replica_configs_2.emplace_back(replica_config_stream_2);
+    }
+    std::string buf3;
+    std::stringstream f3{FLAGS_replica_config_paths + "_3"};
+    std::vector<transport::Configuration> replica_configs_3;
+    for (int i = 0; std::getline(f3, buf3, ','); i++) {
+        std::ifstream replica_config_stream_3{buf3};
+        if (replica_config_stream_3.fail()) {
+            std::cerr << "Unable to read configuration file: " << buf3 << std::endl;
+            return -1;
+        }
+        replica_configs_3.emplace_back(replica_config_stream_3);
+    }
+
+    std::string buf4;
+    std::stringstream f4{FLAGS_replica_config_paths + "_4"};
+    std::vector<transport::Configuration> replica_configs_4;
+    for (int i = 0; std::getline(f4, buf4, ','); i++) {
+        std::ifstream replica_config_stream_4{buf4};
+        if (replica_config_stream_4.fail()) {
+            std::cerr << "Unable to read configuration file: " << buf4 << std::endl;
+            return -1;
+        }
+        replica_configs_4.emplace_back(replica_config_stream_4);
     }
 
     // TODO: Remove this
@@ -644,19 +704,35 @@ int main(int argc, char **argv) {
     //     return 1;
     // }
 
+    auto &shard_config = replica_configs[0];
+    auto &shard_config_1 = replica_configs_1[0];
+    auto &shard_config_2 = replica_configs_2[0];
+    auto &shard_config_3 = replica_configs_3[0];
+    auto &shard_config_4 = replica_configs_4[0];
+
+    std::vector<transport::Configuration> shard_configs{shard_config, shard_config_1, shard_config_2,
+                                                        shard_config_3, shard_config_4};
+    std::vector<transport::Configuration> necessary_shard_configs(shard_configs.begin(),
+                                                                  shard_configs.begin() +
+                                                                  FLAGS_sent_redundancy);
+
+    std::vector<Transport *> transports{tport, tport1, tport2, tport3, tport4};
+    std::vector<Transport *> necessary_transports(transports.begin(),
+                                                  transports.begin() + FLAGS_sent_redundancy);
+
     const std::size_t n_instances = replica_configs.size();
     for (std::size_t i = 0; i < n_instances; ++i) {
         Client *client = nullptr;
         switch (mode) {
             case PROTO_STRONG: {
-                auto &shard_config = replica_configs[i];
+
                 auto &net_config = net_configs[i];
                 auto &client_region = client_regions[i];
 
                 client = new strongstore::Client(
-                        consistency, net_config, client_region, shard_config,
+                        consistency, net_config, client_region, necessary_shard_configs,
                         FLAGS_client_id, FLAGS_num_shards, FLAGS_closest_replica,
-                        tport, part, tt, FLAGS_debug_stats, FLAGS_nb_time_alpha, FLAGS_sent_redundancy);
+                        necessary_transports, part, tt, FLAGS_debug_stats, FLAGS_nb_time_alpha, FLAGS_sent_redundancy);
                 break;
             }
             default:
@@ -737,6 +813,10 @@ int main(int argc, char **argv) {
         delete i;
     }
     delete tport;
+    delete tport1;
+    delete tport2;
+    delete tport3;
+    delete tport4;
     delete part;
 
     return 0;
@@ -745,6 +825,10 @@ int main(int argc, char **argv) {
 void Signal(int signal) {
     Notice("Gracefully stopping bench clients after signal %d.", signal);
     tport->Stop();
+//    tport1->Stop();
+//    tport2->Stop();
+//    tport3->Stop();
+//    tport4->Stop();
     Cleanup();
 }
 
@@ -752,18 +836,14 @@ void Cleanup() {
     // tport->Stop();
 }
 
-void FlushStats()
-{
-    if (!FLAGS_stats_file.empty())
-    {
+void FlushStats() {
+    if (!FLAGS_stats_file.empty()) {
         Debug("Flushing stats to %s.", FLAGS_stats_file.c_str());
         Stats total;
-        for (auto & benchClient : benchClients)
-        {
+        for (auto &benchClient: benchClients) {
             total.Merge(benchClient->GetStats());
         }
-        for (auto & client : clients)
-        {
+        for (auto &client: clients) {
             total.Merge(client->GetStats());
         }
 

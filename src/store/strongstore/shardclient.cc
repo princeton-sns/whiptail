@@ -36,19 +36,28 @@ namespace strongstore {
     using namespace std;
     using namespace proto;
 
-    ShardClient::ShardClient(const transport::Configuration &config,
-                             Transport *transport, uint64_t client_id, int shard,
+    ShardClient::ShardClient(const std::vector<transport::Configuration> &configs,
+                             std::vector<Transport *> transports, uint64_t client_id, int shard,
                              wound_callback wcb, int replica, uint8_t sent_redundancy)
             : last_req_id_{0},
-              config_{config},
-              transport_{transport},
+              configs_{configs},
+              config_{configs[0]},
+              transports_{transports},
+              transport_{transports[0]},
               client_id_{client_id},
               shard_idx_{shard},
               wcb_{wcb},
               replica_(replica),
               tt_{0},
-              sent_redundancy_ {sent_redundancy} {
-        transport_->Register(this, config_, -1, -1);
+              sent_redundancy_{sent_redundancy} {
+
+//        std::cerr << "jenndebug shardClient config " << config_.to_string() << " config_.n " << config_.n << std::endl;
+
+        for (int i = sent_redundancy_-1; i >= 0; i--) {
+            transports_[i]->Register(this, configs_[i], -1, -1);
+//            transport_->Register(this, configs_[i], -1, -1);
+        }
+        // transport_->Register(this, config_, -1, -1);
 
         // TODO: Remove hardcoding
 //        replica_ = 0;
@@ -237,6 +246,9 @@ namespace strongstore {
         auto &t = search->second;
         t.addWriteSet(key, value);
 
+//        Debug("jenndebug [%lu] shard_idx %d replica %d txn.addWriteSet() t.writeSetSize() %lu", transaction_id,
+//              shard_idx_, replica_, t.getWriteSet().size());
+
         pcb(REPLY_OK, key, value);
     }
 
@@ -362,8 +374,9 @@ namespace strongstore {
         rw_commit_c_.set_transaction_id(transaction_id);
         t.serialize(rw_commit_c_.mutable_transaction());
         nonblock_timestamp.serialize((rw_commit_c_.mutable_nonblock_timestamp()));
-//        Debug("jenndebug [%lu] writeset_size %u, pendingreadset_size %u", transaction_id,
-//              rw_commit_c_.transaction().writeset().size(), rw_commit_c_.transaction().pendingreadset().size());
+//        Debug("jenndebug [%lu] writeset_size %u, actual writeset_size() %lu, pendingreadset_size %u", transaction_id,
+//              rw_commit_c_.transaction().writeset().size(), t.getWriteSet().size(),
+//              rw_commit_c_.transaction().pendingreadset().size());
 
         // const TrueTimeInterval now = tt_.Now();
 //        Debug("[%lu] jenndebug commit_ts %lu", transaction_id, commit_ts.getTimestamp());
@@ -374,8 +387,10 @@ namespace strongstore {
             rw_commit_c_.add_participants(p);
         }
 
-        for (int i = 0; i < sent_redundancy_; i++)
-            transport_->SendMessageToReplica(this, shard_idx_, replica_, rw_commit_c_);
+        for (int i = 0; i < sent_redundancy_; i++) {
+            transports_[i]->SendMessageToReplica(this, shard_idx_, replica_, rw_commit_c_);
+//            Debug("jenndebug [%lu] shard_client replica_idx %d sent %d", transaction_id, replica_, i);
+        }
 
     }
 

@@ -27,7 +27,7 @@
  **********************************************************************/
 #include "store/common/backend/pingserver.h"
 
-PingServer::PingServer(Transport *transport) : transport(transport)
+PingServer::PingServer(std::vector<Transport *>transport) : transports(transport)
 {
 }
 
@@ -38,5 +38,6 @@ PingServer::~PingServer()
 void PingServer::HandlePingMessage(TransportReceiver *receiver,
                                    const TransportAddress &remote, const PingMessage &ping)
 {
-  transport->SendMessage(receiver, remote, ping);
+  for (auto transport : transports)
+    transport->SendMessage(receiver, remote, ping);
 }

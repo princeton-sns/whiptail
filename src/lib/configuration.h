@@ -95,9 +95,9 @@ namespace transport
         std::string to_string() const {
             std::string result = "";
             for (const std::pair<int, std::vector<ReplicaAddress>> kv : replicas) {
-                result += kv.first + "-->";
+                result += std::to_string(kv.first) + "-->";
                 for (const ReplicaAddress& replica : kv.second) {
-                    result  += replica.to_string();
+                    result  += replica.to_string() + ", ";
                 }
 
                 result += "\n";
