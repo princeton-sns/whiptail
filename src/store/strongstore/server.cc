@@ -544,7 +544,7 @@ namespace strongstore {
 
         const RequestID requestId(client_id, client_req_id, &remote);
         {
-            std::lock_guard<std::mutex> lock(multi_sent_reqs_recvd_yet_mutex_);
+//            std::lock_guard<std::mutex> lock(multi_sent_reqs_recvd_yet_mutex_);
             if (multi_sent_reqs_recvd_yet_.find(requestId) != multi_sent_reqs_recvd_yet_.end()) {
 
                 // already seen this request, don't need to process it again
