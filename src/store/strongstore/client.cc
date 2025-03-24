@@ -572,7 +572,7 @@ namespace strongstore {
             nonblock_timestamp = ChooseNonBlockTimestamp(session);
         }
 
-        auto cccb = std::bind(&Client::CommitCallback, this, std::ref(session), req->id,
+        auto cccb = std::bind(&Client::CommitCallback, this, std::ref(session), req_id,
                               std::placeholders::_1, std::placeholders::_2, std::placeholders::_3,
                               std::placeholders::_4);
         auto cctcb = [](int) {};
