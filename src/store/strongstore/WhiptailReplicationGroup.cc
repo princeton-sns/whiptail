@@ -70,6 +70,7 @@ namespace strongstore {
                                                             int status, const std::vector<Value> &values,
                                                             const Timestamp &commit_ts,
                                                             const Timestamp &nonblock_ts) {
+        std::lock_guard<std::mutex> lockGuard(mu_);
         session.mark_success_or_fail_reply(shard_idx_, status);
         if (status == REPLY_OK) {
             stats_.Increment("shard_" + std::to_string(shard_idx_) + "_REPLY_OK");

@@ -70,6 +70,8 @@ namespace strongstore {
 
         Stats& stats_;
 
+        std::mutex mu_;
+
 
     };
 
