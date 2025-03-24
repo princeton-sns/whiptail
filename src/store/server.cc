@@ -32,7 +32,7 @@
 
 #include <csignal>
 
-    #include <thread>
+#include <thread>
 
 #include "lib/io_utils.h"
 #include "lib/tcptransport.h"
@@ -497,23 +497,28 @@ int main(int argc, char **argv) {
 
     CALLGRIND_START_INSTRUMENTATION;
     std::thread thread1([&]() {
-        tport->Run();
+        if (FLAGS_sent_redundancy >= 1)
+            tport->Run();
     });
 
     std::thread thread2([&]() {
-        tport1->Run();
+        if (FLAGS_sent_redundancy >= 2)
+            tport1->Run();
     });
 
     std::thread thread3([&]() {
-        tport2->Run();
+        if (FLAGS_sent_redundancy >= 3)
+            tport2->Run();
     });
 
     std::thread thread4([&]() {
-        tport3->Run();
+        if (FLAGS_sent_redundancy >= 4)
+            tport3->Run();
     });
 
     std::thread thread5([&]() {
-        tport4->Run();
+        if (FLAGS_sent_redundancy >= 5)
+            tport4->Run();
     });
 
     // Wait for all threads to finish
