@@ -535,10 +535,10 @@ namespace strongstore {
 
         auto tid = session.transaction_id();
 
-        Debug("[%lu] COMMIT", tid);
+        Notice("[%lu] COMMIT", tid);
 
         if (session.needs_aborts()) {
-            Debug("[%lu] Need to abort", tid);
+            Notice("[%lu] Need to abort", tid);
             ccb(ABORTED_SYSTEM);
             return;
         }
@@ -552,6 +552,7 @@ namespace strongstore {
         uint64_t req_id = last_req_id_++;
         PendingRequest *req = new PendingRequest(req_id);
         pending_reqs_[req_id] = req;
+        Notice("[%lu] Insert pending request", tid);
         req->ccb = ccb;
         req->ctcb = ctcb;
 

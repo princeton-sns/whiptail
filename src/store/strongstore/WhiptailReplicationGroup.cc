@@ -12,7 +12,8 @@ namespace strongstore {
                                                        std::vector<Transport *> transports,
                                                        int shard_idx, uint64_t client_id, Stats &stats,
                                                        uint8_t sent_redundancy)
-            : shard_idx_(shard_idx), configs_(configs), config_(configs[0]), transports_(std::move(transports)), stats_(stats) {
+            : shard_idx_(shard_idx), configs_(configs), config_(configs[0]), transports_(std::move(transports)),
+              stats_(stats) {
 
 //        Debug("jenndebug WRG config_.n %d", config_.n);
         for (int repl_idx = 0; repl_idx < config_.n; repl_idx++) {
@@ -102,13 +103,15 @@ namespace strongstore {
                 }
             } else {
                 // just writes
+                Notice("jenndebug [%lu] write quorum of size %u, config_.quorumsize %u", session.transaction_id(),
+                       session.success_count(shard_idx_), config_.QuorumSize());
                 session.clear_success_count(shard_idx_);
-                Notice("jenndebug [%lu] write quorum!", session.transaction_id());
                 ccb(REPLY_OK, {}, commit_ts, nonblock_ts);
             }
             session.mark_successfully_replicated(shard_idx_);
         } else if (session.failure_count(shard_idx_) >= config_.QuorumSize()) {
-            Notice("jenndebug [%lu] txn failed", session.transaction_id());
+            Notice("jenndebug [%lu] txn failed. Failure count %u, config_.QuorumSize() %u", session.transaction_id(),
+                   session.failure_count(shard_idx_), config_.QuorumSize());
             ccb(REPLY_FAIL, {}, commit_ts, nonblock_ts);
         }
     }
