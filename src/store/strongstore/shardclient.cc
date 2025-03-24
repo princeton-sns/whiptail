@@ -53,9 +53,11 @@ namespace strongstore {
 
 //        std::cerr << "jenndebug shardClient config " << config_.to_string() << " config_.n " << config_.n << std::endl;
 
-        for (int i = sent_redundancy_ - 1; i >= 0; i--) {
-            transports_[i]->Register(this, configs_[i], -1, -1);
+        for (int i = 0; i < sent_redundancy_; i++) {
+            extraTransportReceivers_.push_back(new ExtraTransportReceiver(this));
+//            transports_[i]->Register(this, configs_[i], -1, -1);
 //            transport_->Register(this, configs_[i], -1, -1);
+              transport_->Register(extraTransportReceivers_[i], configs_[i], -1, -1);
         }
         // transport_->Register(this, config_, -1, -1);
 
@@ -63,7 +65,10 @@ namespace strongstore {
 //        replica_ = 0;
     }
 
-    ShardClient::~ShardClient() {}
+    ShardClient::~ShardClient() {
+        for (int i = 0; i < sent_redundancy_; i++)
+            delete extraTransportReceivers_[i];
+    }
 
     void ShardClient::ReceiveMessage(const TransportAddress &remote,
                                      const std::string &type,

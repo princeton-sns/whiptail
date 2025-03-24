@@ -159,6 +159,19 @@ namespace strongstore
         void AbortPut(uint64_t transaction_id);
 
     private:
+        class ExtraTransportReceiver : public TransportReceiver {
+        public:
+            ExtraTransportReceiver(ShardClient *shardClient) : outerShardClient_(shardClient) {}
+
+            virtual void ReceiveMessage(const TransportAddress &remote,
+                                        const string &type,
+                                        const string &data,
+                                        void * meta_data) {
+                outerShardClient_->ReceiveMessage(remote, type, data, meta_data);
+            }
+
+            ShardClient *outerShardClient_;
+        };
         struct PendingRequest
         {
             PendingRequest(uint64_t transaction_id, uint64_t req_id) : transaction_id{transaction_id}, req_id(req_id) {}
@@ -262,6 +275,7 @@ namespace strongstore
 
         const std::vector<transport::Configuration> &configs_;
         std::vector<Transport *> transports_; // Transport layer.
+        std::vector<ExtraTransportReceiver*> extraTransportReceivers_;
 
         const transport::Configuration &config_;
         Transport * transport_;

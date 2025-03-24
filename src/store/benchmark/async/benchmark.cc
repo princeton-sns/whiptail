@@ -793,38 +793,38 @@ int main(int argc, char **argv) {
     std::signal(SIGINT, Signal);
 
     CALLGRIND_START_INSTRUMENTATION;
-//    tport->Run();
-    std::thread thread1([&]() {
-        if (FLAGS_sent_redundancy >= 1)
-            tport->Run();
-    });
-
-    std::thread thread2([&]() {
-        if (FLAGS_sent_redundancy >= 2)
-            tport1->Run();
-    });
-
-    std::thread thread3([&]() {
-        if (FLAGS_sent_redundancy >= 3)
-            tport2->Run();
-    });
-
-    std::thread thread4([&]() {
-        if (FLAGS_sent_redundancy >= 4)
-            tport3->Run();
-    });
-
-    std::thread thread5([&]() {
-        if (FLAGS_sent_redundancy >= 5)
-            tport4->Run();
-    });
-
-    // Wait for all threads to finish
-    thread1.join();
-    thread2.join();
-    thread3.join();
-    thread4.join();
-    thread5.join();
+    tport->Run();
+//    std::thread thread1([&]() {
+//        if (FLAGS_sent_redundancy >= 1)
+//            tport->Run();
+//    });
+//
+//    std::thread thread2([&]() {
+//        if (FLAGS_sent_redundancy >= 2)
+//            tport1->Run();
+//    });
+//
+//    std::thread thread3([&]() {
+//        if (FLAGS_sent_redundancy >= 3)
+//            tport2->Run();
+//    });
+//
+//    std::thread thread4([&]() {
+//        if (FLAGS_sent_redundancy >= 4)
+//            tport3->Run();
+//    });
+//
+//    std::thread thread5([&]() {
+//        if (FLAGS_sent_redundancy >= 5)
+//            tport4->Run();
+//    });
+//
+//    // Wait for all threads to finish
+//    thread1.join();
+//    thread2.join();
+//    thread3.join();
+//    thread4.join();
+//    thread5.join();
     CALLGRIND_STOP_INSTRUMENTATION;
     CALLGRIND_DUMP_STATS;
 
