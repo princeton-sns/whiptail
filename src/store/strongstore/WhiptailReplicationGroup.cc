@@ -108,7 +108,7 @@ namespace strongstore {
             session.mark_successfully_replicated(shard_idx_);
         } else if (session.failure_count(shard_idx_) >= config_.QuorumSize()) {
             Notice("jenndebug [%lu] txn failed", session.transaction_id());
-            ccb(REPLY_OK, {}, commit_ts, nonblock_ts);
+            ccb(REPLY_FAIL, {}, commit_ts, nonblock_ts);
         }
     }
 
