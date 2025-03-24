@@ -596,11 +596,11 @@ namespace strongstore {
     void Client::CommitCallback(StrongSession &session, uint64_t req_id, int status, const std::vector<Value> &values,
                                 Timestamp commit_ts, Timestamp nonblock_ts) {
         auto tid = session.transaction_id();
-        Debug("[%lu] COMMIT callback status %d", tid, status);
+        Notice("[%lu] COMMIT callback status %d", tid, status);
 
         auto search = pending_reqs_.find(req_id);
         if (search == pending_reqs_.end()) {
-            Debug("[%lu] Transaction already finished", tid);
+            Notice("[%lu] Transaction already finished", tid);
             return;
         }
         PendingRequest *req = search->second;
@@ -612,13 +612,13 @@ namespace strongstore {
         transaction_status_t tstatus;
         switch (status) {
             case REPLY_OK:
-                Debug("[%lu] COMMIT OK", tid);
+                Notice("[%lu] COMMIT OK", tid);
                 tstatus = COMMITTED;
                 break;
             default:
                 // abort!
                 // ^ bro i couldn't tell
-                Debug("[%lu] COMMIT ABORT", tid);
+                Notice("[%lu] COMMIT ABORT", tid);
                 tstatus = ABORTED_SYSTEM;
                 break;
         }
@@ -630,10 +630,10 @@ namespace strongstore {
         uint64_t ms = 0;
         if (tstatus == COMMITTED && consistency_ == Consistency::RSS) {
             ms = tt_.TimeToWaitUntilMS(nonblock_ts.getTimestamp());
-            Debug("Waiting for nonblock time: %lu ms", ms);
+            Notice("Waiting for nonblock time: %lu ms", ms);
             session.advance_min_read_ts(commit_ts);
             auto &min_read_ts = session.min_read_ts();
-            Debug("min_read_timestamp_: %lu.%lu", min_read_ts.getTimestamp(), min_read_ts.getID());
+            Notice("min_read_timestamp_: %lu.%lu", min_read_ts.getTimestamp(), min_read_ts.getID());
         }
 
         rss::EndTransaction(service_name_, session);
