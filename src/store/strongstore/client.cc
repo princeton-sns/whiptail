@@ -552,7 +552,7 @@ namespace strongstore {
         uint64_t req_id = last_req_id_++;
         PendingRequest *req = new PendingRequest(req_id);
         pending_reqs_[req_id] = req;
-        Notice("[%lu] Insert pending request", tid);
+        Notice("[%lu] Insert pending request rid %lu", tid, req_id);
         req->ccb = ccb;
         req->ctcb = ctcb;
 
@@ -601,7 +601,7 @@ namespace strongstore {
 
         auto search = pending_reqs_.find(req_id);
         if (search == pending_reqs_.end()) {
-            Notice("[%lu] Transaction already finished", tid);
+            Notice("[%lu] Transaction already finished, rid %lu already removed", tid, req_id);
             return;
         }
         PendingRequest *req = search->second;
@@ -626,6 +626,7 @@ namespace strongstore {
 
         commit_callback ccb = req->ccb;
         pending_reqs_.erase(req_id);
+        Notice("[%lu] Remove req_id %lu", tid, req_id);
         delete req;
 
         uint64_t ms = 0;
