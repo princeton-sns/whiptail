@@ -90,7 +90,7 @@ BenchmarkClient::BenchmarkClient(const std::vector<Client *> &clients, uint32_t 
 
 BenchmarkClient::~BenchmarkClient()
 {
-    Debug("session_states_.size(): %lu", session_states_.size());
+    Notice("session_states_.size(): %lu", session_states_.size());
 }
 
 void BenchmarkClient::Start(bench_done_callback bdcb)
@@ -106,7 +106,7 @@ void BenchmarkClient::Start(bench_done_callback bdcb)
 
 void BenchmarkClient::SendNext()
 {
-    Debug("[%d] SendNext", n_sessions_started_);
+    Notice("[%d] SendNext", n_sessions_started_);
     n_sessions_started_++;
 
     std::size_t client_index = n_sessions_started_ % clients_.size();
@@ -115,7 +115,7 @@ void BenchmarkClient::SendNext()
     auto &session = client.BeginSession();
     auto sid = session.id();
 
-    Debug("session id: %lu", sid);
+    Notice("session id: %lu", sid);
 
     auto ecb = std::bind(&BenchmarkClient::ExecuteCallback, this, sid, std::placeholders::_1);
     auto transaction = GetNextTransaction();
@@ -162,7 +162,7 @@ void BenchmarkClient::SendNext()
 
         if (send_next)
         {
-            Debug("next arrival in %lu us", next_arrival_us);
+            Notice("next arrival in %lu us", next_arrival_us);
             transport_.TimerMicro(next_arrival_us, std::bind(&BenchmarkClient::SendNext, this));
         }
     }
@@ -170,7 +170,7 @@ void BenchmarkClient::SendNext()
 
 void BenchmarkClient::SendNextInSession(const uint64_t session_id)
 {
-    Debug("[%lu] SendNextInSession", session_id);
+    Notice("[%lu] SendNextInSession", session_id);
 
     auto search = session_states_.find(session_id);
     ASSERT(search != session_states_.end());
@@ -223,7 +223,7 @@ void BenchmarkClient::SendNextInSession(const uint64_t session_id)
 
 void BenchmarkClient::ExecuteNextOperation(const uint64_t session_id)
 {
-    Debug("[%lu] ExecuteNextOperation", session_id);
+    Notice("[%lu] ExecuteNextOperation", session_id);
     auto search = session_states_.find(session_id);
     ASSERT(search != session_states_.end());
 
@@ -283,7 +283,7 @@ void BenchmarkClient::ExecuteNextOperation(const uint64_t session_id)
 
 void BenchmarkClient::ExecuteAbort(const uint64_t session_id, transaction_status_t status)
 {
-    Debug("[%lu] ExecuteAbort", session_id);
+    Notice("[%lu] ExecuteAbort", session_id);
     auto search = session_states_.find(session_id);
     ASSERT(search != session_states_.end());
 
@@ -304,7 +304,7 @@ void BenchmarkClient::ExecuteAbort(const uint64_t session_id, transaction_status
 void BenchmarkClient::GetCallback(const uint64_t session_id, int status,
                                   const std::string &key, const std::string &val, Timestamp ts)
 {
-    Debug("[%lu] Get(%s) callback", session_id, key.c_str());
+    Notice("[%lu] Get(%s) callback", session_id, key.c_str());
     auto search = session_states_.find(session_id);
     ASSERT(search != session_states_.end());
 
@@ -346,7 +346,7 @@ void BenchmarkClient::GetTimeout(const uint64_t session_id,
 void BenchmarkClient::PutCallback(const uint64_t session_id, int status,
                                   const std::string &key, const std::string &val)
 {
-    Debug("[%lu] Put(%s,%s) callback.", session_id, key.c_str(), val.c_str());
+    Notice("[%lu] Put(%s,%s) callback.", session_id, key.c_str(), val.c_str());
     auto search = session_states_.find(session_id);
     ASSERT(search != session_states_.end());
 
@@ -374,7 +374,7 @@ void BenchmarkClient::PutTimeout(const uint64_t session_id, int status,
 
 void BenchmarkClient::CommitCallback(const uint64_t session_id, transaction_status_t status)
 {
-    Debug("[%lu] Commit callback.", session_id);
+    Notice("[%lu] Commit callback.", session_id);
     auto search = session_states_.find(session_id);
     ASSERT(search != session_states_.end());
 
@@ -391,7 +391,7 @@ void BenchmarkClient::CommitTimeout()
 
 void BenchmarkClient::AbortCallback(const uint64_t session_id, transaction_status_t status)
 {
-    Debug("[%lu] Abort callback.", session_id);
+    Notice("[%lu] Abort callback.", session_id);
     auto search = session_states_.find(session_id);
     ASSERT(search != session_states_.end());
 
@@ -409,7 +409,7 @@ void BenchmarkClient::AbortTimeout()
 void BenchmarkClient::ExecuteCallback(uint64_t session_id,
                                       transaction_status_t result)
 {
-    Debug("[%lu] ExecuteCallback with result %d.", session_id, result);
+    Notice("[%lu] ExecuteCallback with result %d.", session_id, result);
     auto search = session_states_.find(session_id);
     ASSERT(search != session_states_.end());
 
@@ -452,14 +452,14 @@ void BenchmarkClient::ExecuteCallback(uint64_t session_id,
                 if (send_next_in_session)
                 {
                     erase_session = false;
-                    Debug("next arrival in session %lu us", next_arrival_us);
+                    Notice("next arrival in session %lu us", next_arrival_us);
 
                     transport_.TimerMicro(next_arrival_us, std::bind(&BenchmarkClient::SendNextInSession, this, session_id));
                 }
             }
             else
             {
-                Debug("end of session");
+                Notice("end of session");
             }
         }
 
@@ -474,7 +474,7 @@ void BenchmarkClient::ExecuteCallback(uint64_t session_id,
     {
         stats.Increment(ttype + "_" + std::to_string(result), 1);
         BenchmarkClient::BenchState state = GetBenchState();
-        Debug("Current bench state: %d.", state);
+        Notice("Current bench state: %d.", state);
         if (state == DONE)
         {
             OnReply(session_id, ABORTED_SYSTEM, true);
@@ -488,13 +488,13 @@ void BenchmarkClient::ExecuteCallback(uint64_t session_id,
                 backoff = static_cast<uint64_t>(1000 * 50 * (std::pow(1.3, exp)));
                 backoff = std::min(backoff, 1000 * maxBackoff);
                 // uint64_t exp = std::min(n_attempts - 1UL, 56UL);
-                // Debug("Exp is %lu (min of %lu and 56.", exp, n_attempts - 1UL);
+                // Notice("Exp is %lu (min of %lu and 56.", exp, n_attempts - 1UL);
                 // uint64_t upper = std::min((1UL << exp) * abortBackoff, maxBackoff);
-                // Debug("Upper is %lu (min of %lu and %lu.", upper, (1UL << exp) * abortBackoff,
+                // Notice("Upper is %lu (min of %lu and %lu.", upper, (1UL << exp) * abortBackoff,
                 //       maxBackoff);
                 // backoff = std::uniform_int_distribution<uint64_t>(0UL, upper)(GetRand());
                 // stats.Increment(ttype + "_backoff", backoff);
-                Debug("Backing off for %lu us: %lu", backoff, n_attempts);
+                Notice("Backing off for %lu us: %lu", backoff, n_attempts);
             }
 
             transport_.TimerMicro(backoff, [this, session_id]
@@ -607,7 +607,7 @@ void BenchmarkClient::CooldownDone()
 
 void BenchmarkClient::OnReply(uint64_t transaction_id, int result, bool erase_session)
 {
-    Debug("[%lu] OnReply with result %d.", transaction_id, result);
+    Notice("[%lu] OnReply with result %d.", transaction_id, result);
     auto search = session_states_.find(transaction_id);
     ASSERT(search != session_states_.end());
 
@@ -647,12 +647,12 @@ void BenchmarkClient::OnReply(uint64_t transaction_id, int result, bool erase_se
         BenchState state = GetBenchState(diff);
         if ((state == COOL_DOWN || state == DONE) && !cooldownStarted)
         {
-            Debug("Starting cooldown after %ld seconds.", diff.tv_sec);
+            Notice("Starting cooldown after %ld seconds.", diff.tv_sec);
             Finish();
         }
         else
         {
-            Debug("Not done after %ld seconds.", diff.tv_sec);
+            Notice("Not done after %ld seconds.", diff.tv_sec);
         }
     }
 
