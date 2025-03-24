@@ -304,7 +304,7 @@ namespace strongstore {
         const transport::Configuration &replica_config_;
 
         std::vector<ShardClient *> shard_clients_;
-        ReplicaClient *replica_client_;
+//        ReplicaClient *replica_client_;
 
         std::vector<Transport *> transports_;
         Transport* transport_;

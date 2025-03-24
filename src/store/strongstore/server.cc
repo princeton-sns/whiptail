@@ -43,8 +43,8 @@ namespace strongstore {
             shard_clients_.push_back(new ShardClient(shard_configs_, transports, server_id_, i));
         }
 
-        replica_client_ =
-                new ReplicaClient(replica_config_, transport_, server_id_, shard_idx_);
+//        replica_client_ =
+//                new ReplicaClient(replica_config_, transport_, server_id_, shard_idx_);
 
         if (debug_stats_) {
             _Latency_Init(&ro_wait_lat_, "ro_wait_lat");
@@ -56,7 +56,7 @@ namespace strongstore {
             delete s;
         }
 
-        delete replica_client_;
+//        delete replica_client_;
 
         if (debug_stats_) {
             Latency_Dump(&ro_wait_lat_);
@@ -748,12 +748,12 @@ namespace strongstore {
                 const Timestamp &nonblock_ts = transactions_.GetNonBlockTimestamp(transaction_id);
 
                 // TODO: Handle timeout
-                replica_client_->CoordinatorCommit(
-                        transaction_id, start_ts, shard_idx_,
-                        participants, transaction, nonblock_ts, commit_ts,
-                        std::bind(&Server::CommitCoordinatorCallback, this,
-                                  transaction_id, std::placeholders::_1),
-                        []() {}, COMMIT_TIMEOUT);
+//                replica_client_->CoordinatorCommit(
+//                        transaction_id, start_ts, shard_idx_,
+//                        participants, transaction, nonblock_ts, commit_ts,
+//                        std::bind(&Server::CommitCoordinatorCallback, this,
+//                                  transaction_id, std::placeholders::_1),
+//                        []() {}, COMMIT_TIMEOUT);
 
             } else if (ar.status == LockStatus::FAIL) {
                 ASSERT(ar.wound_rws.size() == 0);
@@ -970,12 +970,12 @@ namespace strongstore {
                 pending_rw_commit_p_replies_[transaction_id] = reply;
 
                 // TODO: Handle timeout
-                replica_client_->Prepare(
-                        transaction_id, transaction, prepare_ts,
-                        coordinator, nonblock_ts,
-                        std::bind(&Server::PrepareCallback, this, transaction_id,
-                                  std::placeholders::_1, std::placeholders::_2),
-                        [](int, Timestamp) {}, PREPARE_TIMEOUT);
+//                replica_client_->Prepare(
+//                        transaction_id, transaction, prepare_ts,
+//                        coordinator, nonblock_ts,
+//                        std::bind(&Server::PrepareCallback, this, transaction_id,
+//                                  std::placeholders::_1, std::placeholders::_2),
+//                        [](int, Timestamp) {}, PREPARE_TIMEOUT);
             } else if (ar.status == LockStatus::FAIL) {
                 ASSERT(ar.wound_rws.size() == 0);
                 //Debug("[%lu] Participant prepare failed", transaction_id);
@@ -1045,12 +1045,12 @@ namespace strongstore {
                 const Timestamp &nonblock_ts = transactions_.GetNonBlockTimestamp(transaction_id);
 
                 // TODO: Handle timeout
-                replica_client_->Prepare(
-                        transaction_id, transaction, prepare_ts,
-                        coordinator, nonblock_ts,
-                        std::bind(&Server::PrepareCallback, this, transaction_id,
-                                  std::placeholders::_1, std::placeholders::_2),
-                        [](int, Timestamp) {}, PREPARE_TIMEOUT);
+//                replica_client_->Prepare(
+//                        transaction_id, transaction, prepare_ts,
+//                        coordinator, nonblock_ts,
+//                        std::bind(&Server::PrepareCallback, this, transaction_id,
+//                                  std::placeholders::_1, std::placeholders::_2),
+//                        [](int, Timestamp) {}, PREPARE_TIMEOUT);
 
             } else if (ar.status == LockStatus::FAIL) {
                 ASSERT(ar.wound_rws.size() == 0);
@@ -1124,10 +1124,10 @@ namespace strongstore {
             ASSERT(s == COMMITTING);
 
             // TODO: Handle timeout
-            replica_client_->Commit(
-                    transaction_id, commit_ts,
-                    std::bind(&Server::CommitParticipantCallback, this, transaction_id, std::placeholders::_1),
-                    []() {}, COMMIT_TIMEOUT);
+//            replica_client_->Commit(
+//                    transaction_id, commit_ts,
+//                    std::bind(&Server::CommitParticipantCallback, this, transaction_id, std::placeholders::_1),
+//                    []() {}, COMMIT_TIMEOUT);
 
         } else if (status == REPLY_FAIL) {
             TransactionState s = transactions_.GetRWTransactionState(transaction_id);
@@ -1144,10 +1144,10 @@ namespace strongstore {
             TransactionFinishResult fr = transactions_.Abort(transaction_id);
 
             // TODO: Handle timeout
-            replica_client_->Abort(
-                    transaction_id,
-                    std::bind(&Server::AbortParticipantCallback, this, transaction_id),
-                    []() {}, ABORT_TIMEOUT);
+//            replica_client_->Abort(
+//                    transaction_id,
+//                    std::bind(&Server::AbortParticipantCallback, this, transaction_id),
+//                    []() {}, ABORT_TIMEOUT);
 
             NotifyPendingRWs(transaction_id, rr.notify_rws);
             NotifyPendingROs(fr.notify_ros);
@@ -1220,12 +1220,12 @@ namespace strongstore {
                 const Timestamp &nonblock_ts = transactions_.GetNonBlockTimestamp(transaction_id);
 
                 // TODO: Handle timeout
-                replica_client_->CoordinatorCommit(
-                        transaction_id, start_ts, shard_idx_,
-                        participants, transaction, nonblock_ts, commit_ts,
-                        std::bind(&Server::CommitCoordinatorCallback, this,
-                                  transaction_id, std::placeholders::_1),
-                        []() {}, COMMIT_TIMEOUT);
+//                replica_client_->CoordinatorCommit(
+//                        transaction_id, start_ts, shard_idx_,
+//                        participants, transaction, nonblock_ts, commit_ts,
+//                        std::bind(&Server::CommitCoordinatorCallback, this,
+//                                  transaction_id, std::placeholders::_1),
+//                        []() {}, COMMIT_TIMEOUT);
             } else if (ar.status == FAIL) {
                 ASSERT(ar.wound_rws.size() == 0);
                 //Debug("[%lu] Coordinator prepare failed", transaction_id);
@@ -1454,13 +1454,13 @@ namespace strongstore {
 
         fr = transactions_.Abort(transaction_id);
 
-        if (state == PREPARING || state == PREPARED) {
-            // TODO: Handle timeout
-            replica_client_->Abort(
-                    transaction_id,
-                    std::bind(&Server::AbortParticipantCallback, this, transaction_id),
-                    []() {}, ABORT_TIMEOUT);
-        }
+//        if (state == PREPARING || state == PREPARED) {
+//            // TODO: Handle timeout
+//            replica_client_->Abort(
+//                    transaction_id,
+//                    std::bind(&Server::AbortParticipantCallback, this, transaction_id),
+//                    []() {}, ABORT_TIMEOUT);
+//        }
 
         abort_reply_.set_status(REPLY_OK);
         transport_->SendMessage(this, remote, abort_reply_);
