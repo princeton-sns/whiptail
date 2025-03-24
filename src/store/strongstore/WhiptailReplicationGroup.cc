@@ -112,6 +112,7 @@ namespace strongstore {
         } else if (session.failure_count(shard_idx_) >= config_.QuorumSize()) {
             Notice("jenndebug [%lu] txn failed. Failure count %u, config_.QuorumSize() %u", session.transaction_id(),
                    session.failure_count(shard_idx_), config_.QuorumSize());
+            session.clear_success_count(shard_idx_);
             ccb(REPLY_FAIL, {}, commit_ts, nonblock_ts);
         }
     }

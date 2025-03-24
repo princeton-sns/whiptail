@@ -53,7 +53,7 @@ namespace strongstore {
 
 //        std::cerr << "jenndebug shardClient config " << config_.to_string() << " config_.n " << config_.n << std::endl;
 
-        for (int i = sent_redundancy_-1; i >= 0; i--) {
+        for (int i = sent_redundancy_ - 1; i >= 0; i--) {
             transports_[i]->Register(this, configs_[i], -1, -1);
 //            transport_->Register(this, configs_[i], -1, -1);
         }
@@ -389,7 +389,8 @@ namespace strongstore {
 
         for (int i = 0; i < sent_redundancy_; i++) {
             int ret = transports_[i]->SendMessageToReplica(this, shard_idx_, replica_, rw_commit_c_);
-            Notice("jenndebug [%lu] shard_client replica_idx %d sent %d, ret %d", transaction_id, replica_, i, ret);
+            Notice("jenndebug [%lu] sent to shard_idx_ %d replica_idx %d sent %d, ret %d", transaction_id, shard_idx_,
+                   replica_, i, ret);
         }
 
     }
