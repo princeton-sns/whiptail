@@ -550,7 +550,7 @@ namespace strongstore {
 
                 // already seen this request, don't need to process it again
                 multi_sent_reqs_recvd_yet_[requestId]++;
-//            Debug("jenndebug [%lu] redundancy %d", transaction_id, multi_sent_reqs_recvd_yet_[requestId]);
+                Debug("jenndebug [%lu] redundancy %d", transaction_id, multi_sent_reqs_recvd_yet_[requestId]);
 
                 if (sent_redundancy_ <= multi_sent_reqs_recvd_yet_[requestId]) {
                     multi_sent_reqs_recvd_yet_.erase(requestId);

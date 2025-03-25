@@ -68,16 +68,13 @@ namespace transport
     {
     public:
         Configuration(const Configuration &c);
-        Configuration(int g, int n, int f,
-                      std::map<int, std::vector<ReplicaAddress>> replicas,
-                      ReplicaAddress *multicastAddress = nullptr,
-                      ReplicaAddress *fcAddress = nullptr,
-                      std::map<int, std::vector<std::string>> interfaces =
-                          std::map<int, std::vector<std::string>>());
+        Configuration(int g, int n, int f, const std::map<int, std::vector<ReplicaAddress>>& replicas,
+                      ReplicaAddress *multicastAddress = nullptr, ReplicaAddress *fcAddress = nullptr,
+                      std::map<int, std::vector<std::string>> interfaces = std::map<int, std::vector<std::string>>());
         Configuration(std::istream &file);
         virtual ~Configuration();
         // ReplicaAddress replica(int group, int idx) const;
-        const ReplicaAddress &replica(int group, int idx) const;
+        const ReplicaAddress &replica(int group, int idx, int send_n_more_times = 0) const;
         const ReplicaAddress *multicast() const;
         const ReplicaAddress *fc() const;
         std::string Interface(int group, int idx) const;
@@ -93,11 +90,18 @@ namespace transport
         bool IsLowestGroupOnHost(int group, int idx) const;
 
         std::string to_string() const {
-            std::string result = "";
-            for (const std::pair<int, std::vector<ReplicaAddress>> kv : replicas) {
-                result += std::to_string(kv.first) + "-->";
-                for (const ReplicaAddress& replica : kv.second) {
-                    result  += replica.to_string() + ", ";
+            std::string result;
+            for (const auto& kv : this->replicas) {
+                int group = kv.first;
+                result += std::to_string(group) + " --> ";
+                const std::map<int, std::vector<ReplicaAddress>>& redundancy_replicas = kv.second;
+                for (const auto& redundancy_to_pair : redundancy_replicas) {
+                    result += "[";
+                    const std::vector<ReplicaAddress>& replicaAddresses = redundancy_to_pair.second;
+                    for (const ReplicaAddress &replica: replicaAddresses) {
+                        result += replica.to_string() + ", ";
+                    }
+                    result += "], ";
                 }
 
                 result += "\n";
@@ -110,7 +114,7 @@ namespace transport
         int n; // number of replicas per group
         int f; // number of failures tolerated (assume homogeneous across groups)
     private:
-        std::map<int, std::vector<ReplicaAddress>> replicas;
+        std::map<int, std::map<int, std::vector<ReplicaAddress>>> replicas; // group->sent_redundancy->replicas
         std::map<int, std::map<int, int>> replicaHosts;
         std::map<int, std::map<std::string, int>> hosts;
         std::map<std::string, std::set<int>> hostToGroups;

@@ -127,7 +127,7 @@ UDPTransport::LookupAddress(const transport::Configuration &config,
                             int replicaIdx)
 {
     const transport::ReplicaAddress &addr = config.replica(groupIdx,
-                                                           replicaIdx);
+                                                           replicaIdx, 1);
     return LookupAddress(addr);
 }
 
@@ -416,7 +416,7 @@ void UDPTransport::Register(TransportReceiver *receiver,
     struct sockaddr_in sin;
 
     const transport::Configuration *canonicalConfig =
-        RegisterConfiguration(receiver, config, groupIdx, replicaIdx);
+        RegisterConfiguration(receiver, config, groupIdx, replicaIdx, 0);
 
     // Create socket
     int fd;

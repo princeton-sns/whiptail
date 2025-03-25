@@ -75,12 +75,17 @@ namespace transport
         }
     }
 
-    Configuration::Configuration(
-        int g, int n, int f, std::map<int, std::vector<ReplicaAddress>> replicas,
-        ReplicaAddress *multicastAddress, ReplicaAddress *fcAddress,
-        std::map<int, std::vector<std::string>> interfaces)
-        : g(g), n(n), f(f), replicas(replicas), interfaces(interfaces)
+    Configuration::Configuration(int g, int n, int f, const std::map<int, std::vector<ReplicaAddress>>& replicas,
+                                 ReplicaAddress *multicastAddress, ReplicaAddress *fcAddress,
+                                 std::map<int, std::vector<std::string>> interfaces)
+        : g(g), n(n), f(f), interfaces(std::move(interfaces))
     {
+        for (const auto& kv : replicas) {
+            int group = kv.first;
+            const std::vector<ReplicaAddress>& replica_group = kv.second;
+            this->replicas[group][0] = replica_group;
+        }
+
         if (multicastAddress)
         {
             hasMulticast = true;
@@ -185,7 +190,7 @@ namespace transport
                     Panic("Configuration line format: 'replica group host:port'");
                 }
 
-                replicas[group].push_back(
+                replicas[group][0].push_back(
                     ReplicaAddress(string(host), string(port)));
                 if (interface != nullptr)
                 {
@@ -247,11 +252,11 @@ namespace transport
             Panic("Configuration did not specify any groups");
         }
 
-        n = replicas[0].size();
+        n = replicas[0][0].size();
 
         for (auto &kv : replicas)
         {
-            if (kv.second.size() != (size_t)n)
+            if (kv.second[0].size() != (size_t)n)
             {
                 Panic("All groups must contain the same number of replicas.");
             }
@@ -269,13 +274,13 @@ namespace transport
 
         for (const auto &r : replicas)
         {
-            for (size_t idx = 0; idx < r.second.size(); ++idx)
+            for (size_t idx = 0; idx < r.second.at(0).size(); ++idx)
             {
-                if (hosts[r.first].find(r.second[idx].host) ==
+                if (hosts[r.first].find(r.second.at(0)[idx].host) ==
                     hosts[r.first].end())
                 {
-                    hosts[r.first][r.second[idx].host] = hosts[r.first].size();
-                    replicaHosts[r.first][idx] = hosts[r.first][r.second[idx].host];
+                    hosts[r.first][r.second.at(0)[idx].host] = hosts[r.first].size();
+                    replicaHosts[r.first][idx] = hosts[r.first][r.second.at(0)[idx].host];
                 }
             }
         }
@@ -297,9 +302,9 @@ namespace transport
     //     return replicas.at(group)[idx];
     // }
 
-    const ReplicaAddress &Configuration::replica(int group, int idx) const
+    const ReplicaAddress &Configuration::replica(int group, int idx, int send_n_more_times) const
     {
-        return replicas.at(group)[idx];
+        return replicas.at(group).at(send_n_more_times)[idx];
     }
 
     const ReplicaAddress *Configuration::multicast() const

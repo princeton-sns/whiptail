@@ -39,105 +39,131 @@
 #include <map>
 #include <unordered_map>
 
-class TransportAddress
-{
+class TransportAddress {
 public:
-    virtual ~TransportAddress() { }
+    virtual ~TransportAddress() {}
+
     virtual TransportAddress *clone() const = 0;
 };
 
-class TransportReceiver
-{
+class TransportReceiver {
 protected:
     typedef ::google::protobuf::Message Message;
 
 public:
-    TransportReceiver() : myAddress(nullptr) { }
+    TransportReceiver() : myAddress(nullptr) {}
+
     virtual ~TransportReceiver();
+
     virtual void SetAddress(const TransportAddress *addr);
+
     virtual const TransportAddress *GetAddress();
 
     virtual void ReceiveMessage(const TransportAddress &remote,
                                 const string &type,
                                 const string &data,
-                                void * meta_data) = 0;
+                                void *meta_data) = 0;
 
 protected:
     const TransportAddress *myAddress;
 };
 
-typedef std::function<void (void)> timer_callback_t;
+typedef std::function<void(void)> timer_callback_t;
 
-class Transport
-{
+class Transport {
 protected:
     typedef ::google::protobuf::Message Message;
 public:
     virtual ~Transport() {}
+
     /* -1 in replicaIdx and groupIdx indicates client */
-    virtual void Register(TransportReceiver *receiver,
-                          const transport::Configuration &config,
-                          int groupIdx,
-                          int replicaIdx) = 0;
+    virtual void
+    Register(TransportReceiver *receiver, const transport::Configuration &config, int groupIdx, int replicaIdx,
+             int send_n_more_times) = 0;
+
+    virtual void
+    Register(TransportReceiver *receiver, const transport::Configuration &config, int groupIdx, int replicaIdx) = 0;
 
     virtual bool SendMessage(TransportReceiver *src,
                              const TransportAddress &dst,
                              const Message &m) = 0;
+
     /* Send message to a replica in the local/default(0) group */
     virtual bool SendMessageToReplica(TransportReceiver *src,
                                       int replicaIdx,
                                       const Message &m) = 0;
     /* Send message to a replica in a specific group */
-    virtual bool SendMessageToReplica(TransportReceiver *src,
-                                      int groupIdx,
-                                      int replicaIdx,
-                                      const Message &m) = 0;
+    virtual bool
+    SendMessageToReplica(TransportReceiver *src, int groupIdx, int replicaIdx, const Message &m,
+                         int send_n_more_times) = 0;
+
+    virtual bool
+    SendMessageToReplica(TransportReceiver *src, int groupIdx, int replicaIdx, const Message &m) = 0;
+
     /* Send message to all replicas in the local/default(0) group */
     virtual bool SendMessageToAll(TransportReceiver *src,
                                   const Message &m) = 0;
+
     /* Send message to all replicas in all groups in the configuration */
     virtual bool SendMessageToAllGroups(TransportReceiver *src,
                                         const Message &m) = 0;
+
     /* Send message to all replicas in specific groups */
     virtual bool SendMessageToGroups(TransportReceiver *src,
                                      const std::vector<int> &groups,
                                      const Message &m) = 0;
+
     /* Send message to all replicas in a single group */
     virtual bool SendMessageToGroup(TransportReceiver *src,
                                     int groupIdx,
                                     const Message &m) = 0;
+
     /* Send message to failure coordinator
      */
     virtual bool SendMessageToFC(TransportReceiver *src,
                                  const Message &m) = 0;
+
     virtual int Timer(uint64_t ms, timer_callback_t cb) = 0;
+
     virtual int TimerMicro(uint64_t us, timer_callback_t cb) = 0;
+
     virtual bool CancelTimer(int id) = 0;
+
     virtual void CancelAllTimers() = 0;
+
     virtual void Run() = 0;
+
     virtual void Stop() = 0;
+
     virtual void Close(TransportReceiver *receiver) = 0;
+
     virtual void Flush();
 
     /* Dispatch function f to the thread pool
      * handle the result in cb
      */
-    virtual void DispatchTP(std::function<void*()> f, std::function<void(void*)> cb) = 0;
+    virtual void DispatchTP(std::function<void *()> f, std::function<void(void *)> cb) = 0;
 };
 
-class Timeout
-{
+class Timeout {
 public:
     Timeout(Transport *transport, uint64_t ms, timer_callback_t cb);
+
     virtual ~Timeout();
+
     virtual void SetTimeout(uint64_t ms);
+
     virtual uint64_t Start();
+
     virtual uint64_t Reset();
+
     virtual void Stop();
+
     virtual bool Active() const;
 
 private:
     void OnTimeout();
+
     Transport *transport;
     uint64_t ms;
     timer_callback_t cb;

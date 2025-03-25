@@ -74,7 +74,7 @@
   "client_num_keys": 1000000,
   "benchmark_name": "retwis",
   "bench_mode": "closed",
-  "mpl": 140,
+  "mpl": 1,
   "client_key_selector": "zipf",
   "client_zipf_coefficient": 0.01,
   "client_arrival_rate": 1,

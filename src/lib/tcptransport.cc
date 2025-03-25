@@ -122,10 +122,11 @@ TCPTransport::LookupAddress(const transport::Configuration &config,
 TCPTransportAddress
 TCPTransport::LookupAddress(const transport::Configuration &config,
                             int groupIdx,
-                            int replicaIdx)
+                            int replicaIdx,
+                            int send_n_more_times)
 {
     const transport::ReplicaAddress &addr = config.replica(groupIdx,
-                                                           replicaIdx);
+                                                           replicaIdx, send_n_more_times);
     return LookupAddress(addr);
 }
 
@@ -329,15 +330,15 @@ void TCPTransport::ConnectTCP(
           inet_ntoa(sin.sin_addr), htons(sin.sin_port));
 }
 
-void TCPTransport::Register(TransportReceiver *receiver,
-                            const transport::Configuration &config,
-                            int groupIdx, int replicaIdx)
+void TCPTransport::Register(TransportReceiver *receiver, const transport::Configuration &config, int groupIdx,
+                            int replicaIdx,
+                            int send_n_more_times)
 {
     ASSERT(replicaIdx < config.n);
     struct sockaddr_in sin;
 
     // const transport::Configuration *canonicalConfig =
-    RegisterConfiguration(receiver, config, groupIdx, replicaIdx);
+    RegisterConfiguration(receiver, config, groupIdx, replicaIdx, send_n_more_times);
 
     // Clients don't need to accept TCP connections
     if (replicaIdx == -1)

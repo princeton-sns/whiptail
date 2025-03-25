@@ -88,10 +88,9 @@ void SimulatedTransport::Register(TransportReceiver *receiver,
     replicaIdxs[addr] = replicaIdx;
 }
 
-void SimulatedTransport::Register(TransportReceiver *receiver,
-                                  const transport::Configuration &config,
-                                  int groupIdx,
-                                  int replicaIdx)
+void SimulatedTransport::Register(TransportReceiver *receiver, const transport::Configuration &config, int groupIdx,
+                                  int replicaIdx,
+                                  int send_n_more_times)
 {
     // Allocate an endpoint
     ++lastAddr;
@@ -100,7 +99,7 @@ void SimulatedTransport::Register(TransportReceiver *receiver,
     // Tell the receiver its address
     receiver->SetAddress(new SimulatedTransportAddress(addr));
 
-    RegisterConfiguration(receiver, config, groupIdx, replicaIdx);
+    RegisterConfiguration(receiver, config, groupIdx, replicaIdx, 0);
 
     // If this is registered as a replica, record the index
     if (g_replicaIdxs.find(groupIdx) == g_replicaIdxs.end())
@@ -172,7 +171,7 @@ SimulatedTransport::LookupAddress(const transport::Configuration &cfg,
 
     for (auto &kv : configurations)
     {
-        if (*(kv.second) == cfg)
+        if (*(kv.second[0]) == cfg)
         {
             // Configuration matches. Does the index?
             const SimulatedTransportAddress *addr =
@@ -195,10 +194,10 @@ SimulatedTransport::LookupAddress(const transport::Configuration &cfg,
 {
     for (auto &kv : configurations)
     {
-        if (*(kv.second) == cfg)
+        if (*(kv.second[0]) == cfg)
         {
             // Configuration matches. Does the index?
-            const SimulatedTransportAddress *addr =
+            const auto *addr =
                 dynamic_cast<const SimulatedTransportAddress *>(kv.first->GetAddress());
             if (g_replicaIdxs[groupIdx][addr->addr] == idx)
             {
@@ -207,6 +206,8 @@ SimulatedTransport::LookupAddress(const transport::Configuration &cfg,
             }
         }
     }
+
+    Panic("Why are we here?");
 }
 
 const SimulatedTransportAddress *
@@ -310,10 +311,8 @@ bool SimulatedTransport::SendMessageInternal(TransportReceiver *src,
     return true;
 }
 
-bool SimulatedTransport::SendMessageToReplica(TransportReceiver *src,
-                                              int groupIdx,
-                                              int replicaIdx,
-                                              const google::protobuf::Message &m)
+bool SimulatedTransport::SendMessageToReplica(TransportReceiver *src, int groupIdx, int replicaIdx, const Message &m,
+                                              int send_n_more_times)
 {
     return true;
 }

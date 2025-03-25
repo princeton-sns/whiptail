@@ -479,17 +479,17 @@ int main(int argc, char **argv) {
 
     switch (proto) {
         case PROTO_STRONG: {
-            replica = new replication::vr::VRReplica(
-                    replica_config, FLAGS_group_idx, FLAGS_replica_idx, tport, 1,
-                    dynamic_cast<replication::AppReplica *>(server),
-                    FLAGS_debug_stats);
+//            replica = new replication::vr::VRReplica(
+//                    replica_config, FLAGS_group_idx, FLAGS_replica_idx, tport, 1,
+//                    dynamic_cast<replication::AppReplica *>(server),
+//                    FLAGS_debug_stats);
             break;
         }
         default: {
             NOT_REACHABLE();
         }
     }
-    Debug("Created replica");
+//    Debug("Created replica");
 
     std::signal(SIGKILL, Cleanup);
     std::signal(SIGTERM, Cleanup);

@@ -50,42 +50,59 @@
 #include <random>
 #include <unordered_map>
 
-class TCPTransportAddress : public TransportAddress
-{
+class TCPTransportAddress : public TransportAddress {
 public:
     TCPTransportAddress *clone() const;
+
     sockaddr_in addr;
 
 private:
     TCPTransportAddress(const sockaddr_in &addr);
 
     friend class TCPTransport;
+
     friend bool operator==(const TCPTransportAddress &a,
                            const TCPTransportAddress &b);
+
     friend bool operator!=(const TCPTransportAddress &a,
                            const TCPTransportAddress &b);
+
     friend bool operator<(const TCPTransportAddress &a,
                           const TCPTransportAddress &b);
 };
 
-class TCPTransport : public TransportCommon<TCPTransportAddress>
-{
+class TCPTransport : public TransportCommon<TCPTransportAddress> {
 public:
     TCPTransport(double dropRate = 0.0, double reogrderRate = 0.0,
                  int dscp = 0, bool handleSignals = true);
+
     virtual ~TCPTransport();
-    virtual void Register(TransportReceiver *receiver,
-                          const transport::Configuration &config,
-                          int groupIdx,
-                          int replicaIdx) override;
+
+    void Register(TransportReceiver *receiver,
+                  const transport::Configuration &config,
+                  int groupIdx,
+                  int replicaIdx) override {
+        Register(receiver, config, groupIdx, replicaIdx, 0);
+    }
+
+    void
+    Register(TransportReceiver *receiver, const transport::Configuration &config, int groupIdx, int replicaIdx,
+             int send_n_more_times) override;
 
     virtual void Run() override;
+
     virtual void Stop() override;
+
     virtual void Close(TransportReceiver *receiver) override;
+
     virtual int Timer(uint64_t ms, timer_callback_t cb) override;
+
     virtual int TimerMicro(uint64_t us, timer_callback_t cb) override;
+
     virtual bool CancelTimer(int id) override;
+
     virtual void CancelAllTimers() override;
+
     virtual void Flush() override;
 
     void DispatchTP(std::function<void *()> f, std::function<void(void *)> cb);
@@ -94,27 +111,37 @@ public:
     LookupAddress(const transport::Configuration &cfg,
                   int replicaIdx);
 
-    virtual TCPTransportAddress
+    TCPTransportAddress
     LookupAddress(const transport::Configuration &config,
                   int groupIdx,
-                  int replicaIdx) override;
+                  int replicaIdx,
+                  int send_n_more_times) override;
+
+    TCPTransportAddress
+    LookupAddress(const transport::Configuration &config,
+                  int groupIdx,
+                  int replicaIdx) override {
+        return this->LookupAddress(config, groupIdx, replicaIdx, 0);
+    }
 
     TCPTransportAddress
     LookupAddress(const transport::ReplicaAddress &addr);
 
 private:
     int TimerInternal(struct timeval &tv, timer_callback_t cb);
+
     std::mutex mtx;
-    struct TCPTransportTimerInfo
-    {
+
+    struct TCPTransportTimerInfo {
         TCPTransportTimerInfo(timer_callback_t &&cb) : cb(std::move(cb)) {}
+
         timer_callback_t cb;
         TCPTransport *transport;
         event *ev;
         int id;
     };
-    struct TCPTransportTCPListener
-    {
+
+    struct TCPTransportTCPListener {
         TCPTransport *transport;
         TransportReceiver *receiver;
         int acceptFd;
@@ -140,28 +167,38 @@ private:
     virtual bool SendMessageInternal(TransportReceiver *src,
                                      const TCPTransportAddress &dst,
                                      const Message &m) override;
+
     virtual const TCPTransportAddress *
-    LookupMulticastAddress(const transport::Configuration *config) override
-    {
+    LookupMulticastAddress(const transport::Configuration *config) override {
         return nullptr;
     };
 
     void ConnectTCP(const std::pair<TCPTransportAddress, TransportReceiver *> &dstSrc);
+
     void OnTimer(TCPTransportTimerInfo *info);
+
     static void TimerCallback(evutil_socket_t fd,
                               short what, void *arg);
+
     static void LogCallback(int severity, const char *msg);
+
     static void FatalCallback(int err);
+
     static void SignalCallback(evutil_socket_t fd,
                                short what, void *arg);
+
     static void TCPAcceptCallback(evutil_socket_t fd, short what,
                                   void *arg);
+
     static void TCPReadableCallback(struct bufferevent *bev,
                                     void *arg);
+
     static void TCPEventCallback(struct bufferevent *bev,
                                  short what, void *arg);
+
     static void TCPIncomingEventCallback(struct bufferevent *bev,
                                          short what, void *arg);
+
     static void TCPOutgoingEventCallback(struct bufferevent *bev,
                                          short what, void *arg);
 };

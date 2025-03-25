@@ -70,7 +70,7 @@ namespace strongstore
                                                        int replica_idx) const
     {
         const std::string &host =
-            tport_config_.replica(shard_idx, replica_idx).host;
+                tport_config_.replica(shard_idx, replica_idx).host;
 
         return GetRegion(host);
     }

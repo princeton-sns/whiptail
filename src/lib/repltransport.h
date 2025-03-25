@@ -128,88 +128,78 @@
 #include "lib/transport.h"
 #include "lib/transportcommon.h"
 
-class ReplTransportAddress : public TransportAddress
-{
+class ReplTransportAddress : public TransportAddress {
 public:
     // Constructors.
     ReplTransportAddress() {}
 
     ReplTransportAddress(std::string host, std::string port)
-        : host_(std::move(host)), port_(std::move(port)) {}
+            : host_(std::move(host)), port_(std::move(port)) {}
 
     ReplTransportAddress(const ReplTransportAddress &other)
-        : ReplTransportAddress(other.host_, other.port_) {}
+            : ReplTransportAddress(other.host_, other.port_) {}
 
     ReplTransportAddress(ReplTransportAddress &&other)
-        : ReplTransportAddress()
-    {
+            : ReplTransportAddress() {
         swap(*this, other);
     }
 
-    ReplTransportAddress &operator=(ReplTransportAddress other)
-    {
+    ReplTransportAddress &operator=(ReplTransportAddress other) {
         swap(*this, other);
         return *this;
     }
 
-    friend void swap(ReplTransportAddress &x, ReplTransportAddress &y)
-    {
+    friend void swap(ReplTransportAddress &x, ReplTransportAddress &y) {
         std::swap(x.host_, y.host_);
         std::swap(x.port_, y.port_);
     }
 
     // Comparators.
-    bool operator==(const ReplTransportAddress &other) const
-    {
+    bool operator==(const ReplTransportAddress &other) const {
         return Key() == other.Key();
     }
-    bool operator!=(const ReplTransportAddress &other) const
-    {
+
+    bool operator!=(const ReplTransportAddress &other) const {
         return Key() != other.Key();
     }
-    bool operator<(const ReplTransportAddress &other) const
-    {
+
+    bool operator<(const ReplTransportAddress &other) const {
         return Key() < other.Key();
     }
-    bool operator<=(const ReplTransportAddress &other) const
-    {
+
+    bool operator<=(const ReplTransportAddress &other) const {
         return Key() <= other.Key();
     }
-    bool operator>(const ReplTransportAddress &other) const
-    {
+
+    bool operator>(const ReplTransportAddress &other) const {
         return Key() > other.Key();
     }
-    bool operator>=(const ReplTransportAddress &other) const
-    {
+
+    bool operator>=(const ReplTransportAddress &other) const {
         return Key() >= other.Key();
     }
 
     // Getters.
-    const std::string &Host() const
-    {
+    const std::string &Host() const {
         return host_;
     }
 
-    const std::string &Port() const
-    {
+    const std::string &Port() const {
         return port_;
     }
 
-    ReplTransportAddress *clone() const override
-    {
+    ReplTransportAddress *clone() const override {
         return new ReplTransportAddress(host_, port_);
     }
 
     friend std::ostream &operator<<(std::ostream &out,
-                                    const ReplTransportAddress &addr)
-    {
+                                    const ReplTransportAddress &addr) {
         out << addr.host_ << ":" << addr.port_;
         return out;
     }
 
 private:
-    std::tuple<const std::string &, const std::string &> Key() const
-    {
+    std::tuple<const std::string &, const std::string &> Key() const {
         return std::forward_as_tuple(host_, port_);
     }
 
@@ -217,20 +207,25 @@ private:
     std::string port_;
 };
 
-class ReplTransport : public TransportCommon<ReplTransportAddress>
-{
+class ReplTransport : public TransportCommon<ReplTransportAddress> {
 public:
-    virtual void Register(TransportReceiver *receiver,
-                          const transport::Configuration &config,
-                          int groupIdx,
+    void
+    Register(TransportReceiver *receiver, const transport::Configuration &config, int groupIdx, int replicaIdx,
+             int send_n_more_times) override {
+        Register(receiver, config, groupIdx, replicaIdx);
+    }
+
+    void Register(TransportReceiver *receiver, const transport::Configuration &config, int groupIdx,
                           int replicaIdx) override;
+
     virtual int Timer(uint64_t ms, timer_callback_t cb) override;
-    virtual int TimerMicro(uint64_t ms, timer_callback_t cb) override
-    {
+
+    virtual int TimerMicro(uint64_t ms, timer_callback_t cb) override {
         return Timer(0, cb);
     }
 
     virtual bool CancelTimer(int id) override;
+
     virtual void CancelAllTimers() override;
 
     void DispatchTP(std::function<void *()> f, std::function<void(void *)> cb);
@@ -246,18 +241,22 @@ public:
 
     // Launch the REPL.
     virtual void Run() override;
+
     virtual void Stop() override;
+
     virtual void Close(TransportReceiver *receiver) override;
 
 protected:
     virtual bool SendMessageInternal(TransportReceiver *src,
                                      const ReplTransportAddress &dst, const Message &m) override;
+
     virtual ReplTransportAddress
     LookupAddress(const transport::Configuration &cfg,
                   int groupIdx,
                   int replicaIdx);
+
     virtual const ReplTransportAddress *LookupMulticastAddress(
-        const transport::Configuration *cfg) override;
+            const transport::Configuration *cfg) override;
 
 private:
     // Prompt the user for input and either (1) trigger a timer, (2) deliver a
@@ -268,17 +267,15 @@ private:
     // prints the queued messages for every node in the system.
     void PrintState() const;
 
-    struct QueuedMessage
-    {
+    struct QueuedMessage {
         const ReplTransportAddress *src;
         std::unique_ptr<Message> msg;
 
         QueuedMessage(const ReplTransportAddress *src, std::unique_ptr<Message> msg)
-            : src(std::move(src)), msg(std::move(msg)) {}
+                : src(std::move(src)), msg(std::move(msg)) {}
     };
 
-    struct TransportReceiverState
-    {
+    struct TransportReceiverState {
         // receiver can be null if it has queued messages but hasn't yet been
         // registered with a ReplTransport.
         TransportReceiver *receiver;

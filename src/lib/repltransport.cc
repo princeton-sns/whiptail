@@ -117,7 +117,7 @@ void ReplTransport::Register(TransportReceiver *receiver,
     }
 
     // Register with superclass.
-    RegisterConfiguration(receiver, config, groupIdx, replicaIdx);
+    RegisterConfiguration(receiver, config, groupIdx, replicaIdx, 0);
 }
 
 int ReplTransport::Timer(uint64_t ms, timer_callback_t cb)

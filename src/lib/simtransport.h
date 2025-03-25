@@ -71,10 +71,8 @@ public:
     void Register(TransportReceiver *receiver,
                   const transport::Configuration &config,
                   int replicaIdx);
-    void Register(TransportReceiver *receiver,
-                  const transport::Configuration &config,
-                  int groupIdx,
-                  int replicaIdx);
+    void Register(TransportReceiver *receiver, const transport::Configuration &config, int groupIdx, int replicaIdx,
+                  int send_n_more_times);
     void Run();
     void AddFilter(int id, filter_t filter);
     void RemoveFilter(int id);
@@ -91,10 +89,8 @@ protected:
                              const Message &m,
                              bool multicast);
 
-    bool SendMessageToReplica(TransportReceiver *src,
-                              int groupIdx,
-                              int replicaIdx,
-                              const Message &m) override;
+    bool SendMessageToReplica(TransportReceiver *src, int groupIdx, int replicaIdx, const Message &m,
+                              int send_n_more_times) override;
 
     SimulatedTransportAddress
     LookupAddress(const transport::Configuration &cfg, int idx);

@@ -54,10 +54,10 @@ namespace strongstore {
 //        std::cerr << "jenndebug shardClient config " << config_.to_string() << " config_.n " << config_.n << std::endl;
 
         for (int i = 0; i < sent_redundancy_; i++) {
-            extraTransportReceivers_.push_back(new ExtraTransportReceiver(this));
+//            extraTransportReceivers_.push_back(new ExtraTransportReceiver(this));
 //            transports_[i]->Register(this, configs_[i], -1, -1);
 //            transport_->Register(this, configs_[i], -1, -1);
-              transport_->Register(extraTransportReceivers_[i], configs_[i], -1, -1);
+            transport_->Register(this, configs_[i], -1, -1, i);
         }
         // transport_->Register(this, config_, -1, -1);
 
@@ -66,8 +66,8 @@ namespace strongstore {
     }
 
     ShardClient::~ShardClient() {
-        for (int i = 0; i < sent_redundancy_; i++)
-            delete extraTransportReceivers_[i];
+//        for (int i = 0; i < sent_redundancy_; i++)
+//            delete extraTransportReceivers_[i];
     }
 
     void ShardClient::ReceiveMessage(const TransportAddress &remote,
@@ -393,7 +393,7 @@ namespace strongstore {
         }
 
         for (int i = 0; i < sent_redundancy_; i++) {
-            int ret = transport_->SendMessageToReplica(extraTransportReceivers_[i], shard_idx_, replica_, rw_commit_c_);
+            int ret = transport_->SendMessageToReplica(this, shard_idx_, replica_, rw_commit_c_, i);
             Notice("jenndebug [%lu] sent to shard_idx_ %d replica_idx %d sent %d, ret %d", transaction_id, shard_idx_,
                    replica_, i, ret);
         }

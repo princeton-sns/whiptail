@@ -71,10 +71,18 @@ public:
     UDPTransport(double dropRate = 0.0, double reorderRate = 0.0,
                  int dscp = 0, bool handleSignals = true);
     virtual ~UDPTransport();
-    virtual void Register(TransportReceiver *receiver,
+    void Register(TransportReceiver *receiver,
                           const transport::Configuration &config,
                           int groupIdx,
                           int replicaIdx) override;
+
+    void Register(TransportReceiver *receiver,
+                  const transport::Configuration &config,
+                  int groupIdx,
+                  int replicaIdx, int send_n_more_times) override {
+        this->Register(receiver, config, groupIdx, replicaIdx);
+    }
+
     virtual void Run() override;
     virtual void Stop() override;
     virtual void Close(TransportReceiver *receiver) override;
@@ -144,6 +152,13 @@ private:
     LookupAddress(const transport::Configuration &cfg,
                   int groupIdx,
                   int replicaIdx) override;
+    UDPTransportAddress
+    LookupAddress(const transport::Configuration &cfg,
+                  int groupIdx,
+                  int replicaIdx,
+                  int send_n_more_times) override {
+         return this->LookupAddress(cfg, groupIdx, replicaIdx);
+    }
     const UDPTransportAddress *
     LookupMulticastAddress(const transport::Configuration *cfg) override;
     void ListenOnMulticastPort(const transport::Configuration
