@@ -8,14 +8,8 @@
   "client_protocol_mode": "span-lock",
   "server_names": [
     "us-east-1-0",
-    "us-east-1-1",
-    "us-east-1-2",
     "eu-west-1-0",
-    "eu-west-1-1",
-    "eu-west-1-2",
-    "ap-northeast-1-0",
-    "ap-northeast-1-1",
-    "ap-northeast-1-2"
+    "ap-northeast-1-0"
   ],
   "consistency": [
     "ss"
@@ -25,48 +19,30 @@
   "replica_config_format_str": "replica-%d.config",
   "network_config": "network.json",
   "fault_tolerance": 1,
-  "num_shards": 3,
+  "num_shards": 1,
   "shards": [
-    [
-      "us-east-1-0",
-      "eu-west-1-0",
-      "ap-northeast-1-0"
-    ],
-    [
-      "us-east-1-0",
-      "eu-west-1-0",
-      "ap-northeast-1-0"
-    ],
     [
       "us-east-1-0",
       "eu-west-1-0",
       "ap-northeast-1-0"
     ]
   ],
-  "client_total": 2,
+  "client_total": 1,
   "client_processes_per_client_node": 1,
   "client_threads_per_process": 1,
   "clients": [
-    "client-0-0",
-    "client-1-0"
+    "client-0-0"
   ],
   "server_regions": {
     "us-east-1": [
       "us-east-1-0",
-      "us-east-1-1",
-      "us-east-1-2",
       "client-0-0"
     ],
     "eu-west-1": [
-      "eu-west-1-0",
-      "eu-west-1-1",
-      "eu-west-1-2",
-      "client-1-0"
+      "eu-west-1-0"
     ],
     "ap-northeast-1": [
-      "ap-northeast-1-0",
-      "ap-northeast-1-1",
-      "ap-northeast-1-2"
+      "ap-northeast-1-0"
     ]
   },
   "server_port": 7087,
@@ -74,7 +50,7 @@
   "client_num_keys": 1000000,
   "benchmark_name": "retwis",
   "bench_mode": "closed",
-  "mpl": 140,
+  "mpl": 1,
   "client_key_selector": "zipf",
   "client_zipf_coefficient": 0.01,
   "client_arrival_rate": 1,

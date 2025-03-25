@@ -567,13 +567,13 @@ class RssCodebase:
                         print("replica {}:{}".format(replica, port), file=rcf)
                         print("replica {}:{}".format(replica, port + 1),
                               file=scf)
-                        print("replica {}:{}".format(replica, port + 1000),
+                        print("replica {}:{}".format(replica, port + 100),
                               file=scf1)
-                        print("replica {}:{}".format(replica, port + 2000),
+                        print("replica {}:{}".format(replica, port + 200),
                               file=scf2)
-                        print("replica {}:{}".format(replica, port + 3000),
+                        print("replica {}:{}".format(replica, port + 300),
                               file=scf3)
-                        print("replica {}:{}".format(replica, port + 4000),
+                        print("replica {}:{}".format(replica, port + 400),
                               file=scf4)
 
                         server_ports[replica] += 2

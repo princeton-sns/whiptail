@@ -98,9 +98,8 @@ namespace strongstore
     public:
         /* Constructor needs path to shard config. */
         ShardClient(
-            const std::vector<transport::Configuration> &configs, std::vector<Transport *> transports, uint64_t client_id,
-            int shard, wound_callback wcb = [](uint64_t transaction_id) {}, int replica = 0,
-            uint8_t sent_redundancy = 1);
+            const transport::Configuration &config, Transport *transport, uint64_t client_id,
+            int shard, wound_callback wcb = [](uint64_t transaction_id) {}, int replica = 0);
 
         ~ShardClient();
 
@@ -273,9 +272,9 @@ namespace strongstore
 
         uint64_t last_req_id_;
 
-        const std::vector<transport::Configuration> &configs_;
-        std::vector<Transport *> transports_; // Transport layer.
-        std::vector<ExtraTransportReceiver*> extraTransportReceivers_;
+//        const std::vector<transport::Configuration> &configs_;
+//        std::vector<Transport *> transports_; // Transport layer.
+//        std::vector<ExtraTransportReceiver*> extraTransportReceivers_;
 
         const transport::Configuration &config_;
         Transport * transport_;
@@ -283,7 +282,7 @@ namespace strongstore
         int shard_idx_;        // which shard this client accesses
         int replica_;          // which replica to use for reads
         wound_callback wcb_;
-        uint8_t sent_redundancy_;
+//        uint8_t sent_redundancy_;
     };
 
 } // namespace strongstore
