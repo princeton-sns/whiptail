@@ -36,38 +36,34 @@ namespace strongstore {
     using namespace std;
     using namespace proto;
 
-    ShardClient::ShardClient(const std::vector<transport::Configuration> &configs,
-                             std::vector<Transport *> transports, uint64_t client_id, int shard,
-                             wound_callback wcb, int replica, uint8_t sent_redundancy)
+    ShardClient::ShardClient(const transport::Configuration &config,
+                             Transport * transport, uint64_t client_id, int shard,
+                             wound_callback wcb, int replica)
             : last_req_id_{0},
-              configs_{configs},
-              config_{configs[0]},
-              transports_{transports},
-              transport_{transports[0]},
+              config_{config},
+              transport_{transport},
               client_id_{client_id},
               shard_idx_{shard},
               wcb_{wcb},
               replica_(replica),
-              tt_{0},
-              sent_redundancy_{sent_redundancy} {
+              tt_{0}{
 
 //        std::cerr << "jenndebug shardClient config " << config_.to_string() << " config_.n " << config_.n << std::endl;
-
-        for (int i = 0; i < sent_redundancy_; i++) {
-            extraTransportReceivers_.push_back(new ExtraTransportReceiver(this));
+//        for (int i = 0; i < sent_redundancy_; i++) {
+//            extraTransportReceivers_.push_back(new ExtraTransportReceiver(this));
 //            transports_[i]->Register(this, configs_[i], -1, -1);
 //            transport_->Register(this, configs_[i], -1, -1);
-              transport_->Register(extraTransportReceivers_[i], configs_[i], -1, -1);
-        }
-        // transport_->Register(this, config_, -1, -1);
+//              transport_->Register(extraTransportReceivers_[i], configs_[i], -1, -1);
+//        }
+         transport_->Register(this, config_, -1, -1);
 
         // TODO: Remove hardcoding
 //        replica_ = 0;
     }
 
     ShardClient::~ShardClient() {
-        for (int i = 0; i < sent_redundancy_; i++)
-            delete extraTransportReceivers_[i];
+//        for (int i = 0; i < sent_redundancy_; i++)
+//            delete extraTransportReceivers_[i];
     }
 
     void ShardClient::ReceiveMessage(const TransportAddress &remote,
@@ -391,12 +387,13 @@ namespace strongstore {
         for (int p: participants) {
             rw_commit_c_.add_participants(p);
         }
+        transport_->SendMessageToReplica(this, shard_idx_, replica_, rw_commit_c_);
 
-        for (int i = 0; i < sent_redundancy_; i++) {
-            int ret = transport_->SendMessageToReplica(extraTransportReceivers_[i], shard_idx_, replica_, rw_commit_c_);
-            Notice("jenndebug [%lu] sent to shard_idx_ %d replica_idx %d sent %d, ret %d", transaction_id, shard_idx_,
-                   replica_, i, ret);
-        }
+//        for (int i = 0; i < sent_redundancy_; i++) {
+//            int ret = transport_->SendMessageToReplica(extraTransportReceivers_[i], shard_idx_, replica_, rw_commit_c_);
+//            Notice("jenndebug [%lu] sent to shard_idx_ %d replica_idx %d sent %d, ret %d", transaction_id, shard_idx_,
+//                   replica_, i, ret);
+//        }
 
     }
 

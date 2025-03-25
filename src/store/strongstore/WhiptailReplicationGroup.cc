@@ -9,16 +9,20 @@
 namespace strongstore {
 
     WhiptailReplicationGroup::WhiptailReplicationGroup(std::vector<transport::Configuration> &configs,
-                                                       std::vector<Transport *> transports,
+                                                       Transport *transport,
                                                        int shard_idx, uint64_t client_id, Stats &stats,
                                                        uint8_t sent_redundancy)
-            : shard_idx_(shard_idx), configs_(configs), config_(configs[0]), transports_(std::move(transports)),
-              stats_(stats) {
+            : shard_idx_(shard_idx), configs_(configs), config_(configs[0]),
+              stats_(stats), sent_redundancy_(sent_redundancy) {
 
 //        Debug("jenndebug WRG config_.n %d", config_.n);
-        for (int repl_idx = 0; repl_idx < config_.n; repl_idx++) {
-            shard_clients_.push_back(new ShardClient(configs_, transports_, client_id, shard_idx_,
-                                                     [](uint64_t transaction_id) {}, repl_idx, sent_redundancy));
+        for (int redundancy = 0; redundancy < sent_redundancy_; redundancy++) {
+            shard_clients_.push_back(std::vector<ShardClient *>{});
+            for (int repl_idx = 0; repl_idx < configs_[redundancy].n; repl_idx++) {
+                shard_clients_[redundancy].push_back(
+                        new ShardClient(configs_[redundancy], transport, client_id, shard_idx_,
+                                        [](uint64_t transaction_id) {}, repl_idx));
+            }
         }
     }
 
@@ -31,13 +35,13 @@ namespace strongstore {
 
 //        Debug("jenndebug [%lu] config_.n %d", session.transaction_id(), config_.n);
 //        std::cerr << "jenndebug WRG PutCallback config " << config_.to_string() << std::endl;
-        if (session.success_count(shard_idx_) >= config_.n) {
+        if (session.success_count(shard_idx_) >= config_.n * sent_redundancy_) {
             session.mark_successfully_replicated(shard_idx_);
 //            Debug("[%lu] replication count %d", session.transaction_id(), session.success_count(shard_idx_));
             session.clear_success_count(shard_idx_);
             pcb(REPLY_OK, key, value);
-        } else if (session.failure_count(shard_idx_) >= config_.QuorumSize()) {
-            Panic("Failed txn! Not enough replicas replied");
+        } else if (session.failure_count(shard_idx_) >= config_.QuorumSize() * sent_redundancy_) {
+            Panic("Failed txn! Not enough replicas replied. This should never happen, the op is local for Christ's sake.");
         }
     }
 
@@ -51,9 +55,11 @@ namespace strongstore {
         };
 
         session.clear_success_count(shard_idx_);
-        for (ShardClient *shard_client: shard_clients_) {
+        for (int redundancy_idx = 0; redundancy_idx < sent_redundancy_; redundancy_idx++) {
+            for (ShardClient *shard_client: shard_clients_[redundancy_idx]) {
 //            Debug("jenndebug [%lu] put from wrg", tid);
-            shard_client->Put(tid, key, value, pcbw, putTimeoutCallback, timeout);
+                shard_client->Put(tid, key, value, pcbw, putTimeoutCallback, timeout);
+            }
         }
     }
 
@@ -130,24 +136,29 @@ namespace strongstore {
         };
 
         session.clear_success_count(shard_idx_);
-        for (ShardClient *shard_client: shard_clients_) {
-            shard_client->RWCommitCoordinator(transaction_id, commit_ts, participants, nonblock_ts, ccbw, ctcb,
-                                              timeout);
-            Debug("jenndebug [%lu] shard_client sent", transaction_id);
+        for (int redundancy_idx = 0; redundancy_idx < sent_redundancy_; redundancy_idx++) {
+            for (ShardClient *shard_client: shard_clients_[redundancy_idx]) {
+                shard_client->RWCommitCoordinator(transaction_id, commit_ts, participants, nonblock_ts, ccbw, ctcb,
+                                                  timeout);
+                Debug("jenndebug [%lu] shard_client sent", transaction_id);
+            }
         }
     }
 
     void WhiptailReplicationGroup::Begin(uint64_t transaction_id, const Timestamp &start_time) {
-        for (ShardClient *shard_client: shard_clients_) {
-            shard_client->Begin(transaction_id, start_time);
+        for (int redundancy_idx = 0; redundancy_idx < sent_redundancy_; redundancy_idx++) {
+            for (ShardClient *shard_client: shard_clients_[redundancy_idx]) {
+                shard_client->Begin(transaction_id, start_time);
+            }
         }
     }
 
     void WhiptailReplicationGroup::Abort(uint64_t transaction_id, abort_callback acb,
                                          abort_timeout_callback atcb, uint32_t timeout) {
-        for (ShardClient *shard_client: shard_clients_) {
-            shard_client->Abort(transaction_id, acb, atcb, timeout);
-        }
+//        for (ShardClient *shard_client: shard_clients_) {
+//            shard_client->Abort(transaction_id, acb, atcb, timeout);
+//        }
+        Panic("unimplemented Abort");
     }
 
     void WhiptailReplicationGroup::GetCallbackWhiptail(StrongSession &session, const get_callback &gcb, int status,
@@ -175,8 +186,10 @@ namespace strongstore {
         };
 
         session.clear_success_count(shard_idx_);
-        for (ShardClient *shard_client: shard_clients_) {
-            shard_client->GetBuffered(transaction_id, key, gcbw, gtcb, timeout);
+        for (int redundancy_idx = 0; redundancy_idx < sent_redundancy_; redundancy_idx++) {
+            for (ShardClient *shard_client: shard_clients_[redundancy_idx]) {
+                shard_client->GetBuffered(transaction_id, key, gcbw, gtcb, timeout);
+            }
         }
     }
 
@@ -212,13 +225,23 @@ namespace strongstore {
                                             ro_commit_callback ccb, ro_commit_slow_callback cscb,
                                             ro_commit_timeout_callback ctcb, uint32_t timeout) {
 
-        auto roccbw = std::bind(&WhiptailReplicationGroup::ROCommitCallbackWhiptail, this, std::ref(session), ccb,
-                                std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
+//        auto roccbw = std::bind(&WhiptailReplicationGroup::ROCommitCallbackWhiptail, this, std::ref(session), ccb,
+//                                std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
+//
+//        session.clear_reply_values(shard_idx_);
+//        for (ShardClient *shard_client: shard_clients_) {
+//            shard_client->ROCommit(transaction_id, keys, commit_timestamp, min_read_timestamp, roccbw, cscb, ctcb,
+//                                   timeout);
+//        }
+        Panic("uniplemented ROCommit");
+    }
 
-        session.clear_reply_values(shard_idx_);
-        for (ShardClient *shard_client: shard_clients_) {
-            shard_client->ROCommit(transaction_id, keys, commit_timestamp, min_read_timestamp, roccbw, cscb, ctcb,
-                                   timeout);
+    WhiptailReplicationGroup::~WhiptailReplicationGroup() {
+        for (int redundancy_idx = 0; redundancy_idx < sent_redundancy_; redundancy_idx++) {
+            for (ShardClient *shardClient : shard_clients_[redundancy_idx]) {
+                delete shardClient;
+            }
         }
+
     }
 } // strongstore

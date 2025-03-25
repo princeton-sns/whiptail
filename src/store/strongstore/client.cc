@@ -44,7 +44,7 @@ namespace strongstore {
     Client::Client(Consistency consistency, const NetworkConfiguration &net_config,
                    const std::string &client_region,
                    std::vector<transport::Configuration> &configs, uint64_t client_id,
-                   int nShards, int closestReplica, std::vector<Transport *> transports,
+                   int nShards, int closestReplica, Transport *transport,
                    Partitioner *part, TrueTime &tt, bool debug_stats,
                    double nb_time_alpha, uint8_t sent_redundancy)
             : coord_choices_{},
@@ -58,8 +58,7 @@ namespace strongstore {
               config_{configs[0]},
               client_id_{client_id},
               nshards_(nShards),
-              transports_{transports},
-              transport_{transports[0]},
+              transport_{transport},
               part_(part),
               tt_{tt},
               next_transaction_id_{client_id_ << 26},
@@ -73,7 +72,7 @@ namespace strongstore {
 
         /* Start a client for each shard. */
         for (uint64_t i = 0; i < nshards_; i++) {
-            auto *wrg = new WhiptailReplicationGroup(configs_, transports_, i, client_id_, stats, sent_redundancy);
+            auto *wrg = new WhiptailReplicationGroup(configs_, transport_, i, client_id_, stats, sent_redundancy);
             sclients_.push_back(wrg);
         }
 
@@ -764,7 +763,7 @@ namespace strongstore {
 
         Debug("[%lu] ROCommit callback", tid);
 
-        for (const Value& value: values) {
+        for (const Value &value: values) {
             Debug("jenndebug value: %s, %s, %lu", value.key().c_str(), value.val().c_str(), value.rolling_hash());
         }
 

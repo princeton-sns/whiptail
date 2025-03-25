@@ -39,9 +39,9 @@ namespace strongstore {
 //            transport_->Register(this, shard_configs_[i], shard_idx_, replica_idx_);
         }
 
-        for (int i = 0; i < shard_config_.g; i++) {
-            shard_clients_.push_back(new ShardClient(shard_configs_, transports, server_id_, i));
-        }
+//        for (int i = 0; i < shard_config_.g; i++) {
+//            shard_clients_.push_back(new ShardClient(shard_configs_, transports, server_id_, i));
+//        }
 
 //        replica_client_ =
 //                new ReplicaClient(replica_config_, transport_, server_id_, shard_idx_);
