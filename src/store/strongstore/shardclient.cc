@@ -53,9 +53,11 @@ namespace strongstore {
 
 //        std::cerr << "jenndebug shardClient config " << config_.to_string() << " config_.n " << config_.n << std::endl;
 
-        for (int i = sent_redundancy_-1; i >= 0; i--) {
-            transports_[i]->Register(this, configs_[i], -1, -1);
+        for (int i = 0; i < sent_redundancy_; i++) {
+            extraTransportReceivers_.push_back(new ExtraTransportReceiver(this));
+//            transports_[i]->Register(this, configs_[i], -1, -1);
 //            transport_->Register(this, configs_[i], -1, -1);
+              transport_->Register(extraTransportReceivers_[i], configs_[i], -1, -1);
         }
         // transport_->Register(this, config_, -1, -1);
 
@@ -63,7 +65,10 @@ namespace strongstore {
 //        replica_ = 0;
     }
 
-    ShardClient::~ShardClient() {}
+    ShardClient::~ShardClient() {
+        for (int i = 0; i < sent_redundancy_; i++)
+            delete extraTransportReceivers_[i];
+    }
 
     void ShardClient::ReceiveMessage(const TransportAddress &remote,
                                      const std::string &type,
@@ -354,7 +359,7 @@ namespace strongstore {
             uint64_t transaction_id, const Timestamp &commit_ts,
             const std::set<int> participants, Timestamp &nonblock_timestamp,
             rw_coord_commit_callback ccb, rw_coord_commit_timeout_callback ctcb, uint32_t timeout) {
-        Debug("[%lu] [shard %i] Sending RWCommitCoordinator", transaction_id, shard_idx_);
+        // Debug("[%lu] [shard %i] Sending RWCommitCoordinator", transaction_id, shard_idx_);
 
         auto search = transactions_.find(transaction_id);
         ASSERT(search != transactions_.end());
@@ -388,8 +393,9 @@ namespace strongstore {
         }
 
         for (int i = 0; i < sent_redundancy_; i++) {
-            transports_[i]->SendMessageToReplica(this, shard_idx_, replica_, rw_commit_c_);
-//            Debug("jenndebug [%lu] shard_client replica_idx %d sent %d", transaction_id, replica_, i);
+            int ret = transport_->SendMessageToReplica(extraTransportReceivers_[i], shard_idx_, replica_, rw_commit_c_);
+            Notice("jenndebug [%lu] sent to shard_idx_ %d replica_idx %d sent %d, ret %d", transaction_id, shard_idx_,
+                   replica_, i, ret);
         }
 
     }
