@@ -613,6 +613,7 @@ namespace strongstore {
 
                     stats_.Add("missed_by_" + std::to_string(client_id) + "_us",
                                now_tt.mid() - pendingOp.execute_time());
+                    Debug("jennbdebug [%lu] missed latency_window by a bit", transaction_id);
                     SendRWCommmitCoordinatorReplyFail(remote, client_id, client_req_id);
                     return;
                 }

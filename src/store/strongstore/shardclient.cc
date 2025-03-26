@@ -417,7 +417,7 @@ namespace strongstore {
         transactions_.erase(transaction_id);
         read_sets_.erase(transaction_id);
 
-        Debug("[shard %i] COMMIT timestamp %lu.%lu", shard_idx_,
+        Debug("[shard %i] [%lu] COMMIT timestamp %lu.%lu", shard_idx_, transaction_id,
               reply.commit_timestamp().timestamp(), reply.commit_timestamp().id());
 
         std::vector<Value> values;
