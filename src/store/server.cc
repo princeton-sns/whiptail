@@ -329,17 +329,17 @@ int main(int argc, char **argv) {
     switch (trans) {
         case TRANS_TCP:
             tport = new TCPTransport(0.0, 0.0, 0, false);
-            tport1 = new TCPTransport(0.0, 0.0, 0, false);
-            tport2 = new TCPTransport(0.0, 0.0, 0, false);
-            tport3 = new TCPTransport(0.0, 0.0, 0, false);
-            tport4 = new TCPTransport(0.0, 0.0, 0, false);
+//            tport1 = new TCPTransport(0.0, 0.0, 0, false);
+//            tport2 = new TCPTransport(0.0, 0.0, 0, false);
+//            tport3 = new TCPTransport(0.0, 0.0, 0, false);
+//            tport4 = new TCPTransport(0.0, 0.0, 0, false);
             break;
         case TRANS_UDP:
             tport = new UDPTransport(0.0, 0.0, 0, false);
-            tport1 = new UDPTransport(0.0, 0.0, 0, false);
-            tport2 = new UDPTransport(0.0, 0.0, 0, false);
-            tport3 = new UDPTransport(0.0, 0.0, 0, false);
-            tport4 = new UDPTransport(0.0, 0.0, 0, false);
+//            tport1 = new UDPTransport(0.0, 0.0, 0, false);
+//            tport2 = new UDPTransport(0.0, 0.0, 0, false);
+//            tport3 = new UDPTransport(0.0, 0.0, 0, false);
+//            tport4 = new UDPTransport(0.0, 0.0, 0, false);
             break;
         default:
             NOT_REACHABLE();
@@ -496,37 +496,38 @@ int main(int argc, char **argv) {
     std::signal(SIGINT, Cleanup);
 
     CALLGRIND_START_INSTRUMENTATION;
-    std::thread thread1([&]() {
-        if (FLAGS_sent_redundancy >= 1)
-            tport->Run();
-    });
-
-    std::thread thread2([&]() {
-        if (FLAGS_sent_redundancy >= 2)
-            tport1->Run();
-    });
-
-    std::thread thread3([&]() {
-        if (FLAGS_sent_redundancy >= 3)
-            tport2->Run();
-    });
-
-    std::thread thread4([&]() {
-        if (FLAGS_sent_redundancy >= 4)
-            tport3->Run();
-    });
-
-    std::thread thread5([&]() {
-        if (FLAGS_sent_redundancy >= 5)
-            tport4->Run();
-    });
+    tport->Run();
+//    std::thread thread1([&]() {
+//        if (FLAGS_sent_redundancy >= 1)
+//            tport->Run();
+//    });
+//
+//    std::thread thread2([&]() {
+//        if (FLAGS_sent_redundancy >= 2)
+//            tport1->Run();
+//    });
+//
+//    std::thread thread3([&]() {
+//        if (FLAGS_sent_redundancy >= 3)
+//            tport2->Run();
+//    });
+//
+//    std::thread thread4([&]() {
+//        if (FLAGS_sent_redundancy >= 4)
+//            tport3->Run();
+//    });
+//
+//    std::thread thread5([&]() {
+//        if (FLAGS_sent_redundancy >= 5)
+//            tport4->Run();
+//    });
 
     // Wait for all threads to finish
-    thread1.join();
-    thread2.join();
-    thread3.join();
-    thread4.join();
-    thread5.join();
+//    thread1.join();
+//    thread2.join();
+//    thread3.join();
+//    thread4.join();
+//    thread5.join();
     CALLGRIND_STOP_INSTRUMENTATION;
     CALLGRIND_DUMP_STATS;
 
@@ -541,10 +542,10 @@ int main(int argc, char **argv) {
 void Cleanup(int signal) {
     Notice("Gracefully exiting after signal %d.", signal);
     tport->Stop();
-    tport1->Stop();
-    tport2->Stop();
-    tport3->Stop();
-    tport4->Stop();
+//    tport1->Stop();
+//    tport2->Stop();
+//    tport3->Stop();
+//    tport4->Stop();
     if (FLAGS_stats_file.size() > 0) {
         Notice("Exporting stats to %s.", FLAGS_stats_file.c_str());
         server->GetStats().ExportJSON(FLAGS_stats_file);

@@ -34,8 +34,8 @@ namespace strongstore {
               debug_stats_{debug_stats},
               sent_redundancy_{sent_redundancy} {
 
-        for (int i = sent_redundancy_ - 1; i >= 0; i--) {
-            transports_[i]->Register(this, shard_configs_[i], shard_idx_, replica_idx_);
+        for (int redundancy_idx = 0; redundancy_idx < sent_redundancy_; redundancy_idx++) {
+            transport_->Register(this, shard_configs_[redundancy_idx], shard_idx_, replica_idx_, redundancy_idx);
 //            transport_->Register(this, shard_configs_[i], shard_idx_, replica_idx_);
         }
 
