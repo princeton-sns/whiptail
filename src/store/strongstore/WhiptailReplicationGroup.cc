@@ -76,6 +76,7 @@ namespace strongstore {
             return;
         }
         session.mark_success_or_fail_reply(shard_idx_, status);
+        Debug("jenndebug [%lu] whiptailcallback %s", transaction_id, status == REPLY_OK ? "REPLY_OK" : "REPLY_FAIL");
         if (status == REPLY_OK) {
             stats_.Increment("shard_" + std::to_string(shard_idx_) + "_REPLY_OK");
         } else if (status == REPLY_FAIL) {
@@ -89,8 +90,7 @@ namespace strongstore {
 
         if (session.success_count(shard_idx_) >= config_.QuorumSize()) {
 
-//            Debug("[%lu] successful
-            // has readsreplication count %d", session.transaction_id(), session.success_count(shard_idx_));
+            Debug("[%lu] successful has readsreplication count %d", session.transaction_id(), session.success_count(shard_idx_));
             if (!values.empty()) {
                 if (session.has_quorum(shard_idx_, config_.QuorumSize())) {
                     const std::vector<Value> majority_values = session.quorum_resp(shard_idx_, config_.QuorumSize());
