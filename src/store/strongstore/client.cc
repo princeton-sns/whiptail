@@ -571,9 +571,18 @@ namespace strongstore {
             nonblock_timestamp = ChooseNonBlockTimestamp(session);
         }
         Debug("jenndebug [%lu] Commit, binding to req->id %lu", tid, req->id);
-        auto cccb = std::bind(&Client::CommitCallback, this, std::ref(session), uint64_t(req->id),
-                              std::placeholders::_1, std::placeholders::_2, std::placeholders::_3,
-                              std::placeholders::_4);
+        session.current_req_id() = req_id;
+        // auto cccb = std::bind(&Client::CommitCallback, this, std::ref(session), uint64_t(req->id),
+        //                       std::placeholders::_1, std::placeholders::_2, std::placeholders::_3,
+        //                       std::placeholders::_4);
+        auto cccb = [this, session_ref = std::ref(session), req_id = req->id]
+            (auto&& _1, auto&& _2, auto&& _3, auto&& _4) {
+            CommitCallback(session_ref, req_id, std::forward<decltype(_1)>(_1),
+                           std::forward<decltype(_2)>(_2),
+                           std::forward<decltype(_3)>(_3),
+                           std::forward<decltype(_4)>(_4));
+        };
+
         auto cctcb = [](int) {};
 
         const Timestamp commit_ts{tt_.Now().mid(), client_id_};
@@ -593,6 +602,10 @@ namespace strongstore {
 
     void Client::CommitCallback(StrongSession &session, uint64_t req_id, int status, const std::vector<Value> &values,
                                 Timestamp commit_ts, Timestamp nonblock_ts) {
+
+        if (req_id != session.current_req_id()) {
+            return;
+        }
         auto tid = session.transaction_id();
         Debug("[%lu] COMMIT callback status %d, req_id %lu", tid, status, req_id);
 

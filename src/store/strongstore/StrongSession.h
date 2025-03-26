@@ -110,6 +110,14 @@ namespace strongstore {
             Panic("jenndebug Do not call this method without calling has_quorum() to check first");
         }
 
+        uint64_t current_req_id() const {
+            return current_req_id_;
+        }
+
+        uint64_t& current_req_id() {
+            return current_req_id_;
+        }
+
 
     protected:
         friend class Client;
@@ -203,6 +211,7 @@ namespace strongstore {
         // shard -> hash(vector of replies) -> how many of them there are
         std::unordered_map<int, std::unordered_map<std::vector<Value>, int, VectorHash < Value>>>
         all_replies_count_;
+        uint64_t current_req_id_;
 
 
     };
