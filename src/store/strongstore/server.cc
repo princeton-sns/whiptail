@@ -74,7 +74,6 @@ namespace strongstore {
                                 const std::string &type, const std::string &data,
                                 void *meta_data) {
         Debug("jenndebug calling %s", type.c_str());
-        sleep(3);
         if (type == get_.GetTypeName()) {
             get_.ParseFromString(data);
             HandleGet(remote, get_);

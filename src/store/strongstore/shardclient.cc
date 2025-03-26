@@ -395,6 +395,7 @@ namespace strongstore {
         Debug("jenndebug rw_commit_c_ %lu, req_id %lu", rw_commit_c_.mutable_rid()->client_id(), rw_commit_c_.mutable_rid()->client_req_id());
         for (int i = 0; i < sent_redundancy_; i++) {
             int ret = transport_->SendMessageToReplica(extraTransportReceivers_[i], shard_idx_, replica_, rw_commit_c_);
+            sleep(3);
             Notice("jenndebug [%lu] sent to shard_idx_ %d replica_idx %d sent %d, ret %d", transaction_id, shard_idx_,
                     replica_, i, ret);
         }
