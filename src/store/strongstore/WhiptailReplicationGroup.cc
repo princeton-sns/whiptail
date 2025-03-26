@@ -73,6 +73,7 @@ namespace strongstore {
                                                             const Timestamp &nonblock_ts) {
         if (transaction_id != session.transaction_id()) {
             Debug("jenndebug [%lu] returned late, session's tid now %lu. Do nothing", transaction_id, session.transaction_id());
+            return;
         }
         session.mark_success_or_fail_reply(shard_idx_, status);
         if (status == REPLY_OK) {
