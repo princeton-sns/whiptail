@@ -393,9 +393,7 @@ namespace strongstore {
         }
 
         for (int i = 0; i < sent_redundancy_; i++) {
-            int ret = transport_->SendMessageToReplica(this, shard_idx_, replica_, rw_commit_c_, i);
-            Notice("jenndebug [%lu] sent to shard_idx_ %d replica_idx %d sent %d, ret %d", transaction_id, shard_idx_,
-                   replica_, i, ret);
+            transport_->SendMessageToReplica(this, shard_idx_, replica_, rw_commit_c_, i);
         }
 
     }
