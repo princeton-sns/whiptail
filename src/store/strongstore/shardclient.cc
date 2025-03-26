@@ -392,11 +392,15 @@ namespace strongstore {
             rw_commit_c_.add_participants(p);
         }
 
+        proto::Jenn* jenn = new proto::Jenn();
+        jenn->set_jenn("sata");
+
         Debug("jenndebug rw_commit_c_ %lu, req_id %lu", rw_commit_c_.mutable_rid()->client_id(), rw_commit_c_.mutable_rid()->client_req_id());
         for (int i = 0; i < sent_redundancy_; i++) {
-            int ret = transport_->SendMessageToReplica(extraTransportReceivers_[i], shard_idx_, replica_, rw_commit_c_);
-            Notice("jenndebug [%lu] sent to shard_idx_ %d replica_idx %d sent %d, ret %d", transaction_id, shard_idx_,
-                   replica_, i, ret);
+            // int ret = transport_->SendMessageToReplica(extraTransportReceivers_[i], shard_idx_, replica_, rw_commit_c_);
+            transport_->SendMessageToReplica(extraTransportReceivers_[i], shard_idx_, replica_, *jenn);
+            // Notice("jenndebug [%lu] sent to shard_idx_ %d replica_idx %d sent %d, ret %d", transaction_id, shard_idx_,
+            //        replica_, i, ret);
         }
 
     }

@@ -159,6 +159,10 @@ message Request {
      optional CommitMessage commit = 4;
 }
 
+message Jenn {
+    optional string jenn = 1;
+}
+
 message Reply {
      // 0 = OK
      // -1 = failed
