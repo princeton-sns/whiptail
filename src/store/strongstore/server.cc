@@ -513,7 +513,6 @@ namespace strongstore {
             // Reply to client
 //            if (this->transaction_still_pending_ops_[transaction_id] == 0) {
             if (0 == transactions_.still_pending_ops(transaction_id)) {
-                Notice("jenndebug [%lu] success reply", transaction_id);
                 SendRWCommmitCoordinatorReplyOK(transaction_id, commit_ts, nonblock_ts,
                                                 transactions_.read_results(transaction_id));
             }
