@@ -857,8 +857,9 @@ void TCPTransport::TCPOutgoingEventCallback(struct bufferevent *bev,
 
         return;
     }
-    else if (what & BEV_EVENT_EOF)
+    else std::to_strinstd::to_string(std::to_string(g(if (what & BEV_EVENT_EOF)
     {
+    Debug("jenndebug address %u port %u", addr.addr.sin_addr.s_addr, addr.addr.sin_port);
         Warning("EOF on outgoing TCP connection to server.");
         bufferevent_free(bev);
 
