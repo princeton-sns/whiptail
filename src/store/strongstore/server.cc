@@ -494,8 +494,8 @@ namespace strongstore {
 
 
             if (pendingOpType == PUT) {
-//                Debug("jenndebug [%lu] executing PUT %s, %s, %s", transaction_id, key.c_str(), val.c_str(),
-//                      commit_ts.to_string().c_str());
+                Debug("jenndebug [%lu] executing PUT %s, %s, %s", transaction_id, key.c_str(), val.c_str(),
+                      commit_ts.to_string().c_str());
                 store_.put(key, val, {commit_ts, transaction_id});
             } else if (pendingOpType == GET) {
 
@@ -517,6 +517,9 @@ namespace strongstore {
                                                 transactions_.read_results(transaction_id));
             }
         }
+
+        // TODO jenndebug wait for 200us, change from hardcode
+        transport_->TimerMicro(200, std::bind(&Server::HandleRWCommitCoordinator, this));
 
         // for (LockAcquireResult ar = locks_.AcquireLocks(transaction_id, transaction);
         // ar.status != LockStatus::ACQUIRED; ar = locks_.AcquireLocks(transaction_id, transaction)) {}
