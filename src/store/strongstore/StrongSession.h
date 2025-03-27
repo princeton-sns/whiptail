@@ -110,7 +110,6 @@ namespace strongstore {
             Panic("jenndebug Do not call this method without calling has_quorum() to check first");
         }
 
-
     protected:
         friend class Client;
 

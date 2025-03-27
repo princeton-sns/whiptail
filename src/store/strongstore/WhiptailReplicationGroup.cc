@@ -67,10 +67,16 @@ namespace strongstore {
     }
 
     void WhiptailReplicationGroup::RWCommitCallbackWhiptail(StrongSession &session, const rw_coord_commit_callback &ccb,
+                                                            uint64_t transaction_id,
                                                             int status, const std::vector<Value> &values,
                                                             const Timestamp &commit_ts,
                                                             const Timestamp &nonblock_ts) {
+        if (transaction_id != session.transaction_id()) {
+            Debug("jenndebug [%lu] returned late, session's tid now %lu. Do nothing", transaction_id, session.transaction_id());
+            return;
+        }
         session.mark_success_or_fail_reply(shard_idx_, status);
+        Debug("jenndebug [%lu] whiptailcallback %s", transaction_id, status == REPLY_OK ? "REPLY_OK" : "REPLY_FAIL");
         if (status == REPLY_OK) {
             stats_.Increment("shard_" + std::to_string(shard_idx_) + "_REPLY_OK");
         } else if (status == REPLY_FAIL) {
@@ -84,8 +90,7 @@ namespace strongstore {
 
         if (session.success_count(shard_idx_) >= config_.QuorumSize()) {
 
-//            Debug("[%lu] successful
-            // has readsreplication count %d", session.transaction_id(), session.success_count(shard_idx_));
+            Debug("[%lu] successful has readsreplication count %d", session.transaction_id(), session.success_count(shard_idx_));
             if (!values.empty()) {
                 if (session.has_quorum(shard_idx_, config_.QuorumSize())) {
                     const std::vector<Value> majority_values = session.quorum_resp(shard_idx_, config_.QuorumSize());
@@ -106,6 +111,7 @@ namespace strongstore {
             session.mark_successfully_replicated(shard_idx_);
         } else if (session.failure_count(shard_idx_) >= config_.QuorumSize()) {
             Debug("jenndebug [%lu] txn failed", session.transaction_id());
+            session.clear_success_count(shard_idx_);
             ccb(REPLY_FAIL, {}, commit_ts, nonblock_ts);
         }
     }
@@ -116,10 +122,10 @@ namespace strongstore {
                                                        Timestamp &nonblock_ts,
                                                        const rw_coord_commit_callback &ccb,
                                                        const rw_coord_commit_timeout_callback &ctcb, uint32_t timeout) {
-        auto ccbw = [this, ccb, session = std::ref(session)](int status, const std::vector<Value> &values,
+        auto ccbw = [this, ccb, transaction_id, session = std::ref(session)](int status, const std::vector<Value> &values,
                                                              const Timestamp &commit_timestamp,
                                                              const Timestamp &nonblock_timestamp) {
-            this->RWCommitCallbackWhiptail(session, ccb, status, values, commit_timestamp, nonblock_timestamp);
+            this->RWCommitCallbackWhiptail(session, ccb, transaction_id, status, values, commit_timestamp, nonblock_timestamp);
         };
 
         session.clear_success_count(shard_idx_);

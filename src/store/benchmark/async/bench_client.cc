@@ -422,7 +422,7 @@ void BenchmarkClient::ExecuteCallback(uint64_t session_id,
         (maxAttempts != -1 && n_attempts >= static_cast<uint64_t>(maxAttempts)) ||
         !retryAborted)
     {
-        bool erase_session = true;
+        bool erase_session = false;
         if (result == COMMITTED || result == ABORTED_SYSTEM)
         {
             if (result == COMMITTED)

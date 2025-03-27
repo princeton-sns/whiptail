@@ -425,7 +425,7 @@ void TCPTransport::Register(TransportReceiver *receiver, const transport::Config
     receivers[fd] = receiver;
     fds[receiver] = fd;
 
-    Debug("Accepting connections on TCP port %hu", ntohs(sin.sin_port));
+    Notice("Accepting connections on TCP port %hu", ntohs(sin.sin_port));
 }
 
 bool TCPTransport::SendMessageInternal(TransportReceiver *src,

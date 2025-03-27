@@ -31,6 +31,7 @@ namespace strongstore {
                                  const rw_coord_commit_timeout_callback &ctcb, uint32_t timeout);
 
         void RWCommitCallbackWhiptail(StrongSession &session, const rw_coord_commit_callback &ccb,
+                                        uint64_t transaction_id,
                                       int status, const std::vector<Value> &values,
                                       const Timestamp &commit_ts,
                                       const Timestamp &nonblock_ts);
