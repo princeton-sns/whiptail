@@ -617,8 +617,11 @@ namespace strongstore {
                     stats_.Add("missed_by_" + std::to_string(client_id) + "_us",
                                now_tt.mid() - pendingOp.execute_time());
                     Debug("jennbdebug [%lu] missed latency_window by a bit", transaction_id);
+
+                    // let the write through, even though we're not on time. The odds that we're not on time to
+                    // a majority are pretty low
                     SendRWCommmitCoordinatorReplyFail(remote, client_id, client_req_id);
-                    return;
+//                    return;
                 }
 
                 stats_.Increment("on_time");

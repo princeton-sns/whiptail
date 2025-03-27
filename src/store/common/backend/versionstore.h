@@ -42,8 +42,8 @@
 #include "store/common/timestamp.h"
 #include <functional>
 
-template <typename V>
-std::size_t hashFunction(const V& value, std::size_t previousHash) {
+template<typename V>
+std::size_t hashFunction(const V &value, std::size_t previousHash) {
     std::hash<V> hasher;
     std::size_t valueHash = hasher(value);
     return valueHash ^ (previousHash << 1); // Combine the hashes
@@ -95,7 +95,7 @@ private:
                 : write(commit), value(val) {};
 
         VersionedValue(const T &commit, const V &val, const size_t &rolling_hash)
-            : write(commit), value(val), rolling_hash(rolling_hash) {};
+                : write(commit), value(val), rolling_hash(rolling_hash) {};
 
         friend bool operator>(const VersionedValue &v1,
                               const VersionedValue &v2) {
@@ -182,7 +182,7 @@ bool VersionedKVStore<T, V>::get(const std::string &key, const T &t,
 
 template<class T, class V>
 bool VersionedKVStore<T, V>::getWithHash(const std::string &key, const T &t,
-                                 std::tuple<T, V, size_t> &value) {
+                                         std::tuple<T, V, size_t> &value) {
     if (inStore(key)) {
         typename std::set<VersionedKVStore<T, V>::VersionedValue>::iterator it;
         getValue(key, t, it);
@@ -263,7 +263,20 @@ void VersionedKVStore<T, V>::put(const std::string &key, const V &value,
         hash_value = hashFunction(value, prev_hash);
     }
     // Key does not exist. Create a list and an entry.
-    store[key].insert(VersionedKVStore<T, V>::VersionedValue(t, value, hash_value));
+    VersionedKVStore<T, V>::VersionedValue v(t, value, hash_value);
+    store[key].insert(v);
+
+    // Recompute the hashes of the values ahead of it
+    VersionedKVStore<T, V>::VersionedValue prev = v;
+    for (typename std::set<VersionedKVStore<T, V>::VersionedValue>::iterator it = store[key].upper_bound(prev);
+         it != store[key].end(); it = store[key].upper_bound(prev)) {
+
+        VersionedKVStore<T, V>::VersionedValue modified_value = *it;
+        store[key].erase(it);
+        modified_value.rolling_hash = hashFunction(modified_value.value, prev.rolling_hash);
+        store[key].insert(modified_value);
+        prev = modified_value;
+    }
 }
 
 template<class T, class V>
