@@ -620,7 +620,7 @@ namespace strongstore {
 
                     // let the write through, even though we're not on time. The odds that we're not on time to
                     // a majority are pretty low
-//                    SendRWCommmitCoordinatorReplyFail(remote, client_id, client_req_id);
+                    SendRWCommmitCoordinatorReplyFail(remote, client_id, client_req_id);
 //                    return;
                 }
 
