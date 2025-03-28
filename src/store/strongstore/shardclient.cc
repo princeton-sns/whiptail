@@ -367,6 +367,7 @@ namespace strongstore {
         const auto &t = search->second;
 
         uint64_t req_id = last_req_id_++;
+        Debug("jenndebug [%lu] pending req_id %d", transaction_id, req_id);
         PendingRWCoordCommit *pendingCommit = new PendingRWCoordCommit(transaction_id, req_id);
         pendingRWCoordCommits[req_id] = pendingCommit;
         pendingCommit->ccb = ccb;
@@ -404,7 +405,8 @@ namespace strongstore {
         auto itr = pendingRWCoordCommits.find(req_id);
         if (itr == pendingRWCoordCommits.end()) {
             // jenndebug also handles double sent requests.
-            Debug("[%d][%lu] RWCommitCoordinatorReply for stale request.", shard_idx_, req_id);
+            Debug("[shard %d][replica %d][req_id %lu] RWCommitCoordinatorReply for stale request.", shard_idx_,
+                  replica_, req_id);
             return; // stale request
         }
 
@@ -417,8 +419,8 @@ namespace strongstore {
         transactions_.erase(transaction_id);
         read_sets_.erase(transaction_id);
 
-        Debug("[shard %i] [%lu] COMMIT timestamp %lu.%lu", shard_idx_, transaction_id,
-              reply.commit_timestamp().timestamp(), reply.commit_timestamp().id());
+        Debug("[shard %i][replica %d][req_id %lu][%lu] COMMIT timestamp %lu.%lu", shard_idx_, replica_, req_id,
+              transaction_id, reply.commit_timestamp().timestamp(), reply.commit_timestamp().id());
 
         std::vector<Value> values;
         for (const auto &v: reply.values())
