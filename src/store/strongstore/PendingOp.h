@@ -25,7 +25,8 @@ namespace strongstore {
                 : pendingOpType_(pendingOpType), key_(std::move(key)), value_(std::move(value)), commit_ts_(commit_ts),
                   transaction_id_(transaction_id), nonblock_ts_(nonblock_ts),
                   network_latency_window_(network_latency_window),
-                  execute_time_(commit_ts.getTimestamp() + network_latency_window.count()) {
+                  execute_time_(commit_ts.getTimestamp() + network_latency_window.count()),
+                  did_miss_window_(false) {
 
 //    Debug("jenndebug commit.getTimestamp() [%lu], network_latency_window.count() [%lu]", commit_ts.getTimestamp(), network_latency_window.count());
 
@@ -67,6 +68,14 @@ namespace strongstore {
             return nonblock_ts_;
         }
 
+        bool did_miss_window() const {
+            return did_miss_window_;
+        }
+
+        bool& did_miss_window() {
+            return did_miss_window_;
+        }
+
     private:
         PendingOpType pendingOpType_;
         std::string key_;
@@ -76,6 +85,7 @@ namespace strongstore {
         uint64_t transaction_id_;
         std::chrono::microseconds network_latency_window_;
         uint64_t execute_time_;
+        bool did_miss_window_;
 
     };
 
