@@ -64,6 +64,7 @@ DEFINE_uint64(replica_idx, 0,
 DEFINE_uint64(group_idx, 0, "index of the shard to which this replica belongs");
 DEFINE_uint64(num_shards, 1, "number of shards in the system");
 DEFINE_bool(debug_stats, false, "record stats related to debugging");
+DEFINE_uint64(loop_queue_interval_us, 1000, "how often to loop the queue");
 
 const std::string protocol_args[] = {
         "strong",
@@ -384,7 +385,7 @@ int main(int argc, char **argv) {
                                              replica_config, FLAGS_server_id,
                                              FLAGS_group_idx, FLAGS_replica_idx,
                                              necessary_transports, tt, FLAGS_debug_stats, FLAGS_network_latency_window,
-                                             FLAGS_sent_redundancy);
+                                             FLAGS_sent_redundancy, FLAGS_loop_queue_interval_us);
             break;
         }
         default: {

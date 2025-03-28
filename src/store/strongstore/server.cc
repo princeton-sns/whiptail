@@ -16,7 +16,7 @@ namespace strongstore {
                    const transport::Configuration &replica_config,
                    uint64_t server_id, int shard_idx, int replica_idx,
                    std::vector<Transport *> transports, const TrueTime &tt, bool debug_stats,
-                   uint64_t network_latency_window, uint8_t sent_redundancy)
+                   uint64_t network_latency_window, uint8_t sent_redundancy, uint64_t loop_queue_interval_us)
             : PingServer(transports),
               tt_{tt},
               transactions_{shard_idx, consistency, tt_},
@@ -32,7 +32,8 @@ namespace strongstore {
               replica_idx_{replica_idx},
               consistency_{consistency},
               debug_stats_{debug_stats},
-              sent_redundancy_{sent_redundancy} {
+              sent_redundancy_{sent_redundancy},
+              loop_queue_interval_us_(loop_queue_interval_us){
 
         for (int redundancy_idx = 0; redundancy_idx < sent_redundancy_; redundancy_idx++) {
             transport_->Register(this, shard_configs_[redundancy_idx], shard_idx_, replica_idx_, redundancy_idx);
@@ -42,6 +43,7 @@ namespace strongstore {
         for (int i = 0; i < shard_config_.g; i++) {
             shard_clients_.push_back(new ShardClient(shard_configs_, transports, server_id_, i));
         }
+        Debug("jenndebug loop queue interval %lu us", loop_queue_interval_us_);
 
 //        replica_client_ =
 //                new ReplicaClient(replica_config_, transport_, server_id_, shard_idx_);
@@ -522,7 +524,7 @@ namespace strongstore {
         }
 
         // TODO jenndebug wait for 200us, change from hardcode
-        transport_->TimerMicro(200, std::bind(&Server::HandleRWCommitCoordinator, this));
+        transport_->TimerMicro(loop_queue_interval_us_, std::bind(&Server::HandleRWCommitCoordinator, this));
 
         // for (LockAcquireResult ar = locks_.AcquireLocks(transaction_id, transaction);
         // ar.status != LockStatus::ACQUIRED; ar = locks_.AcquireLocks(transaction_id, transaction)) {}
