@@ -516,6 +516,7 @@ namespace strongstore {
                 if (!pendingOp.did_miss_window()) {
                     SendRWCommmitCoordinatorReplyOK(transaction_id, commit_ts, nonblock_ts,
                                                     transactions_.read_results(transaction_id));
+                }
             }
         }
 

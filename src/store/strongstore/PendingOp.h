@@ -26,7 +26,7 @@ namespace strongstore {
                   transaction_id_(transaction_id), nonblock_ts_(nonblock_ts),
                   network_latency_window_(network_latency_window),
                   execute_time_(commit_ts.getTimestamp() + network_latency_window.count()),
-                  did_missed_window_(false) {
+                  did_miss_window_(false) {
 
 //    Debug("jenndebug commit.getTimestamp() [%lu], network_latency_window.count() [%lu]", commit_ts.getTimestamp(), network_latency_window.count());
 
@@ -69,11 +69,11 @@ namespace strongstore {
         }
 
         bool did_miss_window() const {
-            return did_missed_window_;
+            return did_miss_window_;
         }
 
         bool& did_miss_window() {
-            return did_missed_window_;
+            return did_miss_window_;
         }
 
     private:
@@ -85,8 +85,7 @@ namespace strongstore {
         uint64_t transaction_id_;
         std::chrono::microseconds network_latency_window_;
         uint64_t execute_time_;
-        bool did_missed_window_;
-
+        bool did_miss_window_;
     };
 
 } // strongstore
