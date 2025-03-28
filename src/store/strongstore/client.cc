@@ -602,6 +602,10 @@ namespace strongstore {
     void Client::CommitCallback(StrongSession &session, uint64_t req_id, int status, const std::vector<Value> &values,
                                 Timestamp commit_ts, Timestamp nonblock_ts) {
 
+        if (status == REPLY_OK && !session.heard_back_from_everyone()) {
+            Debug("jenndebug [%lu] haven't heard back from all participants, don't commit callback yet", session.transaction_id());
+            return;
+        }
         auto tid = session.transaction_id();
         Debug("[%lu] COMMIT callback status %d, req_id %lu", tid, status, req_id);
 

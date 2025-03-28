@@ -86,7 +86,6 @@ namespace strongstore {
         std::chrono::microseconds network_latency_window_;
         uint64_t execute_time_;
         bool did_miss_window_;
-
     };
 
 } // strongstore

@@ -179,6 +179,19 @@ namespace strongstore {
             return search->second.mutable_transaction().read_results();
         }
 
+        void mark_missed_window(uint64_t transaction_id, bool b) {
+            Debug("jenndebug [%lu] someone called me ;)", transaction_id);
+            auto search = pending_rw_.find(transaction_id);
+            ASSERT(search != pending_rw_.end());
+            search->second.mutable_transaction().mark_missed_window(b);
+        }
+
+        bool missed_window(uint64_t transaction_id) {
+            auto search = pending_rw_.find(transaction_id);
+            ASSERT(search != pending_rw_.end());
+            return search->second.transaction().missed_window();
+        }
+
     private:
         class PendingRWTransaction {
         public:

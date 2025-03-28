@@ -504,8 +504,8 @@ namespace strongstore {
                 transactions_.read_results(transaction_id)[key] = std::pair<std::string, uint64_t>(std::get<1>(value),
                                                                                                    std::get<2>(value));
 
-//                Debug("jenndebug [%lu] executing GET %s, %s, %s", transaction_id, key.c_str(), value.second.c_str(),
-//                      commit_ts.to_string().c_str());
+                Debug("jenndebug [%lu] executing GET %s, commit_ts %s", transaction_id, key.c_str(),
+                      commit_ts.to_string().c_str());
             }
 //            this->transaction_still_pending_ops_[transaction_id]--;
             transactions_.still_pending_ops(transaction_id)--;
@@ -513,7 +513,8 @@ namespace strongstore {
             // Reply to client
 //            if (this->transaction_still_pending_ops_[transaction_id] == 0) {
             if (0 == transactions_.still_pending_ops(transaction_id)) {
-                if (!pendingOp.did_miss_window()) {
+                if (!transactions_.missed_window(transaction_id)) {
+                    Debug("jenndebug [%lu][replica %d] sending success", transaction_id, replica_idx_);
                     SendRWCommmitCoordinatorReplyOK(transaction_id, commit_ts, nonblock_ts,
                                                     transactions_.read_results(transaction_id));
                 }
@@ -577,7 +578,6 @@ namespace strongstore {
         const Timestamp start_ts{now.mid(), client_id};
         TransactionState s = transactions_.StartCoordinatorPrepare(transaction_id, start_ts, shard_idx_,
                                                                    participants, transaction, nonblock_ts);
-
         if (s == PREPARING) {
 //            Debug("jenndebug [%lu] Coordinator preparing", transaction_id);
 
@@ -601,6 +601,10 @@ namespace strongstore {
             // const Transaction &transaction = transactions_.GetTransaction(transaction_id);
 
             uint64_t latest_execution_time = 0;
+            TrueTimeInterval now_tt = tt_.Now();
+            transactions_.mark_missed_window(transaction_id, false);
+            Debug("jenndebug [%lu] transactions.missed_window() %s", transaction_id,
+                  transactions_.missed_window(transaction_id) ? "true" : "false");
 //            Debug("jenndebug [%lu] write_set size %lu", transaction_id, transaction.getWriteSet().size());
             for (auto &write: transaction.getWriteSet()) {
                 const std::chrono::microseconds network_latency_window = store_.get_network_latency_window(write.first);
@@ -608,27 +612,21 @@ namespace strongstore {
                 PendingOp pendingOp(PUT, write.first, write.second, commit_ts, transaction_id, nonblock_ts,
                                     network_latency_window);
 
-                TrueTimeInterval now_tt = tt_.Now();
                 if (pendingOp.execute_time() < now_tt.mid()) {
-                    if (pendingOp.pendingOpType() == PUT) {
-                        stats_.Increment("missed_latency_window_" + std::to_string(client_id));
-                    } else {
-                        stats_.Increment("read_missed_latency_window");
-                    }
-
+                    stats_.Increment("missed_latency_window_" + std::to_string(client_id));
                     stats_.Add("missed_by_" + std::to_string(client_id) + "_us",
                                now_tt.mid() - pendingOp.execute_time());
-                    pendingOp.did_miss_window() = true;
-                    Debug("jennbdebug [%lu] missed latency_window by a bit", transaction_id);
+                    transactions_.mark_missed_window(transaction_id, true);
+                    Debug("jennbdebug [%lu] missed latency_window by a bit, transactions missed window",
+                          transaction_id);
 
                     // let the write through, even though we're not on time. The odds that we're not on time to
                     // a majority are pretty low
-                    SendRWCommmitCoordinatorReplyFail(remote, client_id, client_req_id);
 //                    return;
-                }
-
-                stats_.Increment("on_time");
+                } else {
+                    stats_.Increment("on_time");
 //                Debug("jenndebug [%lu] on time", transaction_id);
+                }
 
                 this->queue_.push(pendingOp);
 
@@ -646,6 +644,8 @@ namespace strongstore {
             }
             transactions_.still_pending_ops(transaction_id) += transaction.getWriteSet().size();
 //            this->transaction_still_pending_ops_[transaction_id] = transaction.getWriteSet().size();
+            Debug("jenndebug [%lu] transactions.missed_window() %s", transaction_id,
+                  transactions_.missed_window(transaction_id) ? "true" : "false");
 
             for (auto &key: transaction.getPendingReadSet()) {
                 const std::chrono::microseconds network_latency_window = store_.get_network_latency_window(key);
@@ -653,7 +653,7 @@ namespace strongstore {
 
                 this->queue_.push(pendingOp);
 
-//                Debug("jenndebug [%lu] enqueued GET %s", transaction_id, key.c_str());
+                Debug("jenndebug [%lu] enqueued GET %s", transaction_id, key.c_str());
 
                 if (pendingOp.execute_time() > latest_execution_time) {
                     latest_execution_time = pendingOp.execute_time();
@@ -663,11 +663,14 @@ namespace strongstore {
             transactions_.still_pending_ops(transaction_id) += transaction.getPendingReadSet().size();
 //            this->transaction_still_pending_ops_[transaction_id] += transaction.getPendingReadSet().size();
 
-            TrueTimeInterval now_tt = tt_.Now();
             uint64_t wait_until_us = latest_execution_time > now_tt.mid() ? latest_execution_time - tt_.Now().mid() : 0;
 //        Debug("jenndebug latest_execution_time [%lu], tt_.Now().mid() [%lu]", latest_execution_time, tt_.Now().mid());
 
             transport_->TimerMicro(wait_until_us, std::bind(&Server::HandleRWCommitCoordinator, this));
+            if (transactions_.missed_window(transaction_id)) {
+                Debug("jenndebug [%lu][replica %d] send fail, req_id %lu", transaction_id, replica_idx_, client_req_id);
+                SendRWCommmitCoordinatorReplyFail(remote, client_id, client_req_id);
+            }
 //            Debug("[%lu] Coordinator for wait_until_us %lu", transaction_id, wait_until_us);
             //
             // LockReleaseResult rr = locks_.ReleaseLocks(transaction_id, transaction);

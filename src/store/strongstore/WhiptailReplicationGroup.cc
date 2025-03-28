@@ -96,22 +96,28 @@ namespace strongstore {
                     const std::vector<Value> majority_values = session.quorum_resp(shard_idx_, config_.QuorumSize());
                     session.clear_success_count(shard_idx_);
                     session.clear_reply_values(shard_idx_);
+                    session.heard_back(shard_idx_, true);
+                    Debug("jenndebug [%lu] successful read with majority", session.transaction_id());
                     ccb(REPLY_OK, majority_values, commit_ts, nonblock_ts);
                 } else if (session.success_count(shard_idx_) == config_.n &&
                            !session.has_quorum(shard_idx_, config_.QuorumSize())) {
                     Debug("jenndebug [%lu] no majority", session.transaction_id());
                     session.clear_reply_values(shard_idx_);
+                    session.heard_back(shard_idx_, false);
                     ccb(REPLY_FAIL, {}, commit_ts, nonblock_ts);
                 }
             } else {
                 // just writes
+                Debug("jenndebug [%lu] successful write with majority", session.transaction_id());
                 session.clear_success_count(shard_idx_);
+                session.heard_back(shard_idx_, true);
                 ccb(REPLY_OK, {}, commit_ts, nonblock_ts);
             }
             session.mark_successfully_replicated(shard_idx_);
         } else if (session.failure_count(shard_idx_) >= config_.QuorumSize()) {
             Debug("jenndebug [%lu] txn failed", session.transaction_id());
             session.clear_success_count(shard_idx_);
+            session.heard_back(shard_idx_, false);
             ccb(REPLY_FAIL, {}, commit_ts, nonblock_ts);
         }
     }
