@@ -110,6 +110,14 @@ namespace strongstore {
             Panic("jenndebug Do not call this method without calling has_quorum() to check first");
         }
 
+        void heard_back(int participant_shard, bool was_success) {
+            participant_resp_[participant_shard] = was_success;
+        }
+
+        bool heard_back_from_everyone() const {
+            return participant_resp_.size() == participants_.size();
+        }
+
     protected:
         friend class Client;
 
@@ -189,6 +197,7 @@ namespace strongstore {
         Timestamp start_ts_;
         Timestamp min_read_ts_;
         std::set<int> participants_;
+        std::unordered_map<int, bool> participant_resp_;
         std::unordered_map<uint64_t, PreparedTransaction> prepares_;
         std::unordered_map<std::string, std::list<Value>> values_;
         Timestamp snapshot_ts_;
