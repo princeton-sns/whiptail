@@ -513,8 +513,10 @@ namespace strongstore {
             // Reply to client
 //            if (this->transaction_still_pending_ops_[transaction_id] == 0) {
             if (0 == transactions_.still_pending_ops(transaction_id)) {
-                SendRWCommmitCoordinatorReplyOK(transaction_id, commit_ts, nonblock_ts,
-                                                transactions_.read_results(transaction_id));
+                if (!pendingOp.did_miss_window()) {
+                    SendRWCommmitCoordinatorReplyOK(transaction_id, commit_ts, nonblock_ts,
+                                                    transactions_.read_results(transaction_id));
+                }
             }
         }
 
@@ -616,6 +618,7 @@ namespace strongstore {
 
                     stats_.Add("missed_by_" + std::to_string(client_id) + "_us",
                                now_tt.mid() - pendingOp.execute_time());
+                    pendingOp.did_miss_window() = true;
                     Debug("jennbdebug [%lu] missed latency_window by a bit", transaction_id);
 
                     // let the write through, even though we're not on time. The odds that we're not on time to
