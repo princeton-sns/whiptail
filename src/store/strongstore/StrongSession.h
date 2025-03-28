@@ -88,7 +88,7 @@ namespace strongstore {
         }
 
         bool has_quorum(int participant_shard, int quorum) {
-            for (const auto &replies_count_pair : this->all_replies_count_[participant_shard]) {
+            for (const auto &replies_count_pair: this->all_replies_count_[participant_shard]) {
                 int received_count = replies_count_pair.second;
                 if (received_count >= quorum) {
                     return true;
@@ -99,7 +99,7 @@ namespace strongstore {
         }
 
         std::vector<Value> quorum_resp(int participant_shard, int quorum) {
-            for (const auto &replies_count_pair : this->all_replies_count_[participant_shard]) {
+            for (const auto &replies_count_pair: this->all_replies_count_[participant_shard]) {
                 int received_count = replies_count_pair.second;
                 if (received_count >= quorum) {
                     std::vector<Value> quorum_resp = replies_count_pair.first;
@@ -112,9 +112,15 @@ namespace strongstore {
 
         void heard_back(int participant_shard, bool was_success) {
             participant_resp_[participant_shard] = was_success;
+            Debug("jenndebug [%lu], new participant, participant_resp.size() %lu", transaction_id_,
+                  participant_resp_.size());
         }
 
         bool heard_back_from_everyone() const {
+            Debug("jenndebug [%lu] responding_participants.size() %lu, participants.size() %lu",
+                  transaction_id_,
+                  participant_resp_.size(),
+                  participants_.size());
             return participant_resp_.size() == participants_.size();
         }
 
@@ -130,6 +136,7 @@ namespace strongstore {
             snapshot_ts_ = Timestamp();
             current_participant_ = -1;
             state_ = EXECUTING;
+            participant_resp_.clear();
         }
 
         void retry_transaction(uint64_t transaction_id) {
@@ -140,6 +147,7 @@ namespace strongstore {
             snapshot_ts_ = Timestamp();
             current_participant_ = -1;
             state_ = EXECUTING;
+            participant_resp_.clear();
         }
 
         enum State {
