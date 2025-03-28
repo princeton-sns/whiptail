@@ -91,6 +91,7 @@
   "mixed_rw_percent": 0,
   "network_latency_window": 8000,
   "sent_redundancy": 3,
+  "loop_queue_interval_us": 1000,
   "server_preload_keys": true,
   "client_abort_backoff": 1,
   "client_retry_aborted": true,

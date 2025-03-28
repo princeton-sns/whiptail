@@ -111,8 +111,9 @@ namespace strongstore {
         Server(Consistency consistency,
                const std::vector<transport::Configuration> &shard_configs,
                const transport::Configuration &replica_config, uint64_t server_id,
-               int groupIdx, int idx, std::vector<Transport*> transports, const TrueTime &tt,
-               bool debug_stats, uint64_t network_latency_window, uint8_t sent_redundancy = 1);
+               int groupIdx, int idx, std::vector<Transport *> transports, const TrueTime &tt,
+               bool debug_stats, uint64_t network_latency_window, uint8_t sent_redundancy = 1,
+               uint64_t loop_queue_interval_us = 1000);
 
         ~Server();
 
@@ -300,14 +301,14 @@ namespace strongstore {
         VersionedKVStore<TimestampID, std::string> store_;
 
         const std::vector<transport::Configuration> &shard_configs_;
-        const transport::Configuration& shard_config_;
+        const transport::Configuration &shard_config_;
         const transport::Configuration &replica_config_;
 
         std::vector<ShardClient *> shard_clients_;
         ReplicaClient *replica_client_;
 
         std::vector<Transport *> transports_;
-        Transport* transport_;
+        Transport *transport_;
 
         uint64_t server_id_;
 
@@ -353,6 +354,7 @@ namespace strongstore {
         std::unordered_map<RequestID, uint8_t> multi_sent_reqs_recvd_yet_;
         std::mutex multi_sent_reqs_recvd_yet_mutex_;
         uint8_t sent_redundancy_;
+        uint64_t loop_queue_interval_us_;
 
     };
 
