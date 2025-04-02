@@ -89,7 +89,7 @@
   "read_percent": 0,
   "write_percent": 100,
   "mixed_rw_percent": 0,
-  "network_latency_window": 8000,
+  "network_latency_window": 0,
   "sent_redundancy": 3,
   "loop_queue_interval_us": 1000,
   "server_preload_keys": true,

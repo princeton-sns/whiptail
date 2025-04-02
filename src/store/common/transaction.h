@@ -47,7 +47,7 @@ class Transaction {
 
     std::unordered_map<std::string, std::pair<std::string, uint64_t> > read_results_;
 
-    bool missed_window_;
+    bool is_inconsistent_;
 
    public:
     Transaction();
@@ -81,12 +81,12 @@ class Transaction {
         return read_results_;
     }
 
-    void mark_missed_window(bool b) {
-        missed_window_ = b;
+    void mark_inconsistent(bool b) {
+        is_inconsistent_ = b;
     }
 
-    bool missed_window() const {
-        return missed_window_;
+    bool is_inconsistent() const {
+        return is_inconsistent_;
     }
 };
 
