@@ -355,6 +355,7 @@ namespace strongstore {
         std::mutex multi_sent_reqs_recvd_yet_mutex_;
         uint8_t sent_redundancy_;
         uint64_t loop_queue_interval_us_;
+        int cancel_timer_fd_;
 
     };
 

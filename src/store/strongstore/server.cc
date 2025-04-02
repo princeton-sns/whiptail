@@ -33,7 +33,8 @@ namespace strongstore {
               consistency_{consistency},
               debug_stats_{debug_stats},
               sent_redundancy_{sent_redundancy},
-              loop_queue_interval_us_(loop_queue_interval_us){
+              loop_queue_interval_us_(loop_queue_interval_us),
+              cancel_timer_fd_(-1){
 
         for (int redundancy_idx = 0; redundancy_idx < sent_redundancy_; redundancy_idx++) {
             transport_->Register(this, shard_configs_[redundancy_idx], shard_idx_, replica_idx_, redundancy_idx);
@@ -467,6 +468,11 @@ namespace strongstore {
         //     this->q_mutex_.unlock();
         // }
 
+        if (cancel_timer_fd_ != -1) {
+            transport_->CancelTimer(cancel_timer_fd_);
+            cancel_timer_fd_ = -1;
+        }
+
         std::vector<PendingOp> safe_to_execute;
 
         // if function can't acquire lock, it means another callback has gotten here first
@@ -524,7 +530,7 @@ namespace strongstore {
         }
 
         // TODO jenndebug wait for 200us, change from hardcode
-        transport_->TimerMicro(loop_queue_interval_us_, std::bind(&Server::HandleRWCommitCoordinator, this));
+        cancel_timer_fd_ = transport_->TimerMicro(loop_queue_interval_us_, std::bind(&Server::HandleRWCommitCoordinator, this));
 
         // for (LockAcquireResult ar = locks_.AcquireLocks(transaction_id, transaction);
         // ar.status != LockStatus::ACQUIRED; ar = locks_.AcquireLocks(transaction_id, transaction)) {}
@@ -668,7 +674,7 @@ namespace strongstore {
             uint64_t wait_until_us = latest_execution_time > now_tt.mid() ? latest_execution_time - tt_.Now().mid() : 0;
 //        Debug("jenndebug latest_execution_time [%lu], tt_.Now().mid() [%lu]", latest_execution_time, tt_.Now().mid());
 
-            transport_->TimerMicro(wait_until_us, std::bind(&Server::HandleRWCommitCoordinator, this));
+            transport_->TimerMicro(wait_until_us + 300, std::bind(&Server::HandleRWCommitCoordinator, this));
             if (transactions_.missed_window(transaction_id)) {
                 Debug("jenndebug [%lu][replica %d] send fail, req_id %lu", transaction_id, replica_idx_, client_req_id);
                 SendRWCommmitCoordinatorReplyFail(remote, client_id, client_req_id);
