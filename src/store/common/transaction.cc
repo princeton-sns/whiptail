@@ -15,7 +15,7 @@ Transaction::Transaction() : readSet{}, writeSet{}, pendingReadSet{}, start_time
 Transaction::Transaction(const TransactionMessage &msg)
     : start_time_{msg.starttime()}
     , still_pending_ops_(0)
-    , missed_window_(false) {
+    , is_inconsistent_(false) {
     for (int i = 0; i < msg.readset_size(); i++) {
         ReadMessage readMsg = msg.readset(i);
         readSet[readMsg.key()] = Timestamp(readMsg.readtime());

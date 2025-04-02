@@ -191,6 +191,10 @@ namespace strongstore {
             Timestamp timestamp;
             uint64_t transaction_id;
 
+            TimestampID() = default;
+
+            TimestampID(const Timestamp& ts, uint64_t tid): timestamp(ts), transaction_id(tid) {}
+
             friend bool operator>(const TimestampID &t1,
                                   const TimestampID &t2) {
                 return t1.timestamp > t2.timestamp;

@@ -75,6 +75,14 @@ public:
 
     void put(const std::string &key, const V &v, const T &t);
 
+    bool lastRead(const std::string& key, T& result) {
+        if (last_read.find(key) != last_read.end()) {
+            result = last_read[key];
+            return true;
+        }
+        return false;
+    }
+
     void put(const std::string &key, const V &v, const T &t, std::chrono::microseconds network_latency_window);
 
     void commitGet(const std::string &key, const T &readTime, const T &commit);
@@ -110,8 +118,9 @@ private:
 
     /* Global store which keeps key -> (timestamp, value) list. */
     std::unordered_map<std::string, std::set<VersionedValue>> store;
-    std::unordered_map<std::string, std::map<T, T>> lastReads;
+//    std::unordered_map<std::string, std::map<T, T>> lastReads;
     std::unordered_map<std::string, std::chrono::microseconds> network_latency_windows;
+    std::unordered_map<std::string, T> last_read;
 
     bool inStore(const std::string &key);
 
@@ -189,6 +198,9 @@ bool VersionedKVStore<T, V>::getWithHash(const std::string &key, const T &t,
         if (it != store[key].end()) {
             value = std::make_tuple((*it).write, (*it).value, (*it).rolling_hash);
             return true;
+        }
+        if (last_read[key] < t) {
+            last_read[key] = t;
         }
     }
     return false;
@@ -277,6 +289,10 @@ void VersionedKVStore<T, V>::put(const std::string &key, const V &value,
         store[key].insert(modified_value);
         prev = modified_value;
     }
+
+    if (last_read.find(key) == last_read.end()) {
+        last_read[key] = t;
+    }
 }
 
 template<class T, class V>
@@ -300,34 +316,36 @@ void VersionedKVStore<T, V>::put(const std::string &key, const V &value,
 template<class T, class V>
 void VersionedKVStore<T, V>::commitGet(const std::string &key,
                                        const T &readTime, const T &commit) {
-    // Hmm ... could read a key we don't have if we are behind ... do we commit
-    // this or wait for the log update?
-    if (inStore(key)) {
-        typename std::set<VersionedKVStore<T, V>::VersionedValue>::iterator it;
-        getValue(key, readTime, it);
-
-        if (it != store[key].end()) {
-            // figure out if anyone has read this version before
-            if (lastReads.find(key) != lastReads.end() &&
-                lastReads[key].find((*it).write) != lastReads[key].end() &&
-                lastReads[key][(*it).write] < commit) {
-                lastReads[key][(*it).write] = commit;
-            }
-        }
-    } // otherwise, ignore the read
+    Panic("Unimplemented commitGet");
+//    // Hmm ... could read a key we don't have if we are behind ... do we commit
+//    // this or wait for the log update?
+//    if (inStore(key)) {
+//        typename std::set<VersionedKVStore<T, V>::VersionedValue>::iterator it;
+//        getValue(key, readTime, it);
+//
+//        if (it != store[key].end()) {
+//            // figure out if anyone has read this version before
+//            if (lastReads.find(key) != lastReads.end() &&
+//                lastReads[key].find((*it).write) != lastReads[key].end() &&
+//                lastReads[key][(*it).write] < commit) {
+//                lastReads[key][(*it).write] = commit;
+//            }
+//        }
+//    } // otherwise, ignore the read
 }
 
 template<class T, class V>
 bool VersionedKVStore<T, V>::getLastRead(const std::string &key, T &lastRead) {
-    if (inStore(key)) {
-        VersionedValue v = *(store[key].rbegin());
-        if (lastReads.find(key) != lastReads.end() &&
-            lastReads[key].find(v.write) != lastReads[key].end()) {
-            lastRead = lastReads[key][v.write];
-            return true;
-        }
-    }
-    return false;
+    Panic("Unimplemented getLastRead");
+//    if (inStore(key)) {
+//        VersionedValue v = *(store[key].rbegin());
+//        if (lastReads.find(key) != lastReads.end() &&
+//            lastReads[key].find(v.write) != lastReads[key].end()) {
+//            last_read = lastReads[key][v.write];
+//            return true;
+//        }
+//    }
+//    return false;
 }
 
 /*
@@ -336,23 +354,24 @@ bool VersionedKVStore<T, V>::getLastRead(const std::string &key, T &lastRead) {
 template<class T, class V>
 bool VersionedKVStore<T, V>::getLastRead(const std::string &key, const T &t,
                                          T &lastRead) {
-    if (inStore(key)) {
-        typename std::set<VersionedKVStore<T, V>::VersionedValue>::iterator it;
-        getValue(key, t, it);
-        // TODO: this ASSERT seems incorrect. Why should we expect to find a
-        // value
-        //    at given time t? There is no constraint on t, so we have no
-        //    guarantee that a valid version exists.
-        // UW_ASSERT(it != store[key].end());
-
-        // figure out if anyone has read this version before
-        if (lastReads.find(key) != lastReads.end() &&
-            lastReads[key].find((*it).write) != lastReads[key].end()) {
-            lastRead = lastReads[key][(*it).write];
-            return true;
-        }
-    }
-    return false;
+    Panic("unimplemented getLastRead");
+//    if (inStore(key)) {
+//        typename std::set<VersionedKVStore<T, V>::VersionedValue>::iterator it;
+//        getValue(key, t, it);
+//        // TODO: this ASSERT seems incorrect. Why should we expect to find a
+//        // value
+//        //    at given time t? There is no constraint on t, so we have no
+//        //    guarantee that a valid version exists.
+//        // UW_ASSERT(it != store[key].end());
+//
+//        // figure out if anyone has read this version before
+//        if (lastReads.find(key) != lastReads.end() &&
+//            lastReads[key].find((*it).write) != lastReads[key].end()) {
+//            last_read = lastReads[key][(*it).write];
+//            return true;
+//        }
+//    }
+//    return false;
 }
 
 template<class T, class V>
