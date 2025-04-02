@@ -60,7 +60,7 @@ public:
 
     bool get(const std::string &key, const T &t, std::pair<T, V> &value);
 
-    bool getWithHash(const std::string &key, const T &t, std::tuple<T, V, size_t> &valueWithHash);
+    bool getWithHash(const std::string &key, const T &t, std::tuple<T, V, size_t> &valueWithHash, bool taint = true);
 
     bool getRange(const std::string &key, const T &t, std::pair<T, T> &range);
 
@@ -75,7 +75,7 @@ public:
 
     void put(const std::string &key, const V &v, const T &t);
 
-    bool lastRead(const std::string& key, T& result) {
+    bool lastRead(const std::string &key, T &result) {
         if (last_read.find(key) != last_read.end()) {
             result = last_read[key];
             return true;
@@ -191,7 +191,7 @@ bool VersionedKVStore<T, V>::get(const std::string &key, const T &t,
 
 template<class T, class V>
 bool VersionedKVStore<T, V>::getWithHash(const std::string &key, const T &t,
-                                         std::tuple<T, V, size_t> &value) {
+                                         std::tuple<T, V, size_t> &value, bool taint) {
     if (inStore(key)) {
         typename std::set<VersionedKVStore<T, V>::VersionedValue>::iterator it;
         getValue(key, t, it);
@@ -199,7 +199,7 @@ bool VersionedKVStore<T, V>::getWithHash(const std::string &key, const T &t,
             value = std::make_tuple((*it).write, (*it).value, (*it).rolling_hash);
             return true;
         }
-        if (last_read[key] < t) {
+        if (taint && last_read[key] < t) {
             last_read[key] = t;
         }
     }
@@ -270,7 +270,7 @@ void VersionedKVStore<T, V>::put(const std::string &key, const V &value,
                                  const T &t) {
     size_t hash_value = 0;
     std::tuple<T, V, size_t> v_tuple;
-    if (this->getWithHash(key, t, v_tuple)) {
+    if (this->getWithHash(key, t, v_tuple, false)) {
         size_t prev_hash = std::get<2>(v_tuple);
         hash_value = hashFunction(value, prev_hash);
     }
