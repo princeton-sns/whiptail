@@ -367,7 +367,7 @@ namespace strongstore {
         const auto &t = search->second;
 
         uint64_t req_id = last_req_id_++;
-        Debug("jenndebug [%lu] pending req_id %d", transaction_id, req_id);
+        Debug("jenndebug [%lu] pending req_id %lu", transaction_id, req_id);
         PendingRWCoordCommit *pendingCommit = new PendingRWCoordCommit(transaction_id, req_id);
         pendingRWCoordCommits[req_id] = pendingCommit;
         pendingCommit->ccb = ccb;
