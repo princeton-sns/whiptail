@@ -91,7 +91,7 @@ def copy_remote_directory_to_local(local_directory, remote_user, remote_host,
     os.makedirs(local_directory, exist_ok=True)
     tar_file_path = os.path.join(remote_directory, tar_file)
     run_remote_command_sync('cd %s && tar -czf %s %s' % (
-    remote_directory, tar_file_path, file_filter),
+        remote_directory, tar_file_path, file_filter),
                             remote_user, remote_host)
     subprocess.call(["scp", "-r", "-p", '%s@%s:%s' %
                      (remote_user, remote_host, tar_file_path),
@@ -146,7 +146,8 @@ def kill_process_by_port(port, kill_args):
 def get_timestamped_exp_dir(config):
     now_string = time.strftime('%Y-%m-%d-%H-%M-%S',
                                time.localtime())
-    return os.path.join(config['base_local_exp_directory'], now_string)
+    return os.path.join(config['base_local_exp_directory'],
+                        now_string + "-" + config["experiment_name"])
 
 
 def get_interface_for_ip(ip, remote_user, remote_host):
