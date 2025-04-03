@@ -112,7 +112,7 @@
     "txn_groups",
     "commit_branch"
   ],
-  "experiment_name": "spanner-rss",
+  "experiment_name": "whiptail-local",
   "codebase_name": "rss",
   "pin_client_processes": false,
   "pin_server_processes": false,
