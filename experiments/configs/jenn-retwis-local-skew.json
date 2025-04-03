@@ -2,6 +2,9 @@
   "experiment_independent_vars": [
     [
       "consistency"
+    ],
+    [
+      "mpl"
     ]
   ],
   "replication_protocol": "strong",
@@ -74,7 +77,10 @@
   "client_num_keys": 1000000,
   "benchmark_name": "retwis",
   "bench_mode": "closed",
-  "mpl": 1,
+  "mpl": [
+    1,
+    2
+  ],
   "client_key_selector": "zipf",
   "client_zipf_coefficient": 0.99,
   "client_arrival_rate": 1,
@@ -174,7 +180,116 @@
     }
   },
   "server_emulate_wan": false,
-  "plots": [],
+  "plots": [
+    {
+      "name": "tput-p50",
+      "font": "DejaVu Sans,12",
+      "height": 600,
+      "width": 800,
+      "series_indep_vars_idx": 0,
+      "series_titles": [
+        "Spanner",
+        "Spanner-RSS"
+      ],
+      "x_var_is_config": false,
+      "y_var": [
+        "run_stats",
+        "combined",
+        "p50",
+        "p50"
+      ],
+      "y_label": "p50 Latency",
+      "x_label": "Throughput (txn/s)",
+      "x_indep_vars_idx": 1,
+      "x_var": [
+        "run_stats",
+        "combined",
+        "tput",
+        "p50"
+      ]
+    },
+    {
+      "name": "tput-p90",
+      "font": "DejaVu Sans,12",
+      "height": 600,
+      "width": 800,
+      "series_indep_vars_idx": 0,
+      "series_titles": [
+        "Spanner",
+        "Spanner-RSS"
+      ],
+      "x_var_is_config": false,
+      "y_var": [
+        "run_stats",
+        "combined",
+        "p90",
+        "p50"
+      ],
+      "y_label": "p90 Latency",
+      "x_label": "Throughput (txn/s)",
+      "x_indep_vars_idx": 1,
+      "x_var": [
+        "run_stats",
+        "combined",
+        "tput",
+        "p50"
+      ]
+    },
+    {
+      "name": "tput-p99",
+      "font": "DejaVu Sans,12",
+      "height": 600,
+      "width": 800,
+      "series_indep_vars_idx": 0,
+      "series_titles": [
+        "Spanner",
+        "Spanner-RSS"
+      ],
+      "x_var_is_config": false,
+      "y_var": [
+        "run_stats",
+        "combined",
+        "p99",
+        "p50"
+      ],
+      "y_label": "p99 Latency",
+      "x_label": "Throughput (txn/s)",
+      "x_indep_vars_idx": 1,
+      "x_var": [
+        "run_stats",
+        "combined",
+        "tput",
+        "p50"
+      ]
+    },
+    {
+      "name": "tput-mean",
+      "font": "DejaVu Sans,12",
+      "height": 600,
+      "width": 800,
+      "series_indep_vars_idx": 0,
+      "series_titles": [
+        "Spanner",
+        "Spanner-RSS"
+      ],
+      "x_var_is_config": false,
+      "y_var": [
+        "run_stats",
+        "combined",
+        "mean",
+        "p50"
+      ],
+      "y_label": "Mean Latency",
+      "x_label": "Throughput (txn/s)",
+      "x_indep_vars_idx": 1,
+      "x_var": [
+        "run_stats",
+        "combined",
+        "tput",
+        "p50"
+      ]
+    }
+  ],
   "cdf_plots": {
     "font": "DejaVu Sans,12",
     "height": 600,
