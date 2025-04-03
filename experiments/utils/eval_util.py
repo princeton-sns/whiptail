@@ -774,7 +774,10 @@ def generate_plots(config, base_out_directory, out_dirs):
                                                     config['cdf_plots']['font'], series, title)
             print(plot_script_file)
             # subprocesses.append(subprocess.Popen(['gnuplot', plot_script_file]))
-            subprocess.call(['gnuplot', plot_script_file])
+            if 'lot-' in csv_class:
+                print("do nothing")
+            else:
+                subprocess.call(['gnuplot', plot_script_file])
     # End generate all aggregate cdf plots
     ###
 
