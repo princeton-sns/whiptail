@@ -1,6 +1,6 @@
 {
   "experiment_independent_vars": [
-  ["src_commit_hash"]
+  ["mpl"]
   ],
   "replication_protocol": "strong",
   "client_protocol_mode": "span-lock",
@@ -70,7 +70,7 @@
   "client_num_keys": 10000000,
   "benchmark_name": "ycsbt",
   "bench_mode": "closed",
-  "mpl": 5,
+  "mpl": [5],
   "client_key_selector": "zipf",
   "client_arrival_rate": 22,
   "client_stay_probability": 0.9,
@@ -98,10 +98,10 @@
   "server_debug_output": true,
   "client_debug_stats": true,
   "server_debug_stats": true,
-  "client_experiment_length": 10,
+  "client_experiment_length": 30,
   "client_rand_sleep": 0,
-  "client_ramp_up": 0,
-  "client_ramp_down": 0,
+  "client_ramp_up": 10,
+  "client_ramp_down": 10,
   "default_remote_shell": "bash",
   "server_host_format_str": "%s%s%s",
   "client_host_format_str": "%s%s%s",
@@ -187,7 +187,7 @@
   "plot_tput_lat_y_label": "Latency (ms)",
   "input_latency_scale": 1000000000,
   "output_latency_scale": 1000,
-  "src_commit_hash": ["HEAD", "occ"],
+  "src_commit_hash": "HEAD",
   "stats_file_name": "stats.json",
   "base_local_exp_directory": "/workspaces/whiptail/experiments/results",
   "base_mounted_fs_path": "/mnt/extra",
@@ -240,8 +240,8 @@
   "client_gc_debug_trace": false,
   "client_cpuprofile": false,
   "server_gc_debug_trace": false,
-  "client_zipf_coefficient": 0.7,
+  "client_zipf_coefficient": 0,
   "ycsbt_read_percentage": 90,
-  "ycsbt_write_percentage": 10,
+  "ycsbt_write_percentage": 0,
   "client_num_ops_txn": 100
 }

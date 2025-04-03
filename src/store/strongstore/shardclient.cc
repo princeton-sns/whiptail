@@ -166,21 +166,19 @@ namespace strongstore
                           get_callback gcb, get_timeout_callback gtcb,
                           uint32_t timeout)
     {
-        Get(transaction_id, key, gcb, gtcb, timeout, false);
+        GetBuffered(transaction_id, key, gcb, gtcb, timeout);
     }
 
     void ShardClient::GetBuffered(uint64_t transaction_id, const std::string &key,
         get_callback gc, get_timeout_callback gtcb, uint32_t timeout) {
-Debug("[shard %i] GET_BUFFERED [%s]", shard_idx_, key.c_str());
+        auto search = transactions_.find(transaction_id);
+        ASSERT(search != transactions_.end());
 
-auto search = transactions_.find(transaction_id);
-ASSERT(search != transactions_.end());
+        auto &t = search->second;
+        t.addPendingReadSet(key);
 
-auto &t = search->second;
-t.addPendingReadSet(key);
-
-gc(REPLY_OK, key, "", Timestamp());
-}
+        gc(REPLY_OK, key, "", Timestamp());
+    }
 
     void ShardClient::GetForUpdate(uint64_t transaction_id, const std::string &key,
                                    get_callback gcb, get_timeout_callback gtcb,

@@ -26,6 +26,7 @@
  *
  **********************************************************************/
 #include "store/strongstore/transactionstore.h"
+#include "lib/message.h"
 
 #include <algorithm>
 
@@ -182,7 +183,8 @@ namespace strongstore
     void TransactionStore::StartGet(uint64_t transaction_id, const TransportAddress &remote, const std::string &key, bool for_update)
     {
         PendingRWTransaction &pt = pending_rw_[transaction_id];
-        ASSERT(pt.state() == READING);
+        
+        ASSERT(pt.state() == READING || pt.state() == WAIT_PARTICIPANTS);
 
         pt.StartGet(remote, key, for_update);
     }
