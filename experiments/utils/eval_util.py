@@ -953,8 +953,8 @@ def generate_lot_plot(config, plots_directory, plot_name, lot_data, lot_times):
     generate_csv_for_lot_plot(plot_csv_file, lot_data, lot_times)
     plot_script_file = os.path.join(plots_directory, '%s.gpi' % plot_name)
     generate_gnuplot_script_lot(config, plot_script_file)
-    run_gnuplot([plot_csv_file], os.path.join(plots_directory, '%s.png' % plot_name),
-                plot_script_file)
+    # run_gnuplot([plot_csv_file], os.path.join(plots_directory, '%s.png' % plot_name),
+    #             plot_script_file)
 
 
 def generate_tot_plot(config, plots_directory, plot_name, lot_data, lot_times):
@@ -963,8 +963,8 @@ def generate_tot_plot(config, plots_directory, plot_name, lot_data, lot_times):
     generate_csv_for_tot_plot(plot_csv_file, lot_data, lot_times)
     plot_script_file = os.path.join(plots_directory, '%s.gpi' % plot_name)
     generate_gnuplot_script_lot(config, plot_script_file, 'linespoints')
-    run_gnuplot([plot_csv_file], os.path.join(plots_directory, '%s.png' % plot_name),
-                plot_script_file)
+    # run_gnuplot([plot_csv_file], os.path.join(plots_directory, '%s.png' % plot_name),
+    #             plot_script_file)
 
 
 def generate_cdf_log_plot(config, plots_directory, plot_name, cdf_data):
