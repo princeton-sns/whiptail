@@ -18,7 +18,7 @@ def converge_plots(plot_script_file, plot_name, data_files):
         args = []
         for i in range(len(data_files)):
             args.append("'%s' title '%s' with linespoint" %
-                        (data_files[i], "Line 1"))
+                        (data_files[i], "Line " + str(i)))
         f.write("plot " + ",\\\n".join(args))
 
     eval_util.run_gnuplot(data_files, plot_name, plot_script_file)
