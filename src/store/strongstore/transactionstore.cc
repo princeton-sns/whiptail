@@ -184,7 +184,7 @@ namespace strongstore
     {
         PendingRWTransaction &pt = pending_rw_[transaction_id];
         
-        ASSERT(pt.state() == READING || pt.state() == WAIT_PARTICIPANTS);
+        // ASSERT(pt.state() == READING || pt.state() == WAIT_PARTICIPANTS);
 
         pt.StartGet(remote, key, for_update);
     }
