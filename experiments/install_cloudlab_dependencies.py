@@ -12,7 +12,8 @@ def call(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT):
   :return: if successful, stdout stream of command.
   """
     print(cmd)
-    p = subprocess.run(cmd, stdout=stdout, stderr=stderr, shell=True, check=True, universal_newlines=True)
+    p = subprocess.run(cmd, stdout=stdout, stderr=stderr, shell=True,
+                       check=True, universal_newlines=True)
     return p.stdout
 
 
@@ -35,8 +36,17 @@ def setup_vimrc():
     call("echo 'set tabstop=4 shiftwidth=4 expandtab' >> /root/.vimrc")
 
 
-def main():
+def setup_aliases():
+    call("echo \"alias w=\'cd /root/whiptail\'\" >> /root/.bash_aliases")
+    call(
+        "echo \"alias e=\'cd /root/whiptail/experiments\'\" >> /root/.bash_aliases")
+    call(
+        "echo \"alias strongstore=\'cd /root/whiptail/src/store/strongstore\'\" >> /root/.bash_aliases")
+    call(
+        "echo \"alias r=\'cd /mnt/extra/experiments\'\" >> /root/.bash_aliases")
 
+
+def main():
     call("apt update")
     call("apt install gnuplot -y")
     call("apt install feh -y")
@@ -44,6 +54,7 @@ def main():
     call("pip3 install numpy")
 
     setup_vimrc()
+    setup_aliases()
 
     return 0
 
