@@ -456,10 +456,10 @@ void BenchmarkClient::ExecuteCallback(uint64_t session_id,
             }
         }
 
-        if (retryAborted)
-        {
-            stats.Add(ttype + "_attempts_list", n_attempts);
-        }
+//        if (retryAborted)
+//        {
+//            stats.Add(ttype + "_attempts_list", n_attempts);
+//        }
 
         OnReply(session_id, result, erase_session);
     }
