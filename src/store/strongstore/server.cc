@@ -583,13 +583,17 @@ namespace strongstore
                 auto *reply = new PendingRWCommitCoordinatorReply(client_id, client_req_id, remote.clone());
                 pending_rw_commit_c_replies_[transaction_id] = reply;
 
-                // TODO: Handle timeout
-                replica_client_->CoordinatorCommit(
-                    transaction_id, start_ts, shard_idx_,
-                    participants, transaction, nonblock_ts, commit_ts,
-                    std::bind(&Server::CommitCoordinatorCallback, this,
-                              transaction_id, std::placeholders::_1),
-                    []() {}, COMMIT_TIMEOUT);
+                uint64_t commit_wait_us = tt_.TimeToWaitUntilMicros(commit_ts.getTimestamp());
+                Debug("[%lu] delaying commit by %lu us", transaction_id, commit_wait_us);
+                transport_->TimerMicro(commit_wait_us, std::bind(&Server::CoordinatorCommitTransaction, this, transaction_id, commit_ts));
+
+                // // TODO: Handle timeout
+                // replica_client_->CoordinatorCommit(
+                //     transaction_id, start_ts, shard_idx_,
+                //     participants, transaction, nonblock_ts, commit_ts,
+                //     std::bind(&Server::CommitCoordinatorCallback, this,
+                //               transaction_id, std::placeholders::_1),
+                //     []() {}, COMMIT_TIMEOUT);
             }
             else if (ar.status == LockStatus::FAIL)
             {
