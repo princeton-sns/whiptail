@@ -204,6 +204,7 @@ void BenchmarkClient::SendNextInSession(const uint64_t session_id)
     auto &session = ss.session();
     auto &client = *clients_[ss.current_client_index()];
 
+    client.SetLatFromSessionState(&latency, ss.lat());
     // _Latency_StartRec(ss.lat());
 
     auto bcb = std::bind(&BenchmarkClient::ExecuteNextOperation, this, session_id);
