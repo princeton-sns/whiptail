@@ -76,6 +76,14 @@ namespace strongstore {
             return did_miss_window_;
         }
 
+        std::chrono::time_point<std::chrono::high_resolution_clock>& start_time () {
+            return start_time_;
+        }
+
+        const std::chrono::time_point<std::chrono::high_resolution_clock>& start_time () const {
+            return start_time_;
+        }
+
     private:
         PendingOpType pendingOpType_;
         std::string key_;
@@ -86,6 +94,7 @@ namespace strongstore {
         std::chrono::microseconds network_latency_window_;
         uint64_t execute_time_;
         bool did_miss_window_;
+        std::chrono::time_point<std::chrono::high_resolution_clock> start_time_;
     };
 
 } // strongstore
