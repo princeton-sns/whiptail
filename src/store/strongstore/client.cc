@@ -609,6 +609,7 @@ namespace strongstore {
             return;
         }
         _Latency_EndRec(latency_t_, latency_map_[session.id()]);
+        latency_map_.erase(session.id());
         auto tid = session.transaction_id();
         Debug("[%lu] COMMIT callback status %d, req_id %lu", tid, status, req_id);
 
