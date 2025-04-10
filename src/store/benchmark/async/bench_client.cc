@@ -124,7 +124,7 @@ void BenchmarkClient::SendNext()
     session_states_.emplace(sid, SessionState{session, transaction, ecb, client_index});
 
     auto &ss = session_states_.find(sid)->second;
-    client.SetLatFromSessionState(&latency, ss.lat());
+    client.SetLatFromSessionState(&latency, ss.lat(), sid);
     // _Latency_StartRec(ss.lat());
 
     auto bcb = std::bind(&BenchmarkClient::ExecuteNextOperation, this, sid);
@@ -204,6 +204,7 @@ void BenchmarkClient::SendNextInSession(const uint64_t session_id)
     auto &session = ss.session();
     auto &client = *clients_[ss.current_client_index()];
 
+    client.SetLatFromSessionState(&latency, ss.lat(), session.id());
     // _Latency_StartRec(ss.lat());
 
     auto bcb = std::bind(&BenchmarkClient::ExecuteNextOperation, this, session_id);

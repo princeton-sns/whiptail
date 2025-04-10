@@ -98,17 +98,17 @@ class Client {
 
     inline Stats &GetStats() { return stats; }
 
-    void SetLatFromSessionState(Latency_t* latency_t, Latency_Frame_t* latency_frame) {
+    void SetLatFromSessionState(Latency_t* latency_t, Latency_Frame_t* latency_frame, uint64_t sid) {
         latency_t_ = latency_t;
-        latency_frame_ = latency_frame;
+        latency_map_[sid] = latency_frame;
     }
 
    protected:
     void StartRecLatency();
     void EndRecLatency(const std::string &str);
     Stats stats;
+    std::unordered_map<uint64_t, Latency_Frame_t*> latency_map_;
     Latency_t* latency_t_;
-    Latency_Frame_t *latency_frame_;
 
    private:
     Latency_t clientLat;

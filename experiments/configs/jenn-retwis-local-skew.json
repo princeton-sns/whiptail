@@ -78,8 +78,8 @@
   "benchmark_name": "retwis",
   "bench_mode": "closed",
   "mpl": [
-    1,
-    2
+    4,
+    8
   ],
   "client_key_selector": "zipf",
   "client_zipf_coefficient": 0.99,
