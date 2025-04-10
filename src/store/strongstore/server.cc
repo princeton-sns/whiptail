@@ -525,7 +525,7 @@ namespace strongstore {
                     Debug("jenndebug [%lu][replica %d] sending success", transaction_id, replica_idx_);
                     auto end = chrono::high_resolution_clock::now();
                     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - pendingOp.start_time());
-                    stats_.Add("serverside", duration.count());
+                    // stats_.Add("serverside", duration.count());
                     SendRWCommmitCoordinatorReplyOK(transaction_id, commit_ts, nonblock_ts,
                                                     transactions_.read_results(transaction_id));
                 }
