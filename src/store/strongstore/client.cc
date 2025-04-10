@@ -584,6 +584,8 @@ namespace strongstore {
 
         auto cctcb = [](int) {};
 
+
+        _Latency_StartRec(latency_frame_);
         const Timestamp commit_ts{tt_.Now().mid(), client_id_};
 
         for (auto p: participants) {
@@ -606,6 +608,7 @@ namespace strongstore {
             Debug("jenndebug [%lu] haven't heard back from all participants, don't commit callback yet", session.transaction_id());
             return;
         }
+        _Latency_EndRec(latency_t_, latency_frame_);
         auto tid = session.transaction_id();
         Debug("[%lu] COMMIT callback status %d, req_id %lu", tid, status, req_id);
 
