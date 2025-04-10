@@ -602,7 +602,9 @@ namespace strongstore {
         }
         auto end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - session.start_time());
-        stats.IncrementList("fanout", duration.count());
+        // stats.IncrementList("fanout", duration.count());
+        _Latency_EndRec(latency_t_, latency_map_[session.id()]);
+        latency_map_.erase(session.id());
     }
 
     void Client::CommitCallback(StrongSession &session, uint64_t req_id, int status, const std::vector<Value> &values,
@@ -612,11 +614,11 @@ namespace strongstore {
             Debug("jenndebug [%lu] haven't heard back from all participants, don't commit callback yet", session.transaction_id());
             return;
         }
-        _Latency_EndRec(latency_t_, latency_map_[session.id()]);
-        auto end = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - session.start_time());
-        stats.IncrementList("total_latency", duration.count());
-        latency_map_.erase(session.id());
+        // _Latency_EndRec(latency_t_, latency_map_[session.id()]);
+        // auto end = std::chrono::high_resolution_clock::now();
+        // auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - session.start_time());
+        // stats.IncrementList("total_latency", duration.count());
+        // latency_map_.erase(session.id());
         auto tid = session.transaction_id();
         Debug("[%lu] COMMIT callback status %d, req_id %lu", tid, status, req_id);
 
