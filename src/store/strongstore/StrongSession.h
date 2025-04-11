@@ -200,14 +200,6 @@ namespace strongstore {
 
         void set_snapshot_ts(const Timestamp &ts) { snapshot_ts_ = ts; }
 
-        std::chrono::time_point<std::chrono::high_resolution_clock>& start_time() {
-            return start_time_;
-        }
-
-        const std::chrono::time_point<std::chrono::high_resolution_clock>& start_time() const {
-            return start_time_;
-        }
-
     private:
         uint64_t transaction_id_;
         Timestamp start_ts_;
@@ -227,7 +219,6 @@ namespace strongstore {
         // shard -> hash(vector of replies) -> how many of them there are
         std::unordered_map<int, std::unordered_map<std::vector<Value>, int, VectorHash < Value>>>
         all_replies_count_;
-        std::chrono::time_point<std::chrono::high_resolution_clock> start_time_;
 
     };
 

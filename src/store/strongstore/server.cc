@@ -523,9 +523,6 @@ namespace strongstore {
             if (0 == transactions_.still_pending_ops(transaction_id)) {
                 if (!transactions_.is_inconsistent(transaction_id)) {
                     Debug("jenndebug [%lu][replica %d] sending success", transaction_id, replica_idx_);
-                    auto end = chrono::high_resolution_clock::now();
-                    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - pendingOp.start_time());
-                    // stats_.Add("serverside", duration.count());
                     SendRWCommmitCoordinatorReplyOK(transaction_id, commit_ts, nonblock_ts,
                                                     transactions_.read_results(transaction_id));
                 }
@@ -552,8 +549,6 @@ namespace strongstore {
     }
 
     void Server::EnqueueOps(const TransportAddress &remote, proto::RWCommitCoordinator &msg) {
-
-        chrono::time_point<chrono::high_resolution_clock> start_time = chrono::high_resolution_clock::now();
 
         uint64_t client_id = msg.rid().client_id();
         uint64_t client_req_id = msg.rid().client_req_id();
@@ -625,7 +620,6 @@ namespace strongstore {
 
                 PendingOp pendingOp(PUT, write.first, write.second, commit_ts, transaction_id, nonblock_ts,
                                     network_latency_window);
-                pendingOp.start_time() = start_time;
 
                 if (pendingOp.execute_time() < now_tt.mid()) {
                     stats_.Increment("missed_latency_window_" + std::to_string(client_id));
@@ -673,7 +667,6 @@ namespace strongstore {
                 PendingOp pendingOp(GET, key, "", commit_ts, transaction_id, nonblock_ts, network_latency_window);
 
                 this->queue_.push(pendingOp);
-                pendingOp.start_time() = start_time;
 
                 Debug("jenndebug [%lu] enqueued GET %s", transaction_id, key.c_str());
 
