@@ -3,6 +3,16 @@ cmake_minimum_required(VERSION 3.10)
 # set the project name and version
 project(TAPIR VERSION 1.0)
 
+OPTION(DEBUG "Enable debugging" OFF)
+IF (DEBUG)
+    MESSAGE(WARNING "Debugging is ENABLED (to disable, run 'cmake .. -DDEBUG=OFF'). Performance will be low.")
+    set(CMAKE_BUILD_TYPE Debug)
+    set(CMAKE_CXX_FLAGS_DEBUG "-g -fno-omit-frame-pointer")
+    add_compile_options("-g" "-fno-omit-frame-pointer")
+ELSE(DEBUG)
+    MESSAGE(STATUS, "Debugging is DISABLED (to enable, run 'cmake .. -DDEBUG=ON').")
+ENDIF(DEBUG)
+
 # specify the C++ standard
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED True)

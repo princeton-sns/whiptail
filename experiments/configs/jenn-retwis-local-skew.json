@@ -78,8 +78,8 @@
   "benchmark_name": "retwis",
   "bench_mode": "closed",
   "mpl": [
-    1,
-    2
+    4,
+    8
   ],
   "client_key_selector": "zipf",
   "client_zipf_coefficient": 0.99,
@@ -116,15 +116,15 @@
   "codebase_name": "rss",
   "pin_client_processes": false,
   "pin_server_processes": false,
-  "client_debug_output": true,
-  "server_debug_output": true,
+  "client_debug_output": false,
+  "server_debug_output": false,
   "client_debug_stats": false,
   "server_debug_stats": false,
-  "server_load_time": 5,
-  "client_experiment_length": 10,
+  "server_load_time": 10,
+  "client_experiment_length": 45,
   "client_rand_sleep": 0,
-  "client_ramp_down": 0,
-  "client_ramp_up": 0,
+  "client_ramp_down": 10,
+  "client_ramp_up": 10,
   "default_remote_shell": "bash",
   "server_host_format_str": "%s.%s.%s.utah.cloudlab.us",
   "client_host_format_str": "%s.%s.%s.utah.cloudlab.us",
@@ -370,6 +370,6 @@
   "server_rpc_port": 8087,
   "client_gc_debug_trace": false,
   "client_cpuprofile": false,
-  "server_gc_debug_trace": false
+  "server_gc_debug_trace": true
 }
 

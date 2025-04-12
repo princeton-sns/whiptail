@@ -609,9 +609,6 @@ namespace strongstore {
             return;
         }
         _Latency_EndRec(latency_t_, latency_map_[session.id()]);
-        // auto end = std::chrono::high_resolution_clock::now();
-        // auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - session.start_time());
-        // stats.IncrementList("total_latency", duration.count());
         latency_map_.erase(session.id());
         auto tid = session.transaction_id();
         Debug("[%lu] COMMIT callback status %d, req_id %lu", tid, status, req_id);
