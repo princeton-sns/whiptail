@@ -356,10 +356,10 @@ namespace strongstore {
         bool debug_stats_;
 
         std::unordered_map<RequestID, uint8_t> multi_sent_reqs_recvd_yet_;
-        std::mutex multi_sent_reqs_recvd_yet_mutex_;
         uint8_t sent_redundancy_;
         uint64_t loop_queue_interval_us_;
         int cancel_timer_fd_;
+        std::set<int> scheduled_callbacks_;
 
     };
 
