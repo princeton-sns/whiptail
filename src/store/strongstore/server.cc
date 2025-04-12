@@ -556,8 +556,8 @@ namespace strongstore {
 //        }
 //
         // TODO jenndebug wait for 200us, change from hardcode
-        /*cancel_timer_fd_ = */ transport_->TimerMicro(loop_queue_interval_us_,
-                                                  std::bind(&Server::HandleRWCommitCoordinator, this));
+//        /*cancel_timer_fd_ = */ transport_->TimerMicro(loop_queue_interval_us_,
+//                                                  std::bind(&Server::HandleRWCommitCoordinator, this));
 
         // for (LockAcquireResult ar = locks_.AcquireLocks(transaction_id, transaction);
         // ar.status != LockStatus::ACQUIRED; ar = locks_.AcquireLocks(transaction_id, transaction)) {}
@@ -707,12 +707,13 @@ namespace strongstore {
             uint64_t wait_until_us = latest_execution_time > now_tt.mid() ? latest_execution_time - now_tt.mid() : 0;
 //        Debug("jenndebug latest_execution_time [%lu], tt_.Now().mid() [%lu]", latest_execution_time, tt_.Now().mid());
 
-            if (!set_off_timer_yet_) {
-                /*int fd = */ transport_->TimerMicro(wait_until_us,
-                                                     std::bind(&Server::HandleRWCommitCoordinator, this));
-//            scheduled_callbacks_[transaction_id] = fd;
-                set_off_timer_yet_ = true;
-            }
+//            if (!set_off_timer_yet_) {
+//                /*int fd = */ transport_->TimerMicro(wait_until_us,
+//                                                     std::bind(&Server::HandleRWCommitCoordinator, this));
+////            scheduled_callbacks_[transaction_id] = fd;
+//                set_off_timer_yet_ = true;
+//            }
+            HandleRWCommitCoordinator();
             if (transactions_.is_inconsistent(transaction_id)) {
                 Debug("jenndebug [%lu][replica %d] send fail, req_id %lu", transaction_id, replica_idx_, client_req_id);
                 SendRWCommmitCoordinatorReplyFail(remote, client_id, client_req_id);
