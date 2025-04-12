@@ -63,6 +63,9 @@ class RssCodebase:
             raise RuntimeError(
                 "read_percent + write_percent + mixed_rw_percent != 100")
 
+        if config["client_gc_debug_trace"]:
+            path_to_client_bin = 'perf record -e cycles -g ' + path_to_client_bin
+
         client_command = ' '.join([str(x) for x in [
             path_to_client_bin,
             '--write_ops_txn', config['write_ops_txn'],
@@ -259,6 +262,8 @@ class RssCodebase:
 
         truetime_error = config[
             "truetime_error"] if "truetime_error" in config else 0
+        if config['server_gc_debug_trace']:
+            path_to_server_bin = 'perf record -e cycles -g ' + path_to_server_bin
         replica_command = ' '.join([str(x) for x in [
             path_to_server_bin,
             '--server_id', server_id,

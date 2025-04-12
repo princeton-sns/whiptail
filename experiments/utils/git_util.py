@@ -12,7 +12,10 @@ def compile_make(config):
     if not 'make_clean' in config or config['make_clean']:
         subprocess.call(["rm", "-r", build_path])
     os.makedirs(build_path, exist_ok=True)
-    subprocess.call(["cmake", ".."], cwd=build_path, env=e)
+    if config['client_gc_debug_trace'] or config['server_gc_debug_trace']:
+        subprocess.call(["cmake", "-DDEBUG=ON", ".."], cwd=build_path, env=e)
+    else:
+        subprocess.call(["cmake", ".."], cwd=build_path, env=e)
     subprocess.call(["make", "-j", "8"], cwd=build_path, env=e)
     bin_path = os.path.join(config['src_directory'], 'bin')
     os.makedirs(bin_path, exist_ok=True)
