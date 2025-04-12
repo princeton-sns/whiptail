@@ -34,7 +34,7 @@ namespace strongstore {
               debug_stats_{debug_stats},
               sent_redundancy_{sent_redundancy},
               loop_queue_interval_us_(loop_queue_interval_us),
-              set_off_timer_(false) {
+              set_off_timer_yet_(false) {
 //              cancel_timer_fd_(-1) {
 
         for (int redundancy_idx = 0; redundancy_idx < sent_redundancy_; redundancy_idx++) {
@@ -707,10 +707,12 @@ namespace strongstore {
             uint64_t wait_until_us = latest_execution_time > now_tt.mid() ? latest_execution_time - now_tt.mid() : 0;
 //        Debug("jenndebug latest_execution_time [%lu], tt_.Now().mid() [%lu]", latest_execution_time, tt_.Now().mid());
 
-            /*int fd = */ transport_->TimerMicro(wait_until_us,
-                                            std::bind(&Server::HandleRWCommitCoordinator, this));
+            if (!set_off_timer_yet_) {
+                /*int fd = */ transport_->TimerMicro(wait_until_us,
+                                                     std::bind(&Server::HandleRWCommitCoordinator, this));
 //            scheduled_callbacks_[transaction_id] = fd;
-            set_off_timer_ = true;
+                set_off_timer_yet_ = true;
+            }
             if (transactions_.is_inconsistent(transaction_id)) {
                 Debug("jenndebug [%lu][replica %d] send fail, req_id %lu", transaction_id, replica_idx_, client_req_id);
                 SendRWCommmitCoordinatorReplyFail(remote, client_id, client_req_id);
