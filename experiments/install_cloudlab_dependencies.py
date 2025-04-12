@@ -80,6 +80,7 @@ def main():
 
     setup_vimrc()
     setup_aliases()
+    setup_perf()
 
     return 0
 
