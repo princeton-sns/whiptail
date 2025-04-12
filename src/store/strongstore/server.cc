@@ -486,12 +486,12 @@ namespace strongstore {
         uint64_t now = tt_.Now().mid();
         while (!this->queue_.empty() && should_check_queue) {
             PendingOp pendingOp = this->queue_.top();
-            if (pendingOp.execute_time() <= now) {
+//            if (pendingOp.execute_time() <= now) {
                 safe_to_execute.push_back(pendingOp);
                 this->queue_.pop();
-            } else {
-                should_check_queue = false;
-            }
+//            } else {
+//                should_check_queue = false;
+//            }
         }
 
         for (const auto &pendingOp: safe_to_execute) {
