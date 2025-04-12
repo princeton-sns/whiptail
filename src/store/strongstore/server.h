@@ -220,7 +220,7 @@ namespace strongstore {
         void EnqueueOps(const TransportAddress &remote,
                         proto::RWCommitCoordinator &msg);
 
-        void HandleRWCommitCoordinator();
+        void HandleRWCommitCoordinator(int tid);
 
         void SendRWCommmitCoordinatorReplyOK(uint64_t transaction_id,
                                              const Timestamp &commit_ts,
@@ -359,7 +359,7 @@ namespace strongstore {
         uint8_t sent_redundancy_;
         uint64_t loop_queue_interval_us_;
         int cancel_timer_fd_;
-        std::set<int> scheduled_callbacks_;
+        std::unordered_map<int, int> scheduled_callbacks_;
 
     };
 
