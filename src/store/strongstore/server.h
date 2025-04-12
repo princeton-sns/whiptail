@@ -360,7 +360,7 @@ namespace strongstore {
         uint64_t loop_queue_interval_us_;
 //        int cancel_timer_fd_;
 //        std::unordered_map<int, int> scheduled_callbacks_;
-        bool set_off_timer_;
+        bool set_off_timer_yet_;
 
     };
 
