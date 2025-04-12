@@ -34,7 +34,8 @@ namespace strongstore {
               debug_stats_{debug_stats},
               sent_redundancy_{sent_redundancy},
               loop_queue_interval_us_(loop_queue_interval_us),
-              cancel_timer_fd_(-1) {
+              set_off_timer_(false) {
+//              cancel_timer_fd_(-1) {
 
         for (int redundancy_idx = 0; redundancy_idx < sent_redundancy_; redundancy_idx++) {
             transport_->Register(this, shard_configs_[redundancy_idx], shard_idx_, replica_idx_, redundancy_idx);
@@ -451,7 +452,7 @@ namespace strongstore {
         }
     }
 
-    void Server::HandleRWCommitCoordinator(int tid/*, const std::string& key, std::string& value,
+    void Server::HandleRWCommitCoordinator(/*uint64_t transaction_id, const std::string& key, std::string& value,
                                         const Timestamp& commit_ts, const Timestamp& nonblock_ts*/) {
 
         // bool should_check_queue = true;
@@ -468,14 +469,14 @@ namespace strongstore {
         //     this->q_mutex_.unlock();
         // }
 
-        if (cancel_timer_fd_ != -1) {
-            transport_->CancelTimer(cancel_timer_fd_);
-            cancel_timer_fd_ = -1;
-        }
+//        if (cancel_timer_fd_ != -1) {
+//            transport_->CancelTimer(cancel_timer_fd_);
+//            cancel_timer_fd_ = -1;
+//        }
 
-        if (tid != -1) {
-            scheduled_callbacks_.erase(tid);
-        }
+//        if (tid != -1) {
+//            scheduled_callbacks_.erase(tid);
+//        }
 
         std::vector<PendingOp> safe_to_execute;
 
@@ -531,32 +532,32 @@ namespace strongstore {
             }
         }
 
-        if (!queue_.empty() && !scheduled_callbacks_.empty()) {
-            Debug("jenndebug that's good, the queue will get cleared by another callback, soon");
-        } else if (!queue_.empty() && scheduled_callbacks_.empty()) {
-            Debug("jenndebug queue not empty, but no more callbacks--clear it manually");
-            cancel_timer_fd_ = transport_->TimerMicro(loop_queue_interval_us_,
-                                                      std::bind(&Server::HandleRWCommitCoordinator, this, -1));
-        } else if (queue_.empty() && !scheduled_callbacks_.empty()) {
-            Debug("jenndebug cancel the callbacks, there's nothing left to execute");
-            for (auto &pair: scheduled_callbacks_) {
-                int callback_fd = pair.second;
-                Debug("jenndebug canceled fd %d", callback_fd);
-                transport_->CancelTimer(callback_fd);
-            }
-            scheduled_callbacks_.clear();
-
-            if (cancel_timer_fd_ != -1) {
-                transport_->CancelTimer(cancel_timer_fd_);
-                cancel_timer_fd_ = -1;
-            }
-        } else { // queue_.empty() && scheduled_callbacks_.empty()
-            Debug("jenndebug that's good, the queue is empty and nothing is waiting to prcess it");
-        }
+//        if (!queue_.empty() && !scheduled_callbacks_.empty()) {
+//            Debug("jenndebug that's good, the queue will get cleared by another callback, soon");
+//        } else if (!queue_.empty() && scheduled_callbacks_.empty()) {
+//            Debug("jenndebug queue not empty, but no more callbacks--clear it manually");
+//            cancel_timer_fd_ = transport_->TimerMicro(loop_queue_interval_us_,
+//                                                      std::bind(&Server::HandleRWCommitCoordinator, this, -1));
+//        } else if (queue_.empty() && !scheduled_callbacks_.empty()) {
+//            Debug("jenndebug cancel the callbacks, there's nothing left to execute");
+//            for (auto &pair: scheduled_callbacks_) {
+//                int callback_fd = pair.second;
+//                Debug("jenndebug canceled fd %d", callback_fd);
+//                transport_->CancelTimer(callback_fd);
+//            }
+//            scheduled_callbacks_.clear();
 //
-//        // TODO jenndebug wait for 200us, change from hardcode
-//        cancel_timer_fd_ = transport_->TimerMicro(loop_queue_interval_us_,
-//                                                  std::bind(&Server::HandleRWCommitCoordinator, this));
+//            if (cancel_timer_fd_ != -1) {
+//                transport_->CancelTimer(cancel_timer_fd_);
+//                cancel_timer_fd_ = -1;
+//            }
+//        } else { // queue_.empty() && scheduled_callbacks_.empty()
+//            Debug("jenndebug that's good, the queue is empty and nothing is waiting to prcess it");
+//        }
+//
+        // TODO jenndebug wait for 200us, change from hardcode
+        /*cancel_timer_fd_ = */ transport_->TimerMicro(loop_queue_interval_us_,
+                                                  std::bind(&Server::HandleRWCommitCoordinator, this));
 
         // for (LockAcquireResult ar = locks_.AcquireLocks(transaction_id, transaction);
         // ar.status != LockStatus::ACQUIRED; ar = locks_.AcquireLocks(transaction_id, transaction)) {}
@@ -706,9 +707,10 @@ namespace strongstore {
             uint64_t wait_until_us = latest_execution_time > now_tt.mid() ? latest_execution_time - now_tt.mid() : 0;
 //        Debug("jenndebug latest_execution_time [%lu], tt_.Now().mid() [%lu]", latest_execution_time, tt_.Now().mid());
 
-            int fd = transport_->TimerMicro(wait_until_us,
-                                            std::bind(&Server::HandleRWCommitCoordinator, this, transaction_id));
-            scheduled_callbacks_[transaction_id] = fd;
+            /*int fd = */ transport_->TimerMicro(wait_until_us,
+                                            std::bind(&Server::HandleRWCommitCoordinator, this));
+//            scheduled_callbacks_[transaction_id] = fd;
+            set_off_timer_ = true;
             if (transactions_.is_inconsistent(transaction_id)) {
                 Debug("jenndebug [%lu][replica %d] send fail, req_id %lu", transaction_id, replica_idx_, client_req_id);
                 SendRWCommmitCoordinatorReplyFail(remote, client_id, client_req_id);
