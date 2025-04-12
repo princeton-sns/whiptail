@@ -482,9 +482,10 @@ namespace strongstore {
         // if function can't acquire lock, it means another callback has gotten here first
         bool should_check_queue = true;
 
+        uint64_t now = tt_.Now().mid();
         while (!this->queue_.empty() && should_check_queue) {
             PendingOp pendingOp = this->queue_.top();
-            if (pendingOp.execute_time() <= tt_.Now().mid()) {
+            if (pendingOp.execute_time() <= now) {
                 safe_to_execute.push_back(pendingOp);
                 this->queue_.pop();
             } else {
@@ -702,7 +703,7 @@ namespace strongstore {
             transactions_.still_pending_ops(transaction_id) += transaction.getPendingReadSet().size();
 //            this->transaction_still_pending_ops_[transaction_id] += transaction.getPendingReadSet().size();
 
-            uint64_t wait_until_us = latest_execution_time > now_tt.mid() ? latest_execution_time - tt_.Now().mid() : 0;
+            uint64_t wait_until_us = latest_execution_time > now_tt.mid() ? latest_execution_time - now_tt.mid() : 0;
 //        Debug("jenndebug latest_execution_time [%lu], tt_.Now().mid() [%lu]", latest_execution_time, tt_.Now().mid());
 
             int fd = transport_->TimerMicro(wait_until_us,
