@@ -45,6 +45,9 @@ def setup_aliases():
     call(
         "echo \"alias r=\'cd /mnt/extra/experiments\'\" >> /root/.bash_aliases")
 
+def setup_tmux_conf():
+    call("echo 'set -g default-terminal \"screen-256color\"' >> /root/.tmux.conf")
+
 
 def setup_perf():
     call("apt install -y linux-tools-4.15.0-151-generic linux-cloud-tools-4.15.0-151-generic linux-tools-generic")
@@ -81,6 +84,7 @@ def main():
     setup_vimrc()
     setup_aliases()
     setup_perf()
+    setup_tmux_conf()
 
     return 0
 
