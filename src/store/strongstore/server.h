@@ -109,7 +109,7 @@ namespace strongstore
                const transport::Configuration &shard_config,
                const transport::Configuration &replica_config, uint64_t server_id,
                int groupIdx, int idx, Transport *transport, const TrueTime &tt,
-               bool debug_stats);
+               bool debug_stats, bool is_replicated = true);
         ~Server();
 
         // Override TransportReceiver
@@ -310,6 +310,7 @@ namespace strongstore
         int replica_idx_;
         Consistency consistency_;
         bool debug_stats_;
+        bool is_replicated_;
     };
 
 } // namespace strongstore

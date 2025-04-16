@@ -270,6 +270,7 @@ class RssCodebase:
             '--num_shards', config['num_shards'],
             '--stats_file', stats_file,
             '--clock_error', truetime_error,
+            '--is_replicated', config['fault_tolerance'] > 0,
             '--strong_consistency', config['consistency']]])
 
         if 'message_transport_type' in config['replication_protocol_settings']:
