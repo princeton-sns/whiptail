@@ -588,7 +588,7 @@ namespace strongstore
                 pending_rw_commit_c_replies_[transaction_id] = reply;
 
                 if (is_unreplicated_) {
-                    CommitCoordinatorCallback(transaction_id, transaction_status_t::COMMITTED);
+                    CoordinatorCommitTransaction(transaction_id, commit_ts);
                 } else {
                     // TODO: Handle timeout
                     replica_client_->CoordinatorCommit(
