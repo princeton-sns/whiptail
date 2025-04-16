@@ -82,7 +82,6 @@ class RssCodebase:
             '--read_percent', config['read_percent'],
             '--write_percent', config['write_percent'],
             '--mixed_rw_percent', config['mixed_rw_percent'],
-            '--sent_redundancy', config['sent_redundancy'],
             '--client_id', client_id,
             '--client_host', client_host,
             '--replica_config_paths', ','.join(shard_config_paths),
