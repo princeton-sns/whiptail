@@ -281,9 +281,6 @@ class RssCodebase:
 
         replica_command = ' '.join([str(x) for x in [
             path_to_server_bin,
-            '--network_latency_window', config['network_latency_window'],
-            '--sent_redundancy', config['sent_redundancy'],
-            '--loop_queue_interval_us', config['loop_queue_interval_us'],
             '--server_id', server_id,
             '--replica_config_path', replica_config_path,
             '--shard_config_path', shard_config_path,
