@@ -63,6 +63,16 @@ class RssCodebase:
             raise RuntimeError(
                 "read_percent + write_percent + mixed_rw_percent != 100")
 
+        if config["client_gc_debug_trace"]:
+            path_to_client_bin = ' '.join([str(x) for x in [
+                'perf record',
+                '--delay', config['client_ramp_up'],
+                '-e', 'cycles',
+                '--output', 'perf-client-{0}-{1}.data'.format(i, run),
+                '-g',
+                path_to_client_bin
+            ]])
+
         client_command = ' '.join([str(x) for x in [
             path_to_client_bin,
             '--write_ops_txn', config['write_ops_txn'],
@@ -72,6 +82,7 @@ class RssCodebase:
             '--read_percent', config['read_percent'],
             '--write_percent', config['write_percent'],
             '--mixed_rw_percent', config['mixed_rw_percent'],
+            '--sent_redundancy', config['sent_redundancy'],
             '--client_id', client_id,
             '--client_host', client_host,
             '--replica_config_paths', ','.join(shard_config_paths),
@@ -259,8 +270,20 @@ class RssCodebase:
 
         truetime_error = config[
             "truetime_error"] if "truetime_error" in config else 0
+        if config['server_gc_debug_trace']:
+            path_to_server_bin = ' '.join([str(x) for x in [
+                                           'perf record',
+                                           '--delay', config['server_load_time'] + config['client_ramp_up'],
+                                           '-e', 'cycles',
+                                           '--output', 'perf-server-{0}-{1}-{2}.data'.format(instance_idx, shard_idx, replica_idx),
+                                           '-g',
+                                           path_to_server_bin]])
+
         replica_command = ' '.join([str(x) for x in [
             path_to_server_bin,
+            '--network_latency_window', config['network_latency_window'],
+            '--sent_redundancy', config['sent_redundancy'],
+            '--loop_queue_interval_us', config['loop_queue_interval_us'],
             '--server_id', server_id,
             '--replica_config_path', replica_config_path,
             '--shard_config_path', shard_config_path,
@@ -535,12 +558,25 @@ class RssCodebase:
             shard_config_path = os.path.join(local_exp_directory, shard_config)
 
             with open(replica_config_path, "w") as rcf, open(shard_config_path,
-                                                             "w") as scf:
+                                                             "w") as scf, open(
+                shard_config_path + "_1", "w") as scf1, open(
+                shard_config_path + "_2", "w") as scf2, open(
+                shard_config_path + "_3", "w") as scf3, open(
+                shard_config_path + "_4", "w") as scf4:
+
                 print("f {}".format(fault_tolerance), file=rcf)
                 print("f {}".format(fault_tolerance), file=scf)
+                print("f {}".format(fault_tolerance), file=scf1)
+                print("f {}".format(fault_tolerance), file=scf2)
+                print("f {}".format(fault_tolerance), file=scf3)
+                print("f {}".format(fault_tolerance), file=scf4)
                 for shard in shards:
                     print("group", file=rcf)
                     print("group", file=scf)
+                    print("group", file=scf1)
+                    print("group", file=scf2)
+                    print("group", file=scf3)
+                    print("group", file=scf4)
                     assert (len(shard) == n)
                     for replica in shard:
                         assert (replica in server_names)
@@ -549,8 +585,17 @@ class RssCodebase:
 
                         port = server_ports[replica]
                         print("replica {}:{}".format(replica, port), file=rcf)
-                        print("replica {}:{}".format(
-                            replica, port + 1), file=scf)
+                        print("replica {}:{}".format(replica, port + 1),
+                              file=scf)
+                        print("replica {}:{}".format(replica, port + 100),
+                              file=scf1)
+                        print("replica {}:{}".format(replica, port + 200),
+                              file=scf2)
+                        print("replica {}:{}".format(replica, port + 300),
+                              file=scf3)
+                        print("replica {}:{}".format(replica, port + 400),
+                              file=scf4)
+
                         server_ports[replica] += 2
                 shard_idx += 1
 
