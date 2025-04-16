@@ -64,7 +64,14 @@ class RssCodebase:
                 "read_percent + write_percent + mixed_rw_percent != 100")
 
         if config["client_gc_debug_trace"]:
-            path_to_client_bin = 'perf record -e cycles -g ' + path_to_client_bin
+            path_to_client_bin = ' '.join([str(x) for x in [
+                'perf record',
+                '--delay', config['client_ramp_up'],
+                '-e', 'cycles',
+                '--output', 'perf-client-{0}-{1}.data'.format(i, run),
+                '-g',
+                path_to_client_bin
+            ]])
 
         client_command = ' '.join([str(x) for x in [
             path_to_client_bin,
@@ -264,7 +271,14 @@ class RssCodebase:
         truetime_error = config[
             "truetime_error"] if "truetime_error" in config else 0
         if config['server_gc_debug_trace']:
-            path_to_server_bin = 'perf record -e cycles -g ' + path_to_server_bin
+            path_to_server_bin = ' '.join([str(x) for x in [
+                                           'perf record',
+                                           '--delay', config['server_load_time'] + config['client_ramp_up'],
+                                           '-e', 'cycles',
+                                           '--output', 'perf-server-{0}-{1}-{2}.data'.format(instance_idx, shard_idx, replica_idx),
+                                           '-g',
+                                           path_to_server_bin]])
+
         replica_command = ' '.join([str(x) for x in [
             path_to_server_bin,
             '--network_latency_window', config['network_latency_window'],
