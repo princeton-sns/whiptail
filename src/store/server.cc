@@ -64,6 +64,7 @@ DEFINE_uint64(replica_idx, 0,
 DEFINE_uint64(group_idx, 0, "index of the shard to which this replica belongs");
 DEFINE_uint64(num_shards, 1, "number of shards in the system");
 DEFINE_bool(debug_stats, false, "record stats related to debugging");
+DEFINE_bool(is_unreplicated, false, "are servers replicated");
 
 const std::string protocol_args[] = {
     "strong",
@@ -333,7 +334,7 @@ int main(int argc, char **argv)
         server = new strongstore::Server(consistency, shard_config,
                                          replica_config, FLAGS_server_id,
                                          FLAGS_group_idx, FLAGS_replica_idx,
-                                         tport, tt, FLAGS_debug_stats);
+                                         tport, tt, FLAGS_debug_stats, FLAGS_is_unreplicated);
         break;
     }
     default:

@@ -47,7 +47,8 @@ namespace strongstore
                    const transport::Configuration &shard_config,
                    const transport::Configuration &replica_config,
                    uint64_t server_id, int shard_idx, int replica_idx,
-                   Transport *transport, const TrueTime &tt, bool debug_stats)
+                   Transport *transport, const TrueTime &tt, bool debug_stats,
+                   bool is_unreplicated)
         : PingServer(transport),
           tt_{tt},
           transactions_{shard_idx, consistency, tt_},
@@ -59,7 +60,8 @@ namespace strongstore
           shard_idx_{shard_idx},
           replica_idx_{replica_idx},
           consistency_{consistency},
-          debug_stats_{debug_stats}
+          debug_stats_{debug_stats},
+          is_unreplicated_{is_unreplicated}
     {
         transport_->Register(this, shard_config_, shard_idx_, replica_idx_);
 
@@ -75,6 +77,8 @@ namespace strongstore
         {
             _Latency_Init(&ro_wait_lat_, "ro_wait_lat");
         }
+
+        Debug("jenndebug is_unreplicated_ %s", is_unreplicated_ ? "true" : "false");
     }
 
     Server::~Server()
@@ -583,13 +587,17 @@ namespace strongstore
                 auto *reply = new PendingRWCommitCoordinatorReply(client_id, client_req_id, remote.clone());
                 pending_rw_commit_c_replies_[transaction_id] = reply;
 
-                // TODO: Handle timeout
-                replica_client_->CoordinatorCommit(
-                    transaction_id, start_ts, shard_idx_,
-                    participants, transaction, nonblock_ts, commit_ts,
-                    std::bind(&Server::CommitCoordinatorCallback, this,
-                              transaction_id, std::placeholders::_1),
-                    []() {}, COMMIT_TIMEOUT);
+                if (is_unreplicated_) {
+                    CommitCoordinatorCallback(transaction_id, transaction_status_t::COMMITTED);
+                } else {
+                    // TODO: Handle timeout
+                    replica_client_->CoordinatorCommit(
+                        transaction_id, start_ts, shard_idx_,
+                        participants, transaction, nonblock_ts, commit_ts,
+                        std::bind(&Server::CommitCoordinatorCallback, this,
+                                  transaction_id, std::placeholders::_1),
+                        []() {}, COMMIT_TIMEOUT);
+                }
             }
             else if (ar.status == LockStatus::FAIL)
             {
