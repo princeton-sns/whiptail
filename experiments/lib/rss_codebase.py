@@ -66,7 +66,7 @@ class RssCodebase:
         if config["client_gc_debug_trace"]:
             path_to_client_bin = ' '.join([str(x) for x in [
                 'perf record',
-                '--delay', config['client_ramp_up'],
+                '--delay', config['client_ramp_up'] * 1000,
                 '-e', 'cycles',
                 '--output', 'perf-client-{0}-{1}.data'.format(i, run),
                 '-g',
@@ -272,7 +272,7 @@ class RssCodebase:
         if config['server_gc_debug_trace']:
             path_to_server_bin = ' '.join([str(x) for x in [
                                            'perf record',
-                                           '--delay', config['server_load_time'] + config['client_ramp_up'],
+                                           '--delay', 1000 * (config['server_load_time'] + config['client_ramp_up']),
                                            '-e', 'cycles',
                                            '--output', 'perf-server-{0}-{1}-{2}.data'.format(instance_idx, shard_idx, replica_idx),
                                            '-g',
