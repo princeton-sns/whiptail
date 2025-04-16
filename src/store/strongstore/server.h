@@ -310,7 +310,7 @@ namespace strongstore
         int replica_idx_;
         Consistency consistency_;
         bool debug_stats_;
-        bool is_replicated_;
+        bool is_unreplicated_;
     };
 
 } // namespace strongstore
