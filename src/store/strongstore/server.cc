@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <functional>
 #include <memory>
+#include <time.h>
 #include <unordered_set>
 
 namespace strongstore {
@@ -53,6 +54,7 @@ namespace strongstore {
         if (debug_stats_) {
             _Latency_Init(&ro_wait_lat_, "ro_wait_lat");
         }
+
     }
 
     Server::~Server() {
@@ -455,123 +457,62 @@ namespace strongstore {
     void Server::HandleRWCommitCoordinator(/*uint64_t transaction_id, const std::string& key, std::string& value,
                                         const Timestamp& commit_ts, const Timestamp& nonblock_ts*/) {
 
-        // bool should_check_queue = true;
-        // while (should_check_queue && this->q_mutex_.try_lock() && !this->queue_.empty()) {
-        //
-        //     PendingOp pendingOp = this->queue_.top();
-        //     this->queue_.pop();
-        //
-        //     if (this->queue_.top().execute_time() <= tt_.Now().mid()) {
-        //         should_check_queue = true;
-        //     } else {
-        //         should_check_queue = false;
-        //     }
-        //     this->q_mutex_.unlock();
-        // }
+        if (cancel_timer_fd_ != -1) {
+            transport_->CancelTimer(cancel_timer_fd_);
+            cancel_timer_fd_ = -1;
+        }
 
-//        if (cancel_timer_fd_ != -1) {
-//            transport_->CancelTimer(cancel_timer_fd_);
-//            cancel_timer_fd_ = -1;
-//        }
-
-//        if (tid != -1) {
-//            scheduled_callbacks_.erase(tid);
-//        }
-
-        std::vector<PendingOp> safe_to_execute;
-
-        // if function can't acquire lock, it means another callback has gotten here first
         bool should_check_queue = true;
 
         uint64_t now = tt_.Now().mid();
         while (!this->queue_.empty() && should_check_queue) {
             PendingOp pendingOp = this->queue_.top();
-//            if (pendingOp.execute_time() <= now) {
-                safe_to_execute.push_back(pendingOp);
+            if (pendingOp.execute_time() <= now) {
                 this->queue_.pop();
-//            } else {
-//                should_check_queue = false;
-//            }
-        }
 
-        for (const auto &pendingOp: safe_to_execute) {
-
-            const PendingOpType &pendingOpType = pendingOp.pendingOpType();
-            const std::string &key = pendingOp.key();
-            const std::string &val = pendingOp.value();
-            const Timestamp &commit_ts = pendingOp.commit_ts();
-            uint64_t transaction_id = pendingOp.transaction_id();
-            const Timestamp &nonblock_ts = pendingOp.nonblock_ts();
+                const PendingOpType &pendingOpType = pendingOp.pendingOpType();
+                const std::string &key = pendingOp.key();
+                const std::string &val = pendingOp.value();
+                const Timestamp &commit_ts = pendingOp.commit_ts();
+                uint64_t transaction_id = pendingOp.transaction_id();
+                const Timestamp &nonblock_ts = pendingOp.nonblock_ts();
 
 
-            if (pendingOpType == PUT) {
-                Debug("jenndebug [%lu] executing PUT %s, %s, %s", transaction_id, key.c_str(), val.c_str(),
-                      commit_ts.to_string().c_str());
-                store_.put(key, val, {commit_ts, transaction_id});
-            } else if (pendingOpType == GET) {
+                if (pendingOpType == PUT) {
+                    Debug("jenndebug [%lu] executing PUT %s, %s, %s", transaction_id, key.c_str(), val.c_str(),
+                          commit_ts.to_string().c_str());
+                    store_.put(key, val, {commit_ts, transaction_id});
+                } else if (pendingOpType == GET) {
 
-                std::tuple<TimestampID, std::string, uint64_t> value;
-                ASSERT(store_.getWithHash(key, {commit_ts, transaction_id}, value));
-                transactions_.read_results(transaction_id)[key] = std::pair<std::string, uint64_t>(std::get<1>(value),
-                                                                                                   std::get<2>(value));
+                    std::tuple<TimestampID, std::string, uint64_t> value;
+                    ASSERT(store_.getWithHash(key, {commit_ts, transaction_id}, value));
+                    transactions_.read_results(transaction_id)[key] = std::pair<std::string, uint64_t>(
+                            std::get<1>(value),
+                            std::get<2>(value));
 
-                Debug("jenndebug [%lu] executing GET %s, commit_ts %s", transaction_id, key.c_str(),
-                      commit_ts.to_string().c_str());
-            }
-//            this->transaction_still_pending_ops_[transaction_id]--;
-            transactions_.still_pending_ops(transaction_id)--;
-
-            // Reply to client
-//            if (this->transaction_still_pending_ops_[transaction_id] == 0) {
-            if (0 == transactions_.still_pending_ops(transaction_id)) {
-                if (!transactions_.is_inconsistent(transaction_id)) {
-                    Debug("jenndebug [%lu][replica %d] sending success", transaction_id, replica_idx_);
-                    SendRWCommmitCoordinatorReplyOK(transaction_id, commit_ts, nonblock_ts,
-                                                    transactions_.read_results(transaction_id));
+                    Debug("jenndebug [%lu] executing GET %s, commit_ts %s", transaction_id, key.c_str(),
+                          commit_ts.to_string().c_str());
                 }
+                transactions_.still_pending_ops(transaction_id)--;
+
+                // Reply to client
+                if (0 == transactions_.still_pending_ops(transaction_id)) {
+                    if (!transactions_.is_inconsistent(transaction_id)) {
+                        Debug("jenndebug [%lu][replica %d] sending success", transaction_id, replica_idx_);
+                        SendRWCommmitCoordinatorReplyOK(transaction_id, commit_ts, nonblock_ts,
+                                                        transactions_.read_results(transaction_id));
+                    }
+                }
+            } else {
+                should_check_queue = false;
             }
         }
 
-//        if (!queue_.empty() && !scheduled_callbacks_.empty()) {
-//            Debug("jenndebug that's good, the queue will get cleared by another callback, soon");
-//        } else if (!queue_.empty() && scheduled_callbacks_.empty()) {
-//            Debug("jenndebug queue not empty, but no more callbacks--clear it manually");
-//            cancel_timer_fd_ = transport_->TimerMicro(loop_queue_interval_us_,
-//                                                      std::bind(&Server::HandleRWCommitCoordinator, this, -1));
-//        } else if (queue_.empty() && !scheduled_callbacks_.empty()) {
-//            Debug("jenndebug cancel the callbacks, there's nothing left to execute");
-//            for (auto &pair: scheduled_callbacks_) {
-//                int callback_fd = pair.second;
-//                Debug("jenndebug canceled fd %d", callback_fd);
-//                transport_->CancelTimer(callback_fd);
-//            }
-//            scheduled_callbacks_.clear();
-//
-//            if (cancel_timer_fd_ != -1) {
-//                transport_->CancelTimer(cancel_timer_fd_);
-//                cancel_timer_fd_ = -1;
-//            }
-//        } else { // queue_.empty() && scheduled_callbacks_.empty()
-//            Debug("jenndebug that's good, the queue is empty and nothing is waiting to prcess it");
-//        }
-//
         // TODO jenndebug wait for 200us, change from hardcode
-//        /*cancel_timer_fd_ = */ transport_->TimerMicro(loop_queue_interval_us_,
-//                                                  std::bind(&Server::HandleRWCommitCoordinator, this));
-
-        // for (LockAcquireResult ar = locks_.AcquireLocks(transaction_id, transaction);
-        // ar.status != LockStatus::ACQUIRED; ar = locks_.AcquireLocks(transaction_id, transaction)) {}
-
-        // store_.put(key, value, {commit_ts, transaction_id});
-
-        // if (!transaction.getWriteSet().empty()) {
-        // min_prepare_timestamp_ = std::max(min_prepare_timestamp_, commit_ts);
-        // }
-
-        // LockReleaseResult rr = locks_.ReleaseLocks(transaction_id, transaction);
-        // TransactionFinishResult fr = transactions_.Commit(transaction_id);
-        // Reply to client
-        // SendRWCommmitCoordinatorReplyOK(transaction_id, commit_ts, nonblock_ts);
+        if (!queue_.empty()) {
+            cancel_timer_fd_ = transport_->TimerMicro(loop_queue_interval_us_,
+                                                      std::bind(&Server::HandleRWCommitCoordinator, this));
+        }
     }
 
     void Server::EnqueueOps(const TransportAddress &remote, proto::RWCommitCoordinator &msg) {
@@ -1746,4 +1687,4 @@ namespace strongstore {
         store_.put(key, value, {timestamp, 0});
     }
 
-}  // namespace strongstore
+} // namespace strongstore
