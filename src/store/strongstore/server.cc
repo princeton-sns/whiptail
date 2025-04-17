@@ -457,10 +457,10 @@ namespace strongstore {
     void Server::HandleRWCommitCoordinator(/*uint64_t transaction_id, const std::string& key, std::string& value,
                                         const Timestamp& commit_ts, const Timestamp& nonblock_ts*/) {
 
-        if (cancel_timer_fd_ != -1) {
-            transport_->CancelTimer(cancel_timer_fd_);
-            cancel_timer_fd_ = -1;
-        }
+//        if (cancel_timer_fd_ != -1) {
+//            transport_->CancelTimer(cancel_timer_fd_);
+//            cancel_timer_fd_ = -1;
+//        }
 
         bool should_check_queue = true;
 
@@ -508,11 +508,11 @@ namespace strongstore {
             }
         }
 
-        // TODO jenndebug wait for 200us, change from hardcode
-        if (!queue_.empty()) {
-            cancel_timer_fd_ = transport_->TimerMicro(loop_queue_interval_us_,
-                                                      std::bind(&Server::HandleRWCommitCoordinator, this));
-        }
+//        // TODO jenndebug wait for a bit
+//        if (!queue_.empty()) {
+//            cancel_timer_fd_ = transport_->TimerMicro(loop_queue_interval_us_,
+//                                                      std::bind(&Server::HandleRWCommitCoordinator, this));
+//        }
     }
 
     void Server::EnqueueOps(const TransportAddress &remote, proto::RWCommitCoordinator &msg) {
@@ -578,9 +578,9 @@ namespace strongstore {
 
             uint64_t latest_execution_time = 0;
             TrueTimeInterval now_tt = tt_.Now();
-            transactions_.mark_inconsistent(transaction_id, false);
-            Debug("jenndebug [%lu] transactions.is_inconsistent() %s", transaction_id,
-                  transactions_.is_inconsistent(transaction_id) ? "true" : "false");
+//            transactions_.mark_inconsistent(transaction_id, false);
+//            Debug("jenndebug [%lu] transactions.is_inconsistent() %s", transaction_id,
+//                  transactions_.is_inconsistent(transaction_id) ? "true" : "false");
 //            Debug("jenndebug [%lu] write_set size %lu", transaction_id, transaction.getWriteSet().size());
             for (auto &write: transaction.getWriteSet()) {
                 const std::chrono::microseconds network_latency_window = store_.get_network_latency_window(write.first);
@@ -588,27 +588,27 @@ namespace strongstore {
                 PendingOp pendingOp(PUT, write.first, write.second, commit_ts, transaction_id, nonblock_ts,
                                     network_latency_window);
 
-                if (pendingOp.execute_time() < now_tt.mid()) {
-                    stats_.Increment("missed_latency_window_" + std::to_string(client_id));
-                    stats_.Add("missed_by_" + std::to_string(client_id) + "_us",
-                               now_tt.mid() - pendingOp.execute_time());
-
-                    TimestampID lastRead(0, 0);
-                    if (store_.lastRead(pendingOp.key(), lastRead) &&
-                        lastRead > TimestampID(pendingOp.commit_ts(), pendingOp.transaction_id())) {
-                        transactions_.mark_inconsistent(transaction_id, true);
-                        stats_.Increment("inconsistent_");
-                    }
-                    Debug("jennbdebug [%lu] missed latency_window by a bit, transactions missed window",
-                          transaction_id);
-
-                    // let the write through, even though we're not on time. The odds that we're not on time to
-                    // a majority are pretty low
-//                    return;
-                } else {
-                    stats_.Increment("on_time");
-//                Debug("jenndebug [%lu] on time", transaction_id);
-                }
+//                if (pendingOp.execute_time() < now_tt.mid()) {
+//                    stats_.Increment("missed_latency_window_" + std::to_string(client_id));
+//                    stats_.Add("missed_by_" + std::to_string(client_id) + "_us",
+//                               now_tt.mid() - pendingOp.execute_time());
+//
+//                    TimestampID lastRead(0, 0);
+//                    if (store_.lastRead(pendingOp.key(), lastRead) &&
+//                        lastRead > TimestampID(pendingOp.commit_ts(), pendingOp.transaction_id())) {
+//                        transactions_.mark_inconsistent(transaction_id, true);
+//                        stats_.Increment("inconsistent_");
+//                    }
+//                    Debug("jennbdebug [%lu] missed latency_window by a bit, transactions missed window",
+//                          transaction_id);
+//
+//                    // let the write through, even though we're not on time. The odds that we're not on time to
+//                    // a majority are pretty low
+////                    return;
+//                } else {
+//                    stats_.Increment("on_time");
+////                Debug("jenndebug [%lu] on time", transaction_id);
+//                }
 
                 this->queue_.push(pendingOp);
 
