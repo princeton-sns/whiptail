@@ -467,45 +467,45 @@ namespace strongstore {
         uint64_t now = tt_.Now().mid();
         while (!this->queue_.empty() && should_check_queue) {
             PendingOp pendingOp = this->queue_.top();
-            if (pendingOp.execute_time() <= now) {
-                this->queue_.pop();
+//            if (pendingOp.execute_time() <= now) {
+            this->queue_.pop();
 
-                const PendingOpType &pendingOpType = pendingOp.pendingOpType();
-                const std::string &key = pendingOp.key();
-                const std::string &val = pendingOp.value();
-                const Timestamp &commit_ts = pendingOp.commit_ts();
-                uint64_t transaction_id = pendingOp.transaction_id();
-                const Timestamp &nonblock_ts = pendingOp.nonblock_ts();
+            const PendingOpType &pendingOpType = pendingOp.pendingOpType();
+            const std::string &key = pendingOp.key();
+            const std::string &val = pendingOp.value();
+            const Timestamp &commit_ts = pendingOp.commit_ts();
+            uint64_t transaction_id = pendingOp.transaction_id();
+            const Timestamp &nonblock_ts = pendingOp.nonblock_ts();
 
 
-                if (pendingOpType == PUT) {
-                    Debug("jenndebug [%lu] executing PUT %s, %s, %s", transaction_id, key.c_str(), val.c_str(),
-                          commit_ts.to_string().c_str());
-                    store_.put(key, val, {commit_ts, transaction_id});
-                } else if (pendingOpType == GET) {
+            if (pendingOpType == PUT) {
+                Debug("jenndebug [%lu] executing PUT %s, %s, %s", transaction_id, key.c_str(), val.c_str(),
+                      commit_ts.to_string().c_str());
+                store_.put(key, val, {commit_ts, transaction_id});
+            } else if (pendingOpType == GET) {
 
-                    std::tuple<TimestampID, std::string, uint64_t> value;
-                    ASSERT(store_.getWithHash(key, {commit_ts, transaction_id}, value));
-                    transactions_.read_results(transaction_id)[key] = std::pair<std::string, uint64_t>(
-                            std::get<1>(value),
-                            std::get<2>(value));
+                std::tuple<TimestampID, std::string, uint64_t> value;
+                ASSERT(store_.getWithHash(key, {commit_ts, transaction_id}, value));
+                transactions_.read_results(transaction_id)[key] = std::pair<std::string, uint64_t>(
+                        std::get<1>(value),
+                        std::get<2>(value));
 
-                    Debug("jenndebug [%lu] executing GET %s, commit_ts %s", transaction_id, key.c_str(),
-                          commit_ts.to_string().c_str());
-                }
-                transactions_.still_pending_ops(transaction_id)--;
-
-                // Reply to client
-                if (0 == transactions_.still_pending_ops(transaction_id)) {
-                    if (!transactions_.is_inconsistent(transaction_id)) {
-                        Debug("jenndebug [%lu][replica %d] sending success", transaction_id, replica_idx_);
-                        SendRWCommmitCoordinatorReplyOK(transaction_id, commit_ts, nonblock_ts,
-                                                        transactions_.read_results(transaction_id));
-                    }
-                }
-            } else {
-                should_check_queue = false;
+                Debug("jenndebug [%lu] executing GET %s, commit_ts %s", transaction_id, key.c_str(),
+                      commit_ts.to_string().c_str());
             }
+            transactions_.still_pending_ops(transaction_id)--;
+
+            // Reply to client
+            if (0 == transactions_.still_pending_ops(transaction_id)) {
+                if (!transactions_.is_inconsistent(transaction_id)) {
+                    Debug("jenndebug [%lu][replica %d] sending success", transaction_id, replica_idx_);
+                    SendRWCommmitCoordinatorReplyOK(transaction_id, commit_ts, nonblock_ts,
+                                                    transactions_.read_results(transaction_id));
+                }
+            }
+//            } else {
+//                should_check_queue = false;
+//            }
         }
 
 //        // TODO jenndebug wait for a bit
