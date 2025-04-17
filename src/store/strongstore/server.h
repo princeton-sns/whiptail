@@ -358,7 +358,7 @@ namespace strongstore {
         std::unordered_map<RequestID, uint8_t> multi_sent_reqs_recvd_yet_;
         uint8_t sent_redundancy_;
         uint64_t loop_queue_interval_us_;
-//        int cancel_timer_fd_;
+        int cancel_timer_fd_;
 //        std::unordered_map<int, int> scheduled_callbacks_;
         bool set_off_timer_yet_;
 
