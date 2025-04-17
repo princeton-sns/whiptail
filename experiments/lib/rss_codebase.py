@@ -291,7 +291,7 @@ class RssCodebase:
             '--clock_error', truetime_error,
             '--strong_consistency', config['consistency']]])
 
-        if config['fault_tolerance'] >= 0:
+        if config['fault_tolerance'] <= 0:
             replica_command += ' --is_unreplicated'
 
         if 'message_transport_type' in config['replication_protocol_settings']:
