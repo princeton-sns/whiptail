@@ -36,18 +36,17 @@
 #include "store/common/frontend/async_transaction.h"
 #include "store/common/frontend/client.h"
 
-namespace retwis
-{
+namespace retwis {
 
-    class RetwisTransaction : public AsyncTransaction
-    {
+    class RetwisTransaction : public AsyncTransaction {
     public:
-        RetwisTransaction(KeySelector *keySelector, int numKeys, std::mt19937 &rand, const std::string ttype);
+        RetwisTransaction(KeySelector *keySelector, int numKeys, std::mt19937 &rand, std::string ttype,
+                          Partitioner *partitioner = nullptr, int nShards = -1);
+
         virtual ~RetwisTransaction();
 
     protected:
-        inline const std::string &GetKey(int i) const
-        {
+        inline const std::string &GetKey(int i) const {
             return keySelector->GetKey(keyIdxs[i]);
         }
 

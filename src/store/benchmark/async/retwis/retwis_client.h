@@ -56,6 +56,7 @@ namespace retwis {
                      bool retryAborted, uint32_t maxBackoff, uint32_t maxAttempts, uint32_t writeOpsTxn,
                      uint32_t readOpsTxn, uint32_t mixedWriteOpsTxn, uint32_t mixedReadOpsTxn,
                      uint32_t readPercent, uint32_t writePercent, uint32_t mixedRWPercent,
+                     Partitioner *partitioner = nullptr, int nshards = -1,
                      const std::string &latencyFilename = "latency");
 
         virtual ~RetwisClient();
@@ -73,6 +74,8 @@ namespace retwis {
         uint64_t readPercent;
         uint64_t writePercent;
         uint64_t mixedRWPercent;
+        Partitioner* part_;
+        int nShards_;
     };
 
 } // namespace retwis

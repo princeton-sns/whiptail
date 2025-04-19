@@ -31,15 +31,36 @@ namespace retwis {
 
     RetwisTransaction::RetwisTransaction(
             KeySelector *keySelector,
-            int numKeys, std::mt19937 &rand, const std::string ttype) : keySelector(keySelector), ttype_{ttype} {
+            int numKeys, std::mt19937 &rand, const std::string ttype,
+            Partitioner *partitioner, int nShards)
+            : keySelector(keySelector), ttype_{ttype} {
+        if (partitioner != nullptr && numKeys > nShards) {
+            Panic("jenndebug numKeys per txn > nShards, can't check duplicates by shard");
+        }
         std::set<int> seen_before;
+        std::set<int> seen_shards_before;
+
+        const std::vector<int> placeholder;
         for (int i = 0; i < numKeys; ++i) {
             int new_key = keySelector->GetKey(rand);
-            while(seen_before.find(new_key) != seen_before.end()) {
+            int shard = -1;
+            if (partitioner != nullptr) {
+                shard = (*partitioner)(std::to_string(new_key), nShards, -1, placeholder);
+            }
+            while (seen_before.find(new_key) != seen_before.end() ||
+                   (partitioner != nullptr && seen_shards_before.find(shard) != seen_shards_before.end())) {
                 new_key = keySelector->GetKey(rand);
-                Debug("jenndebug duplicate keys");
+                if (partitioner != nullptr) {
+                    shard = (*partitioner)(std::to_string(new_key), nShards, -1, placeholder);
+                }
+                Debug("jenndebug duplicate keys, or on the same shard");
             }
             seen_before.insert(new_key);
+            if (partitioner != nullptr) {
+                seen_shards_before.insert(shard);
+            }
+
+            Debug("jenndebug key %d shard %d", new_key, shard);
 
             keyIdxs.push_back(new_key);
         }

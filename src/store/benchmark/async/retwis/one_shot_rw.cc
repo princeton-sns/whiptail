@@ -7,10 +7,9 @@
 namespace retwis {
 
     OneShotRW::OneShotRW(KeySelector *keySelector, std::mt19937 &rand,
-                         uint64_t mixedWriteOpsTxn, uint64_t mixedReadOpsTxn)
-    : RetwisTransaction(keySelector, mixedWriteOpsTxn + mixedReadOpsTxn, rand, "one_shot_rw")
-    , mixedWriteOpsTxn(mixedWriteOpsTxn)
-    , mixedReadOpsTxn(mixedReadOpsTxn){}
+                         uint64_t mixedWriteOpsTxn, uint64_t mixedReadOpsTxn, Partitioner *partitioner, int nShards)
+            : RetwisTransaction(keySelector, mixedWriteOpsTxn + mixedReadOpsTxn, rand, "one_shot_rw", partitioner,
+                                nShards), mixedWriteOpsTxn(mixedWriteOpsTxn), mixedReadOpsTxn(mixedReadOpsTxn) {}
 
     OneShotRW::~OneShotRW() = default;
 
@@ -22,7 +21,7 @@ namespace retwis {
             return Put(GetKey(op_index - 1), GetKey(op_index - 1));
         } else if (op_index < mixedWriteOpsTxn + mixedReadOpsTxn + 1) {
             return Get(GetKey(op_index - 1));
-        } else if (op_index == mixedWriteOpsTxn + mixedReadOpsTxn + 1 ) {
+        } else if (op_index == mixedWriteOpsTxn + mixedReadOpsTxn + 1) {
             return Commit();
         } else {
             return Wait();

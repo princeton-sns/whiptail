@@ -5,8 +5,9 @@
 #include "store/benchmark/async/retwis/one_shot_reads.h"
 
 namespace retwis {
-    OneShotReads::OneShotReads(KeySelector *keySelector, std::mt19937 &rand, uint64_t readOpsTxn)
-            : RetwisTransaction(keySelector, readOpsTxn, rand, "one_shot_reads")
+    OneShotReads::OneShotReads(KeySelector *keySelector, std::mt19937 &rand, uint64_t readOpsTxn,
+                               Partitioner* partitioner, int nShards)
+            : RetwisTransaction(keySelector, readOpsTxn, rand, "one_shot_reads", partitioner, nShards)
             , readOpsTxn(readOpsTxn){}
 
     OneShotReads::~OneShotReads() {

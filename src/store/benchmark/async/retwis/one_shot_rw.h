@@ -14,7 +14,8 @@ namespace retwis {
     class OneShotRW : public retwis::RetwisTransaction {
 
     public:
-        OneShotRW(KeySelector *keySelector, std::mt19937 &rand, uint64_t mixedWriteOpsTxn, uint64_t mixedReadOpsTxn);
+        OneShotRW(KeySelector *keySelector, std::mt19937 &rand, uint64_t mixedWriteOpsTxn, uint64_t mixedReadOpsTxn,
+                  Partitioner* partitioner, int nShards);
 
         virtual ~OneShotRW();
 
