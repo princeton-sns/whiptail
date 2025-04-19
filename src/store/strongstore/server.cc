@@ -577,7 +577,7 @@ namespace strongstore {
 
             uint64_t latest_execution_time = 0;
             TrueTimeInterval now_tt = tt_.Now();
-//            transactions_.mark_inconsistent(transaction_id, false);
+            transactions_.mark_inconsistent(transaction_id, false);
 //            Debug("jenndebug [%lu] transactions.is_inconsistent() %s", transaction_id,
 //                  transactions_.is_inconsistent(transaction_id) ? "true" : "false");
 //            Debug("jenndebug [%lu] write_set size %lu", transaction_id, transaction.getWriteSet().size());
