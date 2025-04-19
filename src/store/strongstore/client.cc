@@ -515,6 +515,8 @@ namespace strongstore {
 
         // Add this shard to set of participants
         session.add_participant(i);
+        Debug("jenndebug [%lu] add participant(%d), key %d participant.size() %lu", tid, i, std::stoi(key),
+              session.participants().size());
 
         auto pcb1 = [pcb, session = std::ref(session)](int s, const std::string &k, const std::string &v) {
             session.get().set_executing();
@@ -575,7 +577,7 @@ namespace strongstore {
         //                       std::placeholders::_1, std::placeholders::_2, std::placeholders::_3,
         //                       std::placeholders::_4);
         auto cccb = [this, session_ref = std::ref(session), req_id = req->id]
-            (auto&& _1, auto&& _2, auto&& _3, auto&& _4) {
+                (auto &&_1, auto &&_2, auto &&_3, auto &&_4) {
             CommitCallback(session_ref, req_id, std::forward<decltype(_1)>(_1),
                            std::forward<decltype(_2)>(_2),
                            std::forward<decltype(_3)>(_3),
@@ -605,11 +607,12 @@ namespace strongstore {
                                 Timestamp commit_ts, Timestamp nonblock_ts) {
 
         if (status == REPLY_OK && !session.heard_back_from_everyone()) {
-            Debug("jenndebug [%lu] haven't heard back from all participants, don't commit callback yet", session.transaction_id());
+            Debug("jenndebug [%lu] haven't heard back from all participants, don't commit callback yet",
+                  session.transaction_id());
             return;
+        } else if (status == REPLY_FAIL) {
+            Debug("jenndebug [%lu] failed", session.transaction_id());
         }
-        _Latency_EndRec(latency_t_, latency_map_[session.id()]);
-        latency_map_.erase(session.id());
         auto tid = session.transaction_id();
         Debug("[%lu] COMMIT callback status %d, req_id %lu", tid, status, req_id);
 
@@ -617,7 +620,13 @@ namespace strongstore {
         if (search == pending_reqs_.end()) {
             Debug("[%lu] Transaction already finished", tid);
             return;
+        } else {
+            Debug("[%lu] Transaction continue as normal", tid);
         }
+
+        _Latency_EndRec(latency_t_, latency_map_[session.id()]);
+        latency_map_.erase(session.id());
+        Debug("jenndebug hello?");
         PendingRequest *req = search->second;
 
 //        for (const auto &value: values) {
@@ -777,7 +786,7 @@ namespace strongstore {
 
         Debug("[%lu] ROCommit callback", tid);
 
-        for (const Value& value: values) {
+        for (const Value &value: values) {
             Debug("jenndebug value: %s, %s, %lu", value.key().c_str(), value.val().c_str(), value.rolling_hash());
         }
 
