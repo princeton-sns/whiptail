@@ -477,7 +477,6 @@ namespace strongstore {
                 uint64_t transaction_id = pendingOp.transaction_id();
                 const Timestamp &nonblock_ts = pendingOp.nonblock_ts();
 
-
                 if (pendingOpType == PUT) {
                     Debug("jenndebug [%lu] executing PUT %s, %s, %s", transaction_id, key.c_str(), val.c_str(),
                           commit_ts.to_string().c_str());

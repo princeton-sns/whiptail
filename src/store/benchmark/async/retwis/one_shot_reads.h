@@ -13,7 +13,8 @@ namespace retwis {
 
     class OneShotReads : public retwis::RetwisTransaction {
     public:
-        OneShotReads(KeySelector *keySelector, std::mt19937 &rand, uint64_t readOpsTxn);
+        OneShotReads(KeySelector *keySelector, std::mt19937 &rand, uint64_t readOpsTxn, Partitioner *partitioner,
+                     int nShards);
 
         virtual ~OneShotReads();
 
