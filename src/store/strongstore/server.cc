@@ -307,7 +307,7 @@ namespace strongstore
         for (uint64_t rw : rws)
         {
             ASSERT(transaction_id != rw);
-            // Debug("[%lu] Wounding %lu", transaction_id, rw);
+             Debug("[%lu] Wounding %lu", transaction_id, rw);
             TransactionState s = transactions_.GetRWTransactionState(rw);
             ASSERT(s != NOT_FOUND);
 
@@ -327,7 +327,7 @@ namespace strongstore
             }
             else if (s == COMMITTING || s == COMMITTED || s == ABORTED)
             {
-                // Debug("[%lu] Not wounding. Will complete soon", rw);
+                 Debug("[%lu] Not wounding. Will complete soon", rw);
             }
             else
             {
@@ -929,7 +929,7 @@ namespace strongstore
             else if (ar.status == LockStatus::FAIL)
             {
                 ASSERT(ar.wound_rws.size() == 0);
-                // Debug("[%lu] Participant prepare failed", transaction_id);
+                 Debug("[%lu] Participant prepare failed", transaction_id);
                 LockReleaseResult rr = locks_.ReleaseLocks(transaction_id, transaction);
 
                 // TODO: Handle timeout
@@ -1378,19 +1378,19 @@ namespace strongstore
     {
         uint64_t transaction_id = msg.transaction_id();
 
-        // Debug("[%lu] Received Wound request", transaction_id);
+         Debug("[%lu] Received Wound request", transaction_id);
 
         TransactionState state = transactions_.GetRWTransactionState(transaction_id);
 
         if (state == ABORTED)
         {
-            // Debug("[%lu] Transaction already aborted", transaction_id);
+             Debug("[%lu] Transaction already aborted", transaction_id);
             return;
         }
 
         if (state == COMMITTING || state == COMMITTED)
         {
-            // Debug("[%lu] Transaction already committing", transaction_id);
+             Debug("[%lu] Transaction already committing", transaction_id);
             return;
         }
 
@@ -1462,7 +1462,7 @@ namespace strongstore
 
         if (state == ABORTED)
         {
-            // Debug("[%lu] Transaction already aborted", transaction_id);
+             Debug("[%lu] Transaction already aborted", transaction_id);
             abort_reply_.set_status(REPLY_OK);
             transport_->SendMessage(this, remote, abort_reply_);
             return;
@@ -1470,7 +1470,7 @@ namespace strongstore
 
         if (state == COMMITTING || state == COMMITTED)
         {
-            // Debug("[%lu] Transaction already committing", transaction_id);
+             Debug("[%lu] Transaction already committing", transaction_id);
             abort_reply_.set_status(REPLY_FAIL);
             transport_->SendMessage(this, remote, abort_reply_);
             return;
@@ -1522,7 +1522,7 @@ namespace strongstore
                 // TODO: Handle timeout
                 shard_clients_[p]->Abort(
                     transaction_id,
-                    [transaction_id]() { /*Debug("[%lu] Received ABORT participant callback", transaction_id);*/ },
+                    [transaction_id]() { Debug("[%lu] Received ABORT participant callback", transaction_id); },
                     []() {}, ABORT_TIMEOUT);
             }
         }
@@ -1530,7 +1530,7 @@ namespace strongstore
 
     void Server::CoordinatorCommitTransaction(uint64_t transaction_id, const Timestamp commit_ts)
     {
-        // Debug("[%lu] Commiting", transaction_id);
+         Debug("[%lu] Commiting", transaction_id);
 
         const Timestamp nonblock_ts = transactions_.GetNonBlockTimestamp(transaction_id);
 
@@ -1565,7 +1565,7 @@ namespace strongstore
 
     void Server::ParticipantCommitTransaction(uint64_t transaction_id, const Timestamp commit_ts)
     {
-        // Debug("[%lu] Commiting", transaction_id);
+         Debug("[%lu] Commiting", transaction_id);
 
         // Commit writes
         const Transaction &transaction = transactions_.GetTransaction(transaction_id);
@@ -1593,7 +1593,7 @@ namespace strongstore
     void Server::LeaderUpcall(opnum_t opnum, const string &op, bool &replicate,
                               string &response)
     {
-        // Debug("Received LeaderUpcall: %lu %s", opnum, op.c_str());
+         Debug("Received LeaderUpcall: %lu %s", opnum, op.c_str());
 
         Request request;
 
@@ -1620,7 +1620,7 @@ namespace strongstore
      */
     void Server::ReplicaUpcall(opnum_t opnum, const string &op, string &response)
     {
-        // Debug("Received Upcall: %lu %s", opnum, op.c_str());
+         Debug("Received Upcall: %lu %s", opnum, op.c_str());
         Request request;
         Reply reply;
 
@@ -1631,12 +1631,12 @@ namespace strongstore
 
         if (request.op() == strongstore::proto::Request::PREPARE)
         {
-            // Debug("[%lu] Received PREPARE", transaction_id);
+             Debug("[%lu] Received PREPARE", transaction_id);
 
             TransactionState s = transactions_.GetRWTransactionState(transaction_id);
             if (s == ABORTED)
             {
-                // Debug("[%lu] Already aborted", transaction_id);
+                 Debug("[%lu] Already aborted", transaction_id);
                 status = REPLY_FAIL;
             }
             else if (s == NOT_FOUND)
@@ -1658,7 +1658,7 @@ namespace strongstore
             }
             else if (s == PREPARING || s == PREPARED)
             {
-                // Debug("[%lu] Already prepared", transaction_id);
+                 Debug("[%lu] Already prepared", transaction_id);
             }
             else
             {
@@ -1667,13 +1667,13 @@ namespace strongstore
         }
         else if (request.op() == strongstore::proto::Request::COMMIT)
         {
-            // Debug("[%lu] Received COMMIT", transaction_id);
+             Debug("[%lu] Received COMMIT", transaction_id);
 
             const Timestamp commit_ts{request.commit().commit_timestamp()};
 
             if (request.has_prepare())
             { // Coordinator commit
-                // Debug("[%lu] Coordinator commit", transaction_id);
+                 Debug("[%lu] Coordinator commit", transaction_id);
 
                 if (transactions_.GetRWTransactionState(transaction_id) != COMMITTING)
                 {
@@ -1704,7 +1704,7 @@ namespace strongstore
                 }
                 else
                 {
-                    // Debug("[%lu] Already prepared", transaction_id);
+                     Debug("[%lu] Already prepared", transaction_id);
                 }
 
                 uint64_t commit_wait_us = tt_.TimeToWaitUntilMicros(commit_ts.getTimestamp());
@@ -1713,7 +1713,7 @@ namespace strongstore
             }
             else
             { // Participant commit
-                // Debug("[%lu] Participant commit", transaction_id);
+                 Debug("[%lu] Participant commit", transaction_id);
                 if (transactions_.GetRWTransactionState(transaction_id) != COMMITTING)
                 {
                     transactions_.ParticipantReceivePrepareOK(transaction_id);
@@ -1724,7 +1724,7 @@ namespace strongstore
         }
         else if (request.op() == strongstore::proto::Request::ABORT)
         {
-            // Debug("[%lu] Received ABORT", transaction_id);
+             Debug("[%lu] Received ABORT", transaction_id);
 
             if (transactions_.GetRWTransactionState(transaction_id) != ABORTED)
             { // replica abort
