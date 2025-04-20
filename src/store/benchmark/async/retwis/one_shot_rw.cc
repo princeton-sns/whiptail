@@ -7,8 +7,9 @@
 namespace retwis {
 
     OneShotRW::OneShotRW(KeySelector *keySelector, std::mt19937 &rand,
-                         uint64_t mixedWriteOpsTxn, uint64_t mixedReadOpsTxn)
-    : RetwisTransaction(keySelector, mixedWriteOpsTxn + mixedReadOpsTxn, rand, "one_shot_rw")
+                         uint64_t mixedWriteOpsTxn, uint64_t mixedReadOpsTxn,
+                         Partitioner* partitioner, int nShards)
+    : RetwisTransaction(keySelector, mixedWriteOpsTxn + mixedReadOpsTxn, rand, "one_shot_rw", partitioner, nShards)
     , mixedWriteOpsTxn(mixedWriteOpsTxn)
     , mixedReadOpsTxn(mixedReadOpsTxn){}
 

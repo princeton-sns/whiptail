@@ -43,7 +43,9 @@ uint64_t DefaultPartitioner::operator()(const std::string &key, uint64_t nshards
                                         int group, const std::vector<int> &txnGroups)
 {
     std::size_t hash = std::hash<std::string>{}(key);
-    return (hash % nshards);
+    uint64_t result = hash % nshards;
+//    Debug("jenndebug key %s, result %lu", key.c_str(), result);
+    return result;
 };
 
 /*partitioner warehouse_partitioner = [](const std::string &key, uint64_t nshards,

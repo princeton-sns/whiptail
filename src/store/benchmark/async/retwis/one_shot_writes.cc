@@ -5,8 +5,10 @@
 #include "store/benchmark/async/retwis/one_shot_writes.h"
 
 namespace retwis {
-    OneShotWrites::OneShotWrites(KeySelector *keySelector, std::mt19937 &rand, uint64_t rwNumOpsTxn)
-            : RetwisTransaction(keySelector, rwNumOpsTxn, rand, "one_shot_writes"), rwNumOpsTxn(rwNumOpsTxn) {}
+    OneShotWrites::OneShotWrites(KeySelector *keySelector, std::mt19937 &rand, uint64_t rwNumOpsTxn,
+                                 Partitioner *partitioner, int nShards)
+            : RetwisTransaction(keySelector, rwNumOpsTxn, rand, "one_shot_writes", partitioner, nShards),
+              rwNumOpsTxn(rwNumOpsTxn) {}
 
     OneShotWrites::~OneShotWrites() = default;
 
