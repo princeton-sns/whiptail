@@ -31,17 +31,41 @@ namespace retwis {
 
     RetwisTransaction::RetwisTransaction(
             KeySelector *keySelector,
-            int numKeys, std::mt19937 &rand, const std::string ttype) : keySelector(keySelector), ttype_{ttype} {
+            int numKeys, std::mt19937 &rand, const std::string ttype, Partitioner *partitioner, int nShards)
+            : keySelector(keySelector), ttype_{ttype} {
+
+        if (partitioner != nullptr && numKeys > nShards) {
+            Panic("jenndebug numKeys %d > nShards %d", numKeys, nShards);
+        }
         std::set<int> seen_before;
+        std::set<int> seen_shards_before;
+
         for (int i = 0; i < numKeys; ++i) {
-            int new_key = keySelector->GetKey(rand);
-            while(seen_before.find(new_key) != seen_before.end()) {
-                new_key = keySelector->GetKey(rand);
+            int keyIdx = keySelector->GetKey(rand);
+            std::string new_key = keySelector->GetKey(keyIdx);
+
+            int shard = -1;
+            const std::vector<int> placeholder;
+            if (partitioner != nullptr) {
+                shard = (*partitioner)(new_key, nShards, -1, placeholder);
+            }
+
+            while (seen_before.find(keyIdx) != seen_before.end() ||
+                   (partitioner != nullptr && seen_shards_before.find(shard) != seen_shards_before.end())) {
+                keyIdx = keySelector->GetKey(rand);
+                if (partitioner != nullptr) {
+                    new_key = keySelector->GetKey(keyIdx);
+                    shard = (*partitioner)(new_key, nShards, -1, placeholder);
+                }
+
                 Debug("jenndebug duplicate keys");
             }
-            seen_before.insert(new_key);
+            seen_before.insert(keyIdx);
+            if (partitioner != nullptr) {
+                seen_shards_before.insert(shard);
+            }
 
-            keyIdxs.push_back(new_key);
+            keyIdxs.push_back(keyIdx);
         }
     }
 

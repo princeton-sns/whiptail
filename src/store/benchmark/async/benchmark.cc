@@ -687,7 +687,8 @@ int main(int argc, char **argv) {
                     FLAGS_tput_interval,
                     FLAGS_abort_backoff, FLAGS_retry_aborted, FLAGS_max_backoff,
                     FLAGS_max_attempts, FLAGS_write_ops_txn, FLAGS_read_ops_txn, FLAGS_mixed_write_ops_txn,
-                    FLAGS_mixed_read_ops_txn, FLAGS_read_percent, FLAGS_write_percent, FLAGS_mixed_rw_percent);
+                    FLAGS_mixed_read_ops_txn, FLAGS_read_percent, FLAGS_write_percent, FLAGS_mixed_rw_percent,
+                    part, FLAGS_num_shards);
             break;
         default:
             NOT_REACHABLE();
