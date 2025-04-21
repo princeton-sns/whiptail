@@ -740,7 +740,7 @@ namespace strongstore
         auto search = pending_rw_commit_c_replies_.find(transaction_id);
         if (search == pending_rw_commit_c_replies_.end())
         {
-            // Debug("[%lu] No pending commit coordinator reply found", transaction_id);
+             Debug("[%lu] No pending commit coordinator reply found", transaction_id);
             return;
         }
 
@@ -781,7 +781,7 @@ namespace strongstore
         auto search = pending_prepare_ok_replies_.find(transaction_id);
         if (search == pending_prepare_ok_replies_.end())
         {
-            // Debug("[%lu] No pending prepare ok reply found", transaction_id);
+             Debug("[%lu] No pending prepare ok reply found", transaction_id);
             return;
         }
         PendingPrepareOKReply *reply = search->second;
@@ -1183,7 +1183,7 @@ namespace strongstore
         const Timestamp prepare_ts{msg.prepare_timestamp()};
         const Timestamp nonblock_ts{msg.nonblock_timestamp()};
 
-        // Debug("[%lu] Received Prepare OK", transaction_id);
+         Debug("[%lu] Received Prepare OK", transaction_id);
 
         PendingPrepareOKReply *reply = nullptr;
         auto search = pending_prepare_ok_replies_.find(transaction_id);
