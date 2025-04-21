@@ -140,10 +140,8 @@ namespace replication
 
         void VRReplica::CommitUpTo(opnum_t upto)
         {
-            int in_a_row = 0;
             while (lastCommitted < upto)
             {
-                in_a_row++;
                 lastCommitted++;
 
                 /* Find operation in log */
@@ -191,7 +189,6 @@ namespace replication
                     transport->SendMessage(this, *iter->second, reply);
                 }
             }
-            Notice("jenndebug in_a_row %d", in_a_row);
         }
 
         void VRReplica::SendPrepareOKs(opnum_t oldLastOp)
