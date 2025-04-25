@@ -628,6 +628,8 @@ namespace strongstore
         };
         auto pctcb = [](int) {};
 
+        _Latency_StartRec(latency_map_[session.id()]);
+
         for (auto p : participants)
         {
             if (p == coordinator_shard)
@@ -667,6 +669,9 @@ namespace strongstore
             tstatus = ABORTED_SYSTEM;
             break;
         }
+
+        _Latency_EndRec(latency_t_, latency_map_[session.id()]);
+        latency_map_.erase(session.id());
 
         commit_callback ccb = req->ccb;
         pending_reqs_.erase(req_id);
