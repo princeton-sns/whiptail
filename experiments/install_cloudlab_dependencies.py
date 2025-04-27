@@ -26,7 +26,7 @@ def call_remote(host, cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT):
   :param stderr: set by default to subprocess.STDOUT (combines with stdout)
   :return: if successful, stdout stream of command
   """
-    cmd = "sudo ssh {0} '{1}'".format(host, cmd)
+    cmd = "sudo ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null {0} '{1}'".format(host, cmd)
     return call(cmd, stdout, stderr)
 
 
