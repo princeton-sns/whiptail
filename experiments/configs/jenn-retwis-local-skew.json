@@ -2,6 +2,9 @@
   "experiment_independent_vars": [
     [
       "consistency"
+    ],
+    [
+      "mpl"
     ]
   ],
   "replication_protocol": "strong",
@@ -24,17 +27,23 @@
   "shard_config_format_str": "shard-%d.config",
   "replica_config_format_str": "replica-%d.config",
   "network_config": "network.json",
-  "fault_tolerance": 0,
+  "fault_tolerance": 1,
   "num_shards": 3,
   "shards": [
     [
-      "us-east-1-0"
+      "us-east-1-0",
+      "us-east-1-1",
+      "us-east-1-2"
     ],
     [
-      "eu-west-1-0"
+      "eu-west-1-0",
+      "eu-west-1-1",
+      "eu-west-1-2"
     ],
     [
-      "ap-northeast-1-0"
+      "ap-northeast-1-0",
+      "ap-northeast-1-1",
+      "ap-northeast-1-2"
     ]
   ],
   "client_total": 2,
@@ -68,7 +77,7 @@
   "client_num_keys": 1000000,
   "benchmark_name": "retwis",
   "bench_mode": "closed",
-  "mpl": 1,
+  "mpl": [1, 2],
   "client_key_selector": "zipf",
   "client_zipf_coefficient": 0.01,
   "client_arrival_rate": 1,
@@ -165,7 +174,116 @@
     }
   },
   "server_emulate_wan": false,
-  "plots": [],
+  "plots": [
+    {
+      "name": "tput-p50",
+      "font": "DejaVu Sans,12",
+      "height": 600,
+      "width": 800,
+      "series_indep_vars_idx": 0,
+      "series_titles": [
+        "Spanner",
+        "Spanner-RSS"
+      ],
+      "x_var_is_config": false,
+      "y_var": [
+        "run_stats",
+        "combined",
+        "p50",
+        "p50"
+      ],
+      "y_label": "p50 Latency",
+      "x_label": "Throughput (txn/s)",
+      "x_indep_vars_idx": 1,
+      "x_var": [
+        "run_stats",
+        "combined",
+        "tput",
+        "p50"
+      ]
+    },
+    {
+      "name": "tput-p90",
+      "font": "DejaVu Sans,12",
+      "height": 600,
+      "width": 800,
+      "series_indep_vars_idx": 0,
+      "series_titles": [
+        "Spanner",
+        "Spanner-RSS"
+      ],
+      "x_var_is_config": false,
+      "y_var": [
+        "run_stats",
+        "combined",
+        "p90",
+        "p50"
+      ],
+      "y_label": "p90 Latency",
+      "x_label": "Throughput (txn/s)",
+      "x_indep_vars_idx": 1,
+      "x_var": [
+        "run_stats",
+        "combined",
+        "tput",
+        "p50"
+      ]
+    },
+    {
+      "name": "tput-p99",
+      "font": "DejaVu Sans,12",
+      "height": 600,
+      "width": 800,
+      "series_indep_vars_idx": 0,
+      "series_titles": [
+        "Spanner",
+        "Spanner-RSS"
+      ],
+      "x_var_is_config": false,
+      "y_var": [
+        "run_stats",
+        "combined",
+        "p99",
+        "p50"
+      ],
+      "y_label": "p99 Latency",
+      "x_label": "Throughput (txn/s)",
+      "x_indep_vars_idx": 1,
+      "x_var": [
+        "run_stats",
+        "combined",
+        "tput",
+        "p50"
+      ]
+    },
+    {
+      "name": "tput-mean",
+      "font": "DejaVu Sans,12",
+      "height": 600,
+      "width": 800,
+      "series_indep_vars_idx": 0,
+      "series_titles": [
+        "Spanner",
+        "Spanner-RSS"
+      ],
+      "x_var_is_config": false,
+      "y_var": [
+        "run_stats",
+        "combined",
+        "mean",
+        "p50"
+      ],
+      "y_label": "Mean Latency",
+      "x_label": "Throughput (txn/s)",
+      "x_indep_vars_idx": 1,
+      "x_var": [
+        "run_stats",
+        "combined",
+        "tput",
+        "p50"
+      ]
+    }
+  ],
   "cdf_plots": {
     "font": "DejaVu Sans,12",
     "height": 600,
@@ -197,7 +315,7 @@
   "output_latency_scale": 1000,
   "src_commit_hash": "local_baseline_spanner",
   "stats_file_name": "stats.json",
-  "base_local_exp_directory": "/home/jennifer/whiptail/experiments/results",
+  "base_local_exp_directory": "/google/src/cloud/jennlam/whiptail-fig-workspace/google3/experimental/users/jennlam/whiptail/experiments/results",
   "base_mounted_fs_path": "/mnt/extra",
   "base_remote_bin_directory_nfs": "/home/jhelt/git/rss/tapir",
   "base_remote_exp_directory": "/mnt/extra/experiments",
@@ -211,7 +329,7 @@
   "num_experiment_runs": 1,
   "out_directory_name": "out",
   "server_bin_name": "server",
-  "src_directory": "/home/jennifer/whiptail/src",
+  "src_directory": "/google/src/cloud/jennlam/whiptail-fig-workspace/google3/experimental/users/jennlam/whiptail/src",
   "make_collect_bins": [
     "store/benchmark/async/benchmark",
     "store/server"
