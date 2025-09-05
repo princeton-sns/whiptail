@@ -120,7 +120,8 @@ void BenchmarkClient::SendNext()
     session_states_.emplace(sid, SessionState{session, transaction, ecb, client_index});
 
     auto &ss = session_states_.find(sid)->second;
-    _Latency_StartRec(ss.lat());
+    client.SetLatFromSessionState(&latency, ss.lat(), sid);
+//    _Latency_StartRec(ss.lat());
 
     auto bcb = std::bind(&BenchmarkClient::ExecuteNextOperation, this, sid);
     auto btcb = []() {};
@@ -199,7 +200,8 @@ void BenchmarkClient::SendNextInSession(const uint64_t session_id)
     auto &session = ss.session();
     auto &client = *clients_[ss.current_client_index()];
 
-    _Latency_StartRec(ss.lat());
+    client.SetLatFromSessionState(&latency, ss.lat(), session.id());
+//    _Latency_StartRec(ss.lat());
 
     auto bcb = std::bind(&BenchmarkClient::ExecuteNextOperation, this, session_id);
     auto btcb = []() {};
@@ -612,7 +614,7 @@ void BenchmarkClient::OnReply(uint64_t transaction_id, int result, bool erase_se
         // record latency
         if (!cooldownStarted)
         {
-            _Latency_EndRec(&latency, lat);
+//            _Latency_EndRec(&latency, lat);
             uint64_t ns = lat->accum;
             // TODO: use standard definitions across all clients for
             // success/commit and failure/abort
