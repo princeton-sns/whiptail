@@ -46,7 +46,9 @@ namespace retwis
                                int expDuration, int warmupSec, int cooldownSec, int tputInterval, uint32_t abortBackoff,
                                bool retryAborted, uint32_t maxBackoff, uint32_t maxAttempts, uint32_t writeOpsTxn,
                      uint32_t readOpsTxn, uint32_t mixedWriteOpsTxn, uint32_t mixedReadOpsTxn,
-                     uint32_t readPercent, uint32_t writePercent, uint32_t mixedRWPercent,const std::string &latencyFilename)
+                     uint32_t readPercent, uint32_t writePercent, uint32_t mixedRWPercent,
+                      Partitioner* partitioner, int nShards,
+                     const std::string &latencyFilename)
         : BenchmarkClient(clients, timeout, transport, id,
                           mode,
                           switch_probability,
@@ -61,8 +63,9 @@ namespace retwis
             mixedReadOpsTxn(mixedReadOpsTxn),
             readPercent(readPercent),
             writePercent(writePercent),
-            mixedRWPercent(mixedRWPercent)
-            
+            mixedRWPercent(mixedRWPercent),
+            part_(partitioner),
+            nShards_(nShards)
     {
     }
 

@@ -754,7 +754,7 @@ int main(int argc, char **argv)
             FLAGS_exp_duration, FLAGS_warmup_secs, FLAGS_cooldown_secs,
             FLAGS_tput_interval,
             FLAGS_abort_backoff, FLAGS_retry_aborted, FLAGS_max_backoff,
-            FLAGS_max_attempts);
+            FLAGS_max_attempts, part, FLAGS_num_shards);
         break;
     case BENCH_YCSBT:
         bench = new ycsbt::YcsbtClient(
