@@ -34,6 +34,9 @@
 #include "store/benchmark/async/retwis/get_timeline.h"
 #include "store/benchmark/async/retwis/post_tweet.h"
 
+#include "store/benchmark/async/retwis/one_shot_rw.h"
+#include "store/benchmark/async/retwis/one_shot_writes.h"
+#include "store/benchmark/async/retwis/one_shot_reads.h"
 namespace retwis
 {
 
