@@ -745,18 +745,18 @@ int main(int argc, char **argv)
     switch (benchMode)
     {
     case BENCH_RETWIS:
-        bench = new retwis::RetwisClient(
-            keySelector, clients, FLAGS_message_timeout, *tport, seed,
-            bench_mode,
-            FLAGS_client_switch_probability,
-            FLAGS_client_arrival_rate, FLAGS_client_think_time, FLAGS_client_stay_probability,
-            FLAGS_mpl,
-            FLAGS_exp_duration, FLAGS_warmup_secs, FLAGS_cooldown_secs,
-            FLAGS_tput_interval,
-            FLAGS_abort_backoff, FLAGS_retry_aborted, FLAGS_max_backoff,
-            FLAGS_max_attempts, FLAGS_write_ops_txn, FLAGS_read_ops_txn, FLAGS_mixed_write_ops_txn,
+         bench = new retwis::RetwisClient(
+                    keySelector, clients, FLAGS_message_timeout, *tport, seed,
+                    bench_mode,
+                    FLAGS_client_switch_probability,
+                    FLAGS_client_arrival_rate, FLAGS_client_think_time, FLAGS_client_stay_probability,
+                    FLAGS_mpl,
+                    FLAGS_exp_duration, FLAGS_warmup_secs, FLAGS_cooldown_secs,
+                    FLAGS_tput_interval,
+                    FLAGS_abort_backoff, FLAGS_retry_aborted, FLAGS_max_backoff,
+                    FLAGS_max_attempts, FLAGS_write_ops_txn, FLAGS_read_ops_txn, FLAGS_mixed_write_ops_txn,
                     FLAGS_mixed_read_ops_txn, FLAGS_read_percent, FLAGS_write_percent, FLAGS_mixed_rw_percent,
-            FLAGS_max_attempts, part, FLAGS_num_shards);
+                    part, FLAGS_num_shards);
         break;
     case BENCH_YCSBT:
         bench = new ycsbt::YcsbtClient(

@@ -37,17 +37,14 @@
 #include "store/benchmark/async/retwis/retwis_transaction.h"
 #include "store/common/frontend/client.h"
 
-namespace retwis
-{
+namespace retwis {
 
-    enum KeySelection
-    {
+    enum KeySelection {
         UNIFORM,
         ZIPF
     };
 
-    class RetwisClient : public BenchmarkClient
-    {
+    class RetwisClient : public BenchmarkClient {
     public:
         RetwisClient(KeySelector *keySelector, const std::vector<Client *> &clients, uint32_t timeout,
                      Transport &transport, uint64_t id,
@@ -56,10 +53,10 @@ namespace retwis
                      double arrival_rate, double think_time, double stay_probability,
                      int mpl,
                      int expDuration, int warmupSec, int cooldownSec, int tputInterval, uint32_t abortBackoff,
-                     bool retryAborted, uint32_t maxBackoff, uint32_t maxAttempts,uint32_t writeOpsTxn,
+                     bool retryAborted, uint32_t maxBackoff, uint32_t maxAttempts, uint32_t writeOpsTxn,
                      uint32_t readOpsTxn, uint32_t mixedWriteOpsTxn, uint32_t mixedReadOpsTxn,
                      uint32_t readPercent, uint32_t writePercent, uint32_t mixedRWPercent,
-                     Partitioner* partitioner, int nShards = -1,
+                     Partitioner *partioner = nullptr, int nShards = -1,
                      const std::string &latencyFilename = "latency");
 
         virtual ~RetwisClient();
@@ -70,7 +67,7 @@ namespace retwis
     private:
         KeySelector *keySelector;
         std::string lastOp;
-         uint64_t writeOpsTxn;
+        uint64_t writeOpsTxn;
         uint64_t readOpsTxn;
         uint64_t mixedWriteOpsTxn;
         uint64_t mixedReadOpsTxn;
