@@ -56,7 +56,9 @@ namespace retwis
                      double arrival_rate, double think_time, double stay_probability,
                      int mpl,
                      int expDuration, int warmupSec, int cooldownSec, int tputInterval, uint32_t abortBackoff,
-                     bool retryAborted, uint32_t maxBackoff, uint32_t maxAttempts,
+                     bool retryAborted, uint32_t maxBackoff, uint32_t maxAttempts,uint32_t writeOpsTxn,
+                     uint32_t readOpsTxn, uint32_t mixedWriteOpsTxn, uint32_t mixedReadOpsTxn,
+                     uint32_t readPercent, uint32_t writePercent, uint32_t mixedRWPercent,
                      const std::string &latencyFilename = "latency");
 
         virtual ~RetwisClient();
@@ -67,6 +69,13 @@ namespace retwis
     private:
         KeySelector *keySelector;
         std::string lastOp;
+         uint64_t writeOpsTxn;
+        uint64_t readOpsTxn;
+        uint64_t mixedWriteOpsTxn;
+        uint64_t mixedReadOpsTxn;
+        uint64_t readPercent;
+        uint64_t writePercent;
+        uint64_t mixedRWPercent;
     };
 
 } // namespace retwis

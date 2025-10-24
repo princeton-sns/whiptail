@@ -44,7 +44,9 @@ namespace retwis
                                double arrival_rate, double think_time, double stay_probability,
                                int mpl,
                                int expDuration, int warmupSec, int cooldownSec, int tputInterval, uint32_t abortBackoff,
-                               bool retryAborted, uint32_t maxBackoff, uint32_t maxAttempts, const std::string &latencyFilename)
+                               bool retryAborted, uint32_t maxBackoff, uint32_t maxAttempts, uint32_t writeOpsTxn,
+                     uint32_t readOpsTxn, uint32_t mixedWriteOpsTxn, uint32_t mixedReadOpsTxn,
+                     uint32_t readPercent, uint32_t writePercent, uint32_t mixedRWPercent,const std::string &latencyFilename)
         : BenchmarkClient(clients, timeout, transport, id,
                           mode,
                           switch_probability,
@@ -52,7 +54,15 @@ namespace retwis
                           mpl,
                           expDuration, warmupSec, cooldownSec, abortBackoff,
                           retryAborted, maxBackoff, maxAttempts, latencyFilename),
-          keySelector(keySelector)
+          keySelector(keySelector),
+            writeOpsTxn(writeOpsTxn),
+            readOpsTxn(readOpsTxn),
+            mixedWriteOpsTxn(mixedWriteOpsTxn),
+            mixedReadOpsTxn(mixedReadOpsTxn),
+            readPercent(readPercent),
+            writePercent(writePercent),
+            mixedRWPercent(mixedRWPercent)
+            
     {
     }
 
@@ -63,26 +73,37 @@ namespace retwis
     AsyncTransaction *RetwisClient::GetNextTransaction()
     {
         int ttype = GetRand()() % 100;
-        if (ttype < 5)
-        {
-            lastOp = "add_user";
-            return new AddUser(keySelector, GetRand());
+        if (ttype < writePercent) {
+            lastOp = "one_shot_writes";
+            return new OneShotWrites(keySelector, GetRand(), writeOpsTxn, part_, nShards_);
+        } else if (ttype < writePercent + mixedRWPercent) {
+            lastOp = "one_shot_rw";
+            return new OneShotRW(keySelector, GetRand(), mixedWriteOpsTxn, mixedReadOpsTxn, part_, nShards_);
+        } else {
+            lastOp = "one_shot_reads";
+            return new OneShotReads(keySelector, GetRand(), readOpsTxn, part_, nShards_);
         }
-        else if (ttype < 20)
-        {
-            lastOp = "follow";
-            return new Follow(keySelector, GetRand());
-        }
-        else if (ttype < 50)
-        {
-            lastOp = "post_tweet";
-            return new PostTweet(keySelector, GetRand());
-        }
-        else
-        {
-            lastOp = "get_timeline";
-            return new GetTimeline(keySelector, GetRand());
-        }
+        // int ttype = GetRand()() % 100;
+        // if (ttype < 5)
+        // {
+        //     lastOp = "add_user";
+        //     return new AddUser(keySelector, GetRand());
+        // }
+        // else if (ttype < 20)
+        // {
+        //     lastOp = "follow";
+        //     return new Follow(keySelector, GetRand());
+        // }
+        // else if (ttype < 50)
+        // {
+        //     lastOp = "post_tweet";
+        //     return new PostTweet(keySelector, GetRand());
+        // }
+        // else
+        // {
+        //     lastOp = "get_timeline";
+        //     return new GetTimeline(keySelector, GetRand());
+        // }
     }
 
 } // namespace retwis

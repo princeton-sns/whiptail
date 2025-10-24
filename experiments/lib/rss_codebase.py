@@ -117,6 +117,21 @@ class RssCodebase:
             client_command += ' --max_backoff %d' % config['client_max_backoff']
         if 'client_rand_sleep' in config:
             client_command += ' --delay %d' % config['client_rand_sleep']
+            
+        if 'client_write_ops_txn' in config:
+            client_command += ' --write_ops_txn %d' % config['client_write_ops_txn']
+        if 'client_read_ops_txn' in config:
+            client_command += ' --read_ops_txn %d' % config['client_read_ops_txn']
+        if 'client_mixed_write_ops_txn' in config:
+            client_command += ' --mixed_write_ops_txn %d' % config['client_mixed_write_ops_txn']
+        if 'client_mixed_read_ops_txn' in config:
+            client_command += ' --mixed_read_ops_txn %d' % config['client_mixed_read_ops_txn']
+        if 'client_read_percent' in config:
+            client_command += ' --read_percent %d' % config['client_read_percent']
+        if 'client_write_percent' in config:
+            client_command += ' --write_percent %d' % config['client_write_percent']
+        if 'client_mixed_rw_percent' in config:
+            client_command += ' --mixed_rw_percent %d' % config['client_mixed_rw_percent']
 
         if 'partitioner' in config:
             client_command += ' --partitioner %s' % config['partitioner']

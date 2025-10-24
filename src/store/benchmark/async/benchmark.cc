@@ -215,7 +215,13 @@ DEFINE_int64(max_attempts, -1,
              " for unlimited).");
 DEFINE_uint64(message_timeout, 10000, "length of timeout for messages in ms.");
 DEFINE_uint64(max_backoff, 5000, "max time to sleep after aborting.");
-
+DEFINE_uint64(write_ops_txn, 1, "num of write ops in one-shot txn.");
+DEFINE_uint64(read_ops_txn, 1, "num of read ops in one-shot txn.");
+DEFINE_uint64(mixed_write_ops_txn, 1, "num of write ops in mixed one-shot txn.");
+DEFINE_uint64(mixed_read_ops_txn, 1, "num of read ops in mixed one-shot txn.");
+DEFINE_uint64(read_percent, 0, "perecentage of read-only one-shot txns in the workload");
+DEFINE_uint64(write_percent, 100, "percentage of write-only one-shot txns in the workload");
+DEFINE_uint64(mixed_rw_percent, 0, "percentage of mixed_rw_percent in the workload");
 const std::string partitioner_args[] = {"default", "warehouse_dist_items",
                                         "warehouse"};
 const partitioner_t parts[]{DEFAULT, WAREHOUSE_DIST_ITEMS, WAREHOUSE};
