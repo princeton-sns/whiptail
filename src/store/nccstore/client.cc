@@ -271,7 +271,7 @@ void NCCClient::HandleExecuteReply(NCCSession &session, uint64_t req_id,
     req->outstanding_responses--;
 
     if (req->outstanding_responses == 0) {
-        // All responses received, perform safeguard check
+        // All Execute responses received, perform safeguard check
         bool commit = !req->aborted && SafeguardCheck(session);
 
         Debug("[%lu] Safeguard check result: %s", session.transaction_id(),
@@ -282,23 +282,15 @@ void NCCClient::HandleExecuteReply(NCCSession &session, uint64_t req_id,
             Debug("[%lu] Attempting SmartRetry (attempt %d)", 
                   session.transaction_id(), req->smart_retry_attempts + 1);
             TrySmartRetry(session, req_id);
-            return;  // Don't delete request yet, waiting for SmartRetry response
+            return; 
         }
 
         // Send commit decision to all participants
         SendCommitDecision(session, commit);
-
-        // Invoke callback
-        if (commit) {
-            session.set_committed(true);
-            req->ccb(::COMMITTED);
-        } else {
-            session.set_committed(false);
-            req->ccb(::ABORTED_SYSTEM);
-        }
-
-        delete req;
-        pending_requests_.erase(req_it);
+        
+        req->waiting_for_commit = true;
+        req->pending_commit = commit;
+        
     }
 }
 
@@ -462,13 +454,41 @@ void NCCClient::HandleSmartRetryReply(NCCSession &session, uint64_t req_id,
 
 void NCCClient::SendCommitDecision(NCCSession &session, bool commit) {
     uint64_t tx_id = session.transaction_id();
+    auto req_it = pending_requests_.find(tx_id);
+    if (req_it == pending_requests_.end()) {
+        Warning("[%lu] SendCommitDecision for unknown transaction", tx_id);
+        return;
+    }
+    
+    PendingRequest *req = req_it->second;
+    int num_shards = session.participants().size();
+    req->commit_outstanding = num_shards;
 
     Debug("[%lu] Sending commit decision: %s to %lu shards",
-          tx_id, commit ? "COMMIT" : "ABORT", session.participants().size());
+          tx_id, commit ? "COMMIT" : "ABORT", num_shards);
 
     for (int shard : session.participants()) {
-        auto ccb = [tx_id, shard](int status) {
-            Debug("[%lu] Commit reply from shard %d", tx_id, shard);
+        auto ccb = [this, tx_id, shard, req](int status) {
+            Debug("[%lu] Commit reply from shard %d, status=%d", tx_id, shard, status);
+            
+            // Decrement counter
+            req->commit_outstanding--;
+            
+            if (req->commit_outstanding == 0) {
+                // All commit replies received, invoke callback
+                auto final_req_it = pending_requests_.find(tx_id);
+                if (final_req_it != pending_requests_.end()) {
+                    PendingRequest *final_req = final_req_it->second;
+                    if (final_req->pending_commit) {
+                        final_req->ccb(::COMMITTED);
+                    } else {
+                        final_req->ccb(::ABORTED_SYSTEM);
+                    }
+                    
+                    delete final_req;
+                    pending_requests_.erase(final_req_it);
+                }
+            }
         };
         auto ctcb = [](int) {};
 

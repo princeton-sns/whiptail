@@ -144,9 +144,14 @@ private:
         int outstanding_responses;
         bool aborted;
         int smart_retry_attempts;  // Track smart retry attempts
+        bool waiting_for_commit;   // Flag to track if waiting for commit replies
+        bool pending_commit;        // Commit decision to send
+        int commit_outstanding;     // Outstanding commit replies
 
         PendingRequest(uint64_t rid) : req_id(rid), outstanding_responses(0), 
-                                       aborted(false), smart_retry_attempts(0) {}
+                                       aborted(false), smart_retry_attempts(0),
+                                       waiting_for_commit(false), pending_commit(false),
+                                       commit_outstanding(0) {}
     };
 
     // Safeguard check for natural consistency
