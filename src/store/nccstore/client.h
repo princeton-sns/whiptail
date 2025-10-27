@@ -32,12 +32,10 @@ namespace nccstore {
 
 class NCCSession : public ::Session {
 public:
-    NCCSession() : ::Session(), transaction_id_(static_cast<uint64_t>(-1)),
-                   tx_ts_(0, 0), committed_(false) {}
-    
     NCCSession(rss::Session &&rss_session)
         : ::Session(std::move(rss_session)), transaction_id_(static_cast<uint64_t>(-1)),
-          tx_ts_(0, 0), committed_(false) {}
+          tx_ts_(0, 0), committed_(false), pending_commit_(false), 
+          commit_outstanding_(0) {}
 
     uint64_t transaction_id() const { return transaction_id_; }
     const Timestamp &tx_ts() const { return tx_ts_; }
@@ -59,6 +57,8 @@ protected:
         writes_.clear();
         read_timestamps_.clear();
         write_timestamps_.clear();
+        pending_commit_ = false;
+        commit_outstanding_ = 0;
     }
 
     void add_participant(int shard) { participants_.insert(shard); }
@@ -85,6 +85,15 @@ protected:
     std::map<std::string, std::string> writes_;
     std::map<std::string, std::pair<Timestamp, Timestamp>> read_timestamps_;  // (tw, tr)
     std::map<std::string, std::pair<Timestamp, Timestamp>> write_timestamps_; // (tw, tr)
+    
+    // Commit state (stored in session, not PendingRequest)
+    bool pending_commit_;
+    int commit_outstanding_;
+    commit_callback commit_cb_;
+    
+    NCCSession() : ::Session(), transaction_id_(static_cast<uint64_t>(-1)),
+                   tx_ts_(0, 0), committed_(false), pending_commit_(false), 
+                   commit_outstanding_(0) {}
 };
 
 class NCCClient : public Client {
@@ -143,15 +152,10 @@ private:
         commit_timeout_callback ctcb;
         int outstanding_responses;
         bool aborted;
-        int smart_retry_attempts;  // Track smart retry attempts
-        bool waiting_for_commit;   // Flag to track if waiting for commit replies
-        bool pending_commit;        // Commit decision to send
-        int commit_outstanding;     // Outstanding commit replies
+        int smart_retry_attempts;
 
         PendingRequest(uint64_t rid) : req_id(rid), outstanding_responses(0), 
-                                       aborted(false), smart_retry_attempts(0),
-                                       waiting_for_commit(false), pending_commit(false),
-                                       commit_outstanding(0) {}
+                                       aborted(false), smart_retry_attempts(0) {}
     };
 
     // Safeguard check for natural consistency
@@ -161,7 +165,7 @@ private:
     void TrySmartRetry(NCCSession &session, uint64_t req_id);
 
     // Send commit/abort decision to all participants
-    void SendCommitDecision(NCCSession &session, bool commit);
+    void SendCommitDecision(NCCSession &session, bool commit, uint64_t req_id);
 
     // Callback handlers
     void HandleExecuteReply(NCCSession &session, uint64_t req_id, 

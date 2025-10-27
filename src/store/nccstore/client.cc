@@ -285,12 +285,15 @@ void NCCClient::HandleExecuteReply(NCCSession &session, uint64_t req_id,
             return; 
         }
 
+        // Store callback in session
+        session.commit_cb_ = req->ccb;
+
         // Send commit decision to all participants
-        SendCommitDecision(session, commit);
+        SendCommitDecision(session, commit, req_id);
         
-        req->waiting_for_commit = true;
-        req->pending_commit = commit;
-        
+        // Clean up PendingRequest
+        delete req;
+        pending_requests_.erase(req_it);
     }
 }
 
@@ -428,66 +431,72 @@ void NCCClient::HandleSmartRetryReply(NCCSession &session, uint64_t req_id,
                 return;
             }
 
+            // Store callback in session
+            session.commit_cb_ = req->ccb;
+
             // Send final decision
-            SendCommitDecision(session, commit);
-            
-            if (commit) {
-                session.set_committed(true);
-                req->ccb(::COMMITTED);
-            } else {
-                session.set_committed(false);
-                req->ccb(::ABORTED_SYSTEM);
-            }
+            SendCommitDecision(session, commit, req_id);
         } else {
             // SmartRetry failed
             Debug("[%lu] SmartRetry failed, aborting", session.transaction_id());
             
-            SendCommitDecision(session, false);
-            session.set_committed(false);
-            req->ccb(::ABORTED_SYSTEM);
+            // Store callback in session
+            session.commit_cb_ = req->ccb;
+            
+            SendCommitDecision(session, false, req_id);
         }
 
+        // Clean up PendingRequest
         delete req;
         pending_requests_.erase(req_it);
     }
 }
 
-void NCCClient::SendCommitDecision(NCCSession &session, bool commit) {
+void NCCClient::SendCommitDecision(NCCSession &session, bool commit, uint64_t req_id) {
     uint64_t tx_id = session.transaction_id();
-    auto req_it = pending_requests_.find(tx_id);
-    if (req_it == pending_requests_.end()) {
-        Warning("[%lu] SendCommitDecision for unknown transaction", tx_id);
-        return;
+    uint64_t sid = session.id();
+    
+    int num_shards = session.participants().size();
+    
+    // Only set commit state if not already set (for cases where it was set earlier)
+    if (!session.commit_cb_) {
+        auto req_it = pending_requests_.find(req_id);
+        if (req_it != pending_requests_.end()) {
+            session.commit_cb_ = req_it->second->ccb;
+        }
     }
     
-    PendingRequest *req = req_it->second;
-    int num_shards = session.participants().size();
-    req->commit_outstanding = num_shards;
+    session.commit_outstanding_ = num_shards;
+    session.pending_commit_ = commit;
 
     Debug("[%lu] Sending commit decision: %s to %lu shards",
           tx_id, commit ? "COMMIT" : "ABORT", num_shards);
 
     for (int shard : session.participants()) {
-        auto ccb = [this, tx_id, shard, req](int status) {
-            Debug("[%lu] Commit reply from shard %d, status=%d", tx_id, shard, status);
+        auto ccb = [this, sid](int status) {
+            Debug("[%lu] Commit reply from shard, status=%d", sid, status);
+            
+            auto session_it = sessions_.find(sid);
+            if (session_it == sessions_.end()) {
+                Warning("Commit reply for unknown session %lu", sid);
+                return;
+            }
+            
+            NCCSession &sess = session_it->second;
             
             // Decrement counter
-            req->commit_outstanding--;
+            sess.commit_outstanding_--;
             
-            if (req->commit_outstanding == 0) {
+            if (sess.commit_outstanding_ == 0) {
                 // All commit replies received, invoke callback
-                auto final_req_it = pending_requests_.find(tx_id);
-                if (final_req_it != pending_requests_.end()) {
-                    PendingRequest *final_req = final_req_it->second;
-                    if (final_req->pending_commit) {
-                        final_req->ccb(::COMMITTED);
-                    } else {
-                        final_req->ccb(::ABORTED_SYSTEM);
-                    }
-                    
-                    delete final_req;
-                    pending_requests_.erase(final_req_it);
+                if (sess.pending_commit_) {
+                    sess.commit_cb_(::COMMITTED);
+                } else {
+                    sess.commit_cb_(::ABORTED_SYSTEM);
                 }
+                
+                // Clean up commit state
+                sess.commit_cb_ = commit_callback();
             }
         };
         auto ctcb = [](int) {};
@@ -504,8 +513,13 @@ void NCCClient::Abort(Session &s, abort_callback acb,
 
     Debug("[%lu] ABORT", tx_id);
 
-    // Send abort decision to all participants
-    SendCommitDecision(session, false);
+    // For Abort, we don't wait for replies, just send and call callback immediately
+    // Send abort decision to all participants (fire and forget)
+    for (int shard : session.participants()) {
+        auto ccb = [](int) {};
+        auto ctcb = [](int) {};
+        shard_clients_[shard]->Commit(tx_id, false, ccb, ctcb, 5000);
+    }
 
     session.set_committed(false);
     acb();
