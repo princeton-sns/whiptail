@@ -40,6 +40,7 @@
 #include "store/common/partitioner.h"
 #include "store/strongstore/occ_server.h"
 #include "store/strongstore/server.h"
+#include "store/nccstore/server.h"
 #include "strongstore/occ_server.h"
 
 enum protocol_t
@@ -52,7 +53,8 @@ enum cc_t
 {
     CC_UNKNOWN,
     TWOPL,
-    OCC
+    OCC,
+    NCC
 };
 
 enum transmode_t
@@ -103,8 +105,8 @@ DEFINE_string(protocol, protocol_args[0],
 
 DEFINE_validator(protocol, &ValidateProtocol);
 
-const std::string cc_args[] = {"2pl", "occ"};
-const cc_t ccs[]{TWOPL, OCC};
+const std::string cc_args[] = {"2pl", "occ", "ncc"};
+const cc_t ccs[]{TWOPL, OCC, NCC};
 static bool ValidateCC(const char *flagname, const std::string &value){
     int n = sizeof(cc_args);
     for (int i = 0; i < n; ++i)
@@ -403,6 +405,13 @@ int main(int argc, char **argv)
         case OCC:
             server = new strongstore::OCCServer(consistency, shard_config,
                 replica_config, FLAGS_server_id,
+                FLAGS_group_idx, FLAGS_replica_idx,
+                tport, tt, FLAGS_debug_stats, FLAGS_enable_replica);
+                break;
+        case NCC:
+            server = new nccstore::NCCServer(
+                static_cast<nccstore::Consistency>(consistency),
+                shard_config, replica_config, FLAGS_server_id,
                 FLAGS_group_idx, FLAGS_replica_idx,
                 tport, tt, FLAGS_debug_stats, FLAGS_enable_replica);
                 break;

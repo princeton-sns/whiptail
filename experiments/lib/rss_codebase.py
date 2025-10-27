@@ -71,6 +71,9 @@ class RssCodebase:
             '--stats_file', stats_file,
             '--clock_error', truetime_error,
             '--strong_consistency', config['consistency']]])
+        
+        if config['cc'] is not None:
+            client_command += ' --cc %s' % config['cc']
 
         if bench_mode == 'open':
             client_command += ' --client_arrival_rate %f' % config['client_arrival_rate']

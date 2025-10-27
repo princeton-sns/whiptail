@@ -51,6 +51,7 @@
 #include "store/common/truetime.h"
 #include "store/strongstore/client.h"
 #include "store/strongstore/networkconfig.h"
+#include "store/nccstore/client.h"
 
 enum protomode_t
 {
@@ -77,6 +78,14 @@ enum transmode_t
     TRANS_UNKNOWN,
     TRANS_UDP,
     TRANS_TCP,
+};
+
+enum cc_t
+{
+    CC_UNKNOWN,
+    TWOPL,
+    OCC,
+    NCC
 };
 
 /**
@@ -112,6 +121,26 @@ DEFINE_string(trans_protocol, trans_args[0],
               "transport protocol to use for"
               " passing messages");
 DEFINE_validator(trans_protocol, &ValidateTransMode);
+
+const std::string cc_args[] = {"2pl", "occ", "ncc"};
+const cc_t ccs[]{TWOPL, OCC, NCC};
+static bool ValidateCC(const char *flagname, const std::string &value) {
+    int n = sizeof(cc_args);
+    for (int i = 0; i < n; ++i)
+    {
+        if (value == cc_args[i])
+        {
+            return true;
+        }
+    }
+    std::cerr << "Invalid value for --" << flagname << ": " << value
+              << std::endl;
+    return false;
+}
+DEFINE_string(cc, cc_args[0],
+              "the concurrency control to use during this"
+              " experiment");
+DEFINE_validator(cc, &ValidateCC);
 
 const std::string protocol_args[] = {"span-lock"};
 const protomode_t protomodes[]{PROTO_STRONG};
@@ -420,6 +449,23 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    // parse concurrency control
+    cc_t cc = CC_UNKNOWN;
+    int numCCs = sizeof(cc_args);
+    for (int i = 0; i < numCCs; ++i)
+    {
+        if (FLAGS_cc == cc_args[i])
+        {
+            cc = ccs[i];
+            break;
+        }
+    }
+    if (cc == CC_UNKNOWN)
+    {
+        std::cerr << "Unknown concurrency control." << std::endl;
+        return 1;
+    }
+
     // parse protocol and mode
     protomode_t mode = PROTO_UNKNOWN;
     strongstore::Mode strongmode = strongstore::Mode::MODE_UNKNOWN;
@@ -716,10 +762,18 @@ int main(int argc, char **argv)
             auto &net_config = net_configs[i];
             auto &client_region = client_regions[i];
 
-            client = new strongstore::Client(
-                consistency, net_config, client_region, shard_config,
-                FLAGS_client_id, FLAGS_num_shards, FLAGS_closest_replica,
-                tport, part, tt, FLAGS_debug_stats, FLAGS_nb_time_alpha);
+            if (cc == NCC) {
+                client = new nccstore::NCCClient(
+                    static_cast<nccstore::Consistency>(consistency),
+                    shard_config,
+                    FLAGS_client_id, FLAGS_num_shards,
+                    tport, part, tt, FLAGS_debug_stats);
+            } else {
+                client = new strongstore::Client(
+                    consistency, net_config, client_region, shard_config,
+                    FLAGS_client_id, FLAGS_num_shards, FLAGS_closest_replica,
+                    tport, part, tt, FLAGS_debug_stats, FLAGS_nb_time_alpha);
+            }
             break;
         }
         default:
