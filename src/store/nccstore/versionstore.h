@@ -65,6 +65,9 @@ public:
     // Update tr for a version
     // Updates tr to max(current_tr, new_tr) for the version with given tw
     void UpdateReadTimestamp(const std::string& key, const Timestamp& tw, const Timestamp& new_tr);
+    
+    // OPTIMIZED: Update tr using iterator (avoid re-finding)
+    void UpdateReadTimestamp(std::set<Version>::iterator it, const Timestamp& new_tr);
 
     // Set version status to committed
     // Marks the version with given tw as committed
@@ -95,11 +98,15 @@ public:
                                   const Timestamp& new_tw, const Timestamp& new_tr);
 
 private:
-    // Per-key version list (sorted by tw)
-    std::unordered_map<std::string, std::set<Version>> versions_;
+    // Per-key version list (maintains insertion order - creation time)
+    std::unordered_map<std::string, std::vector<Version>> versions_;
+    
+    // OPTIMIZATION: Index to latest committed version for each key
+    // -1 means no committed version exists yet
+    std::unordered_map<std::string, int> latest_committed_index_;
 
-    // Helper: find version with specific tw
-    std::set<Version>::iterator FindVersionByTw(const std::string& key, const Timestamp& tw);
+    // Helper: find version with specific tw in a vector
+    int FindVersionByTw(const std::string& key, const Timestamp& tw);
 };
 
 } // namespace nccstore

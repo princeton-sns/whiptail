@@ -24,20 +24,27 @@ VersionedKVStore::Read(const std::string& key, const Timestamp& ts) {
         return std::make_pair(false, std::make_pair("", Timestamp(0, 0)));
     }
 
-    // Find the version with largest tw such that tw <= ts AND status == committed
-    // Search from largest tw down
-    Version search_version("", ts);
-    auto it = key_it->second.upper_bound(search_version);
-
-    // upper_bound returns first element with tw > ts, so we go backwards
-    while (it != key_it->second.begin()) {
-        --it;
-        // Found a version with tw <= ts
-        if (it->status == COMMITTED) {
-            // Return this committed version
-            return std::make_pair(true, std::make_pair(it->value, it->tw));
+    // OPTIMIZATION: Use index to directly access latest committed version
+    auto index_it = latest_committed_index_.find(key);
+    if (index_it != latest_committed_index_.end() && index_it->second >= 0) {
+        const auto& versions = key_it->second;
+        int latest_idx = index_it->second;
+        
+        if (latest_idx < static_cast<int>(versions.size())) {
+            const Version& latest = versions[latest_idx];
+            if (latest.tw <= ts && latest.status == COMMITTED) {
+                // Found latest committed version that satisfies tw <= ts
+                return std::make_pair(true, std::make_pair(latest.value, latest.tw));
+            }
         }
-        // If undecided, keep searching for earlier committed version
+    }
+
+    // Fallback: search backwards from the end for committed version with tw <= ts
+    const auto& versions = key_it->second;
+    for (int i = versions.size() - 1; i >= 0; --i) {
+        if (versions[i].tw <= ts && versions[i].status == COMMITTED) {
+            return std::make_pair(true, std::make_pair(versions[i].value, versions[i].tw));
+        }
     }
 
     // No committed version found with tw <= ts
@@ -48,28 +55,55 @@ void VersionedKVStore::Write(const std::string& key, const std::string& value,
                               const Timestamp& write_ts) {
     // Create new version with tw = write_ts, tr = write_ts, status = undecided
     Version new_version(value, write_ts);
-    versions_[key].insert(new_version);
+    versions_[key].push_back(new_version);
 }
 
 void VersionedKVStore::UpdateReadTimestamp(const std::string& key, 
                                             const Timestamp& tw, 
                                             const Timestamp& new_tr) {
-    auto it = FindVersionByTw(key, tw);
-    if (it != versions_[key].end()) {
-        // Update tr to max(current_tr, new_tr)
-        // Need const_cast since set elements are const
-        // This is safe because we're not modifying the sorting key (tw)
-        if (new_tr > it->tr) {
-            const_cast<Version&>(*it).tr = new_tr;
+    auto key_it = versions_.find(key);
+    if (key_it == versions_.end()) {
+        return;
+    }
+    
+    auto& versions = key_it->second;
+    for (auto& v : versions) {
+        if (v.tw == tw) {
+            // Update tr to max(current_tr, new_tr)
+            if (new_tr > v.tr) {
+                v.tr = new_tr;
+            }
+            break;
         }
     }
 }
 
+void VersionedKVStore::UpdateReadTimestamp(std::set<Version>::iterator it, const Timestamp& new_tr) {
+    // Deprecated - this overload is no longer needed
+    // Kept for compatibility
+}
+
 bool VersionedKVStore::SetCommitted(const std::string& key, const Timestamp& tw) {
-    auto it = FindVersionByTw(key, tw);
-    if (it != versions_[key].end()) {
-        const_cast<Version&>(*it).status = COMMITTED;
-        return true;
+    auto key_it = versions_.find(key);
+    if (key_it == versions_.end()) {
+        return false;
+    }
+    
+    auto& versions = key_it->second;
+    for (size_t i = 0; i < versions.size(); ++i) {
+        if (versions[i].tw == tw) {
+            versions[i].status = COMMITTED;
+            
+            // OPTIMIZATION: Update latest committed index
+            auto index_it = latest_committed_index_.find(key);
+            if (index_it == latest_committed_index_.end() || 
+                index_it->second < 0 || 
+                versions[index_it->second].tw < tw) {
+                // This is the new latest committed version
+                latest_committed_index_[key] = i;
+            }
+            return true;
+        }
     }
     return false;
 }
@@ -80,27 +114,33 @@ bool VersionedKVStore::RemoveVersion(const std::string& key, const Timestamp& tw
         return false;
     }
 
-    auto it = FindVersionByTw(key, tw);
-    if (it != key_it->second.end()) {
-        key_it->second.erase(it);
-        return true;
+    auto& versions = key_it->second;
+    for (auto it = versions.begin(); it != versions.end(); ++it) {
+        if (it->tw == tw) {
+            // Check if we're removing the latest committed version
+            auto index_it = latest_committed_index_.find(key);
+            int removed_idx = it - versions.begin();
+            if (index_it != latest_committed_index_.end() && index_it->second == removed_idx) {
+                // Invalidate cache - will search for new latest on next access
+                latest_committed_index_.erase(key);
+            } else if (index_it != latest_committed_index_.end() && index_it->second > removed_idx) {
+                // Need to adjust index since we're removing an earlier element
+                --(index_it->second);
+            }
+            
+            versions.erase(it);
+            return true;
+        }
     }
     return false;
 }
 
 std::vector<Version> VersionedKVStore::GetVersions(const std::string& key) {
-    std::vector<Version> result;
-    
     auto key_it = versions_.find(key);
     if (key_it == versions_.end()) {
-        return result;
+        return std::vector<Version>();
     }
-
-    for (const auto& version : key_it->second) {
-        result.push_back(version);
-    }
-
-    return result;
+    return key_it->second;
 }
 
 std::vector<Version> VersionedKVStore::GetUndecidedVersions(const std::string& key, 
@@ -124,9 +164,15 @@ std::vector<Version> VersionedKVStore::GetUndecidedVersions(const std::string& k
 
 std::pair<bool, Version> VersionedKVStore::GetVersion(const std::string& key, 
                                                        const Timestamp& tw) {
-    auto it = FindVersionByTw(key, tw);
-    if (it != versions_[key].end()) {
-        return std::make_pair(true, *it);
+    auto key_it = versions_.find(key);
+    if (key_it == versions_.end()) {
+        return std::make_pair(false, Version("", Timestamp(0, 0)));
+    }
+    
+    for (const auto& v : key_it->second) {
+        if (v.tw == tw) {
+            return std::make_pair(true, v);
+        }
     }
     return std::make_pair(false, Version("", Timestamp(0, 0)));
 }
@@ -137,9 +183,8 @@ std::pair<bool, Version> VersionedKVStore::GetMostRecentVersion(const std::strin
         return std::make_pair(false, Version("", Timestamp(0, 0)));
     }
 
-    // Return the version with largest tw (last element in set)
-    auto it = key_it->second.rbegin();
-    return std::make_pair(true, *it);
+    // Return the version with largest tw (last element in vector)
+    return std::make_pair(true, key_it->second.back());
 }
 
 std::pair<bool, Version> VersionedKVStore::GetNextVersion(const std::string& key, 
@@ -150,65 +195,67 @@ std::pair<bool, Version> VersionedKVStore::GetNextVersion(const std::string& key
     }
 
     // Find version with given tw
-    Version search_version("", tw);
-    auto it = key_it->second.find(search_version);
+    for (size_t i = 0; i < key_it->second.size(); ++i) {
+        if (key_it->second[i].tw == tw) {
+            // Check if there's a next version
+            if (i + 1 < key_it->second.size()) {
+                return std::make_pair(true, key_it->second[i + 1]);
+            }
+        }
+    }
     
-    if (it == key_it->second.end()) {
-        return std::make_pair(false, Version("", Timestamp(0, 0)));
-    }
-
-    // Get next version
-    ++it;
-    if (it != key_it->second.end()) {
-        return std::make_pair(true, *it);
-    }
-
     return std::make_pair(false, Version("", Timestamp(0, 0)));
 }
 
-bool VersionedKVStore::UpdateVersionTimestamps(const std::string& key,
-                                                const Timestamp& old_tw,
-                                                const Timestamp& new_tw,
-                                                const Timestamp& new_tr) {
+bool VersionedKVStore::UpdateVersionTimestamps(const std::string& key, 
+                                                 const Timestamp& old_tw,
+                                                 const Timestamp& new_tw, 
+                                                 const Timestamp& new_tr) {
     auto key_it = versions_.find(key);
     if (key_it == versions_.end()) {
         return false;
     }
-
-    // Find version with old_tw
-    Version search_version("", old_tw);
-    auto it = key_it->second.find(search_version);
     
-    if (it == key_it->second.end()) {
-        return false;
+    auto& versions = key_it->second;
+    for (auto& v : versions) {
+        if (v.tw == old_tw) {
+            // Update timestamps
+            v.tw = new_tw;
+            v.tr = new_tr;
+            
+            // Update latest committed index if needed
+            auto index_it = latest_committed_index_.find(key);
+            if (index_it != latest_committed_index_.end() && 
+                index_it->second >= 0 && 
+                versions[index_it->second].status == COMMITTED &&
+                versions[index_it->second].tw < new_tw) {
+                // Find the index of the updated version
+                for (size_t i = 0; i < versions.size(); ++i) {
+                    if (versions[i].tw == new_tw) {
+                        latest_committed_index_[key] = i;
+                        break;
+                    }
+                }
+            }
+            return true;
+        }
     }
-
-    // Need to remove and re-insert because tw is the sorting key
-    Version updated_version = *it;
-    key_it->second.erase(it);
-    
-    // Update timestamps
-    updated_version.tw = new_tw;
-    updated_version.tr = new_tr;
-    
-    // Re-insert with new tw
-    key_it->second.insert(updated_version);
-    
-    return true;
+    return false;
 }
 
-std::set<Version>::iterator VersionedKVStore::FindVersionByTw(const std::string& key, 
-                                                               const Timestamp& tw) {
+int VersionedKVStore::FindVersionByTw(const std::string& key, const Timestamp& tw) {
     auto key_it = versions_.find(key);
     if (key_it == versions_.end()) {
-        // Return a dummy end iterator
-        static std::set<Version> empty_set;
-        return empty_set.end();
+        return -1;
     }
-
-    Version search_version("", tw);
-    auto it = key_it->second.find(search_version);
-    return it;
+    
+    const auto& versions = key_it->second;
+    for (size_t i = 0; i < versions.size(); ++i) {
+        if (versions[i].tw == tw) {
+            return static_cast<int>(i);
+        }
+    }
+    return -1;
 }
 
 } // namespace nccstore

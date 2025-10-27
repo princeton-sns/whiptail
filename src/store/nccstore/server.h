@@ -138,6 +138,9 @@ private:
     Consistency consistency_;
     bool debug_stats_;
     bool enable_replica_;
+    
+    // Debug switches (change these for performance testing)
+    static constexpr bool ENABLE_RTC = true;  // Set to true to enable RTC
 
     // Stats
     Stats stats_;

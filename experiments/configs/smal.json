@@ -3,11 +3,15 @@
    [
      "consistency"
    ],
-   [
-     "cc"
+  [
+     "client_total",
+     "client_processes_per_client_node",
+     "clients",
+     "pin_client_processes",
+     "mpl"
    ]
  ],
-     "cc":["2pl","ncc"],
+     "cc":"ncc",
 "client_num_ops_txn":1,
  "replication_protocol": "strong",
  "client_protocol_mode": "span-lock",
@@ -20,7 +24,7 @@
    "us-west-1-2",
    "eu-west-1-0",
    "eu-west-1-1",
-   "eu-west-1-2"
+   "eu-west-1-1"
  ],
  "consistency": [
    "ss"
@@ -29,8 +33,8 @@
  "shard_config_format_str": "shard-%d.config",
  "replica_config_format_str": "replica-%d.config",
  "network_config": "network.json",
- "fault_tolerance":1,
- "num_shards": 1,
+ "fault_tolerance": 1,
+ "num_shards": 3,
      "server_regions": {
      "us-east-1": [
        "us-east-1-0",
@@ -54,11 +58,19 @@
  "shards": [
    [
 "us-east-1-0",
-"us-east-1-1",
-"us-east-1-2"
-
+   "us-east-1-1",
+   "us-east-1-2"
+   ],
+   [
+      "us-west-1-0",
+   "us-west-1-1",
+   "us-west-1-2"
+   ],
+   [
+"eu-west-1-0",
+   "eu-west-1-1",
+   "eu-west-1-1"
    ]
-   
  ],
      "server_regions": {
      "us-east-1": [
@@ -81,16 +93,26 @@
      ]
    },
    
- "client_total": 1,
- "client_processes_per_client_node":  1,
+ "client_total": [1,2,3,6],
+ "client_processes_per_client_node":  [1,1,1,2],
  "client_threads_per_process": 1,
-   "clients": ["client-0-0"],
+   "clients": [["client-0-0"],
+["client-0-0","client-1-0"],
+   ["client-0-0",
+   "client-1-0",
+   "client-2-0"],
+       ["client-0-0",
+   "client-1-0",
+   "client-2-0"]
+       
+  
+ ],
  "server_port": 7087,
  "truetime_error": 0,
  "client_num_keys": 1000000,
  "benchmark_name": "retwis",
  "bench_mode": "closed",
- "mpl": 1,
+ "mpl": [1,1,1,1],
  "client_key_selector": "zipf",
  "client_zipf_coefficient": 0.01,
  "client_arrival_rate": 1,
@@ -114,7 +136,7 @@
  "client_max_attempts": -1,
  "client_max_backoff": 2500,
  "client_message_timeout": 60000,
- "run_locally": true,
+ "run_locally": false,
  "replication_protocol_settings": {
    "message_transport_type": "tcp"
  },
@@ -124,7 +146,13 @@
  ],
  "experiment_name": "",
  "codebase_name": "rss",
-"pin_client_processes": [1],
+"pin_client_processes": [
+   [1],
+   [1],
+   [1],
+   [1, 3]
+ 
+  ],
  "pin_server_processes": [
    2
  ],
@@ -133,7 +161,7 @@
  "client_debug_stats": true,
  "server_debug_stats": true,
  "server_load_time": 5,
- "client_experiment_length": 35,
+ "client_experiment_length": 25,
  "client_rand_sleep": 0,
  "client_ramp_up": 5,
  "client_ramp_down": 5,
@@ -333,9 +361,9 @@
  "output_latency_scale": 1,
  "src_commit_hash": "han_baselines",
  "stats_file_name": "stats.json",
- "base_local_exp_directory": "/workspaces/whiptail/experiments/results",
+ "base_local_exp_directory": "/users/lisirrx/whiptail/experiments/results",
  "base_mounted_fs_path": "/mnt/extra",
- "base_remote_bin_directory_nfs": "/workspaces/whiptail",
+ "base_remote_bin_directory_nfs": "/users/lisirrx/whiptail",
  "base_remote_exp_directory": "/mnt/extra/experiments",
  "bin_directory_name": "bin",
  "client_bin_name": "benchmark",
@@ -348,7 +376,7 @@
  "out_directory_name": "out",
  "server_bin_name": "server",
  "fig_workspace": "microsecondparty",
- "src_directory": "/workspaces/whiptail/src",
+ "src_directory": "/users/lisirrx/whiptail/src",
  "make_collect_bins": [
    "store/benchmark/async/benchmark",
    "store/server"

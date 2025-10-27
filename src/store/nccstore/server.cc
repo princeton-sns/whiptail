@@ -130,7 +130,7 @@ void NCCServer::ExecuteTransaction(const NCCExecute &msg, TxnRecord &txn) {
             break;
         }
 
-        // Read the version (Algorithm 5.2, Line 35: curr_ver ← DS[req.key].most_recent)
+        // Read the version (Algorithm 5.2: curr_ver <- DS[req.key].most_recent)
         auto result = store_.Read(key, txn.tx_ts);
         
         NCCReadResult *read_result = reply.add_reads();
@@ -140,19 +140,14 @@ void NCCServer::ExecuteTransaction(const NCCExecute &msg, TxnRecord &txn) {
             // Found a version
             Timestamp tw = result.second.second;  // tw of the version read
             
-            // Algorithm 5.2, Line 43: curr_ver.tr ← max{t, curr_ver.tr}
+            // Algorithm 5.2: curr_ver.tr <- max{t, curr_ver.tr}
             store_.UpdateReadTimestamp(key, tw, txn.tx_ts);
             
-            // Get updated version to return correct tr
-            auto updated = store_.GetVersion(key, tw);
-            
+        
             read_result->set_value(result.second.first);
             tw.serialize(read_result->mutable_tw());
-            if (updated.first) {
-                updated.second.tr.serialize(read_result->mutable_tr());
-            } else {
-                txn.tx_ts.serialize(read_result->mutable_tr());
-            }
+            Timestamp updated_tr = std::max(txn.tx_ts, result.second.second);
+            updated_tr.serialize(read_result->mutable_tr());
         } else {
             // Key doesn't exist or no version available
             read_result->set_value("");
@@ -177,9 +172,9 @@ void NCCServer::ExecuteTransaction(const NCCExecute &msg, TxnRecord &txn) {
 
         txn.write_set[key] = value;
 
-        // Algorithm 5.2, Line 35-37: 
-        // curr_ver ← DS[req.key].most_recent
-        // tw.clk ← max{t.clk, curr_ver.tr.clk+1}; tw.cid ← t.cid
+        // Algorithm 5.2: 
+        // curr_ver <- DS[req.key].most_recent
+        // tw.clk <- max{t.clk, curr_ver.tr.clk+1}; tw.cid <- t.cid
         auto curr_ver = store_.GetMostRecentVersion(key);
         Timestamp tw;
         
@@ -193,13 +188,13 @@ void NCCServer::ExecuteTransaction(const NCCExecute &msg, TxnRecord &txn) {
             tw = txn.tx_ts;
         }
 
-        // Algorithm 5.2, Line 38-40:
-        // tr ← tw
-        // new_ver ← [req.value, (tw, tr), "undecided"]
-        // DS[req.key] ← DS[req.key] + new_ver
+        // Algorithm 5.2:
+        // tr <- tw
+        // new_ver <- [req.value, (tw, tr), "undecided"]
+        // DS[req.key] <- DS[req.key] + new_ver
         store_.Write(key, value, tw);
 
-        // Algorithm 5.2, Line 41: resp ← ["done", (tw, tr)]
+        // Algorithm 5.2: resp <- ["done", (tw, tr)]
         NCCWriteResult *write_result = reply.add_writes();
         write_result->set_key(key);
         tw.serialize(write_result->mutable_tw());
@@ -220,29 +215,37 @@ void NCCServer::ExecuteTransaction(const NCCExecute &msg, TxnRecord &txn) {
     // Save reply for Response Timing Control
     txn.reply = reply;
 
-    // Add to response queues for all accessed keys
-    for (const string &key : txn.read_set) {
-        PendingResponse pr;
-        pr.tx_id = txn.tx_id;
-        pr.key = key;
-        pr.tw = txn.tx_ts;
-        response_queues_[key].push(pr);
-    }
+    // RTC Debug Switch: ENABLE_RTC can be toggled in server.h
+    if (ENABLE_RTC) {
+        // RTC enabled: Add to response queues and check dependencies
+        for (const string &key : txn.read_set) {
+            PendingResponse pr;
+            pr.tx_id = txn.tx_id;
+            pr.key = key;
+            pr.tw = txn.tx_ts;
+            response_queues_[key].push(pr);
+        }
 
-    for (const auto &kv : txn.write_set) {
-        PendingResponse pr;
-        pr.tx_id = txn.tx_id;
-        pr.key = kv.first;
-        pr.tw = txn.tx_ts;
-        response_queues_[kv.first].push(pr);
-    }
+        for (const auto &kv : txn.write_set) {
+            PendingResponse pr;
+            pr.tx_id = txn.tx_id;
+            pr.key = kv.first;
+            pr.tw = txn.tx_ts;
+            response_queues_[kv.first].push(pr);
+        }
 
-    // Try to send response immediately if no dependencies
-    for (const string &key : txn.read_set) {
-        CheckAndSendResponse(key);
-    }
-    for (const auto &kv : txn.write_set) {
-        CheckAndSendResponse(kv.first);
+        // Try to send response immediately if no dependencies
+        for (const string &key : txn.read_set) {
+            CheckAndSendResponse(key);
+        }
+        for (const auto &kv : txn.write_set) {
+            CheckAndSendResponse(kv.first);
+        }
+    } else {
+        // RTC disabled: Send response immediately for performance testing
+        Debug("[%lu] RTC disabled, sending response immediately", txn.tx_id);
+        SendExecuteReply(*txn.client_addr, reply);
+        txn.responded = true;
     }
 }
 
@@ -466,7 +469,6 @@ bool NCCServer::SmartRetry(uint64_t tx_id, const Timestamp &new_ts,
                             const std::vector<proto::NCCReadResult> &reads,
                             const std::vector<proto::NCCWriteResult> &writes) {
     // Algorithm 5.4: SmartRetry
-    // Lines 84-94
 
     auto txn_it = transactions_.find(tx_id);
     if (txn_it == transactions_.end()) {
@@ -482,10 +484,10 @@ bool NCCServer::SmartRetry(uint64_t tx_id, const Timestamp &new_ts,
         Timestamp tw(read_result.tw());
         Timestamp tr(read_result.tr());
 
-        // Algorithm 5.4, Line 85: next_ver ← ver.next()
+        // Algorithm 5.4: next_ver <- ver.next()
         auto next_ver = store_.GetNextVersion(key, tw);
         
-        // Algorithm 5.4, Line 86-87: if next_ver.tw ≤ t' then return false
+        // Algorithm 5.4: if next_ver.tw <= t' then return false
         if (next_ver.first && next_ver.second.tw <= new_ts) {
             Debug("[%lu] SmartRetry failed: next version exists with tw=%lu.%lu ≤ t'=%lu.%lu",
                   tx_id, next_ver.second.tw.getTimestamp(), next_ver.second.tw.getID(),
@@ -496,21 +498,21 @@ bool NCCServer::SmartRetry(uint64_t tx_id, const Timestamp &new_ts,
         // Check if ver created by tx (it's in write_set)
         bool created_by_tx = (txn.write_set.find(key) != txn.write_set.end());
 
-        // Algorithm 5.4, Line 88-89: if ver created by tx and ver.tw ≠ ver.tr then return false
+        // Algorithm 5.4: if ver created by tx and ver.tw != ver.tr then return false
         if (created_by_tx && tw != tr) {
-            Debug("[%lu] SmartRetry failed: version %s created by tx but tw≠tr",
+            Debug("[%lu] SmartRetry failed: version %s created by tx but tw!=tr",
                   tx_id, key.c_str());
             return false;
         }
 
-        // Algorithm 5.4, Line 90-93: Update timestamps
+        // Algorithm 5.4: Update timestamps
         if (created_by_tx) {
-            // Algorithm 5.4, Line 91: ver.tw ← t'; ver.tr ← t'
+            // Algorithm 5.4: ver.tw <- t'; ver.tr <- t'
             store_.UpdateVersionTimestamps(key, tw, new_ts, new_ts);
             Debug("[%lu] SmartRetry: updated version %s, tw=tr=%lu.%lu",
                   tx_id, key.c_str(), new_ts.getTimestamp(), new_ts.getID());
         } else {
-            // Algorithm 5.4, Line 93: ver.tr ← max{ver.tr, t'}
+            // Algorithm 5.4: ver.tr <- max{ver.tr, t'}
             Timestamp new_tr = std::max(tr, new_ts);
             store_.UpdateReadTimestamp(key, tw, new_tr);
             Debug("[%lu] SmartRetry: updated tr for %s to %lu.%lu",
@@ -534,20 +536,20 @@ bool NCCServer::SmartRetry(uint64_t tx_id, const Timestamp &new_ts,
         }
 
         // Writes are always created by tx
-        // Check if tw ≠ tr
+        // Check if tw != tr
         if (tw != tr) {
-            Debug("[%lu] SmartRetry failed: write version %s has tw≠tr",
+            Debug("[%lu] SmartRetry failed: write version %s has tw!=tr",
                   tx_id, key.c_str());
             return false;
         }
 
-        // Update version: ver.tw ← t'; ver.tr ← t'
+        // Update version: ver.tw <- t'; ver.tr <- t'
         store_.UpdateVersionTimestamps(key, tw, new_ts, new_ts);
         Debug("[%lu] SmartRetry: updated write version %s, tw=tr=%lu.%lu",
               tx_id, key.c_str(), new_ts.getTimestamp(), new_ts.getID());
     }
 
-    // Algorithm 5.4, Line 94: return true
+    // Algorithm 5.4: return true
     Debug("[%lu] SmartRetry succeeded, can retry with new_ts=%lu.%lu",
           tx_id, new_ts.getTimestamp(), new_ts.getID());
     return true;

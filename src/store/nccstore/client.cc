@@ -66,17 +66,46 @@ NCCClient::~NCCClient() {
 }
 
 Session &NCCClient::BeginSession() {
-    NCCSession *session = new NCCSession();
-    return *session;
+    // Create a new session (will auto-assign id via rss::Session constructor)
+    NCCSession session{};
+    auto sid = session.id();
+    
+    Debug("BeginSession: created session %lu", sid);
+    
+    // Store session in map
+    sessions_.emplace(sid, std::move(session));
+    
+    // Return reference to stored session
+    return sessions_.find(sid)->second;
 }
 
 Session &NCCClient::ContinueSession(rss::Session &rss_session) {
-    NCCSession *session = new NCCSession();
-    return *session;
+    // Create NCCSession from rss::Session
+    NCCSession session{std::move(rss_session)};
+    auto sid = session.id();
+    
+    Debug("ContinueSession: session %lu", sid);
+    
+    // Store session in map
+    sessions_.emplace(sid, std::move(session));
+    
+    // Return reference to stored session
+    return sessions_.find(sid)->second;
 }
 
 rss::Session NCCClient::EndSession(Session &session) {
-    delete &session;
+    auto sid = session.id();
+    
+    Debug("EndSession: session %lu", sid);
+    
+    // Remove from map and return rss::Session for continuation
+    auto it = sessions_.find(sid);
+    if (it != sessions_.end()) {
+        rss::Session rss_session = std::move(it->second);
+        sessions_.erase(it);
+        return rss_session;
+    }
+    
     return rss::Session();
 }
 

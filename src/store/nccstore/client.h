@@ -34,6 +34,10 @@ class NCCSession : public ::Session {
 public:
     NCCSession() : ::Session(), transaction_id_(static_cast<uint64_t>(-1)),
                    tx_ts_(0, 0), committed_(false) {}
+    
+    NCCSession(rss::Session &&rss_session)
+        : ::Session(std::move(rss_session)), transaction_id_(static_cast<uint64_t>(-1)),
+          tx_ts_(0, 0), committed_(false) {}
 
     uint64_t transaction_id() const { return transaction_id_; }
     const Timestamp &tx_ts() const { return tx_ts_; }
@@ -181,6 +185,7 @@ private:
 
     std::vector<ShardClient *> shard_clients_;
     std::unordered_map<uint64_t, PendingRequest *> pending_requests_;
+    std::unordered_map<uint64_t, NCCSession> sessions_;  // Store sessions by id
 
     Stats stats_;
     Latency_t op_lat_;
