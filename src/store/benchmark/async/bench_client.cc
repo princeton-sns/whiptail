@@ -675,7 +675,7 @@ BenchmarkClient::BenchState BenchmarkClient::GetBenchState(struct timeval &diff)
         Debug("Experiment is done");
         return DONE;
     }
-    else if (diff.tv_sec > exp_duration_ - warmupSec)
+    else if (diff.tv_sec > exp_duration_ - cooldownSec)
     {
         Debug("Experiment is cooling down");
         return COOL_DOWN;

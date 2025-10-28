@@ -59,8 +59,6 @@ bool debug = true;
 bool debug = false;
 #endif
 
-#include "gperftools/profiler.h"
-
 enum protomode_t
 {
     PROTO_UNKNOWN,
@@ -429,7 +427,6 @@ void FlushStats();
 
 int main(int argc, char **argv)
 {
-    ProfilerStart("cpu.prof");   // 开始采样
 
     gflags::SetUsageMessage(
         "executes transactions from various transactional workload\n"
@@ -859,7 +856,7 @@ int main(int argc, char **argv)
         std::this_thread::sleep_for(std::chrono::milliseconds(250));
     }
 
-    tport->Timer(FLAGS_exp_duration * 1000 - 1000, FlushStats);
+    // tport->Timer(FLAGS_exp_duration * 1000 - 1000, FlushStats);
     // tport->Timer(FLAGS_exp_duration * 1000, Cleanup);
 
     std::signal(SIGKILL, Signal);
@@ -874,9 +871,6 @@ int main(int argc, char **argv)
     Notice("Cleaning up after experiment.");
 
     FlushStats();
-    ProfilerFlush();
-    Notice("Profiler flushed.");
-    ProfilerStop();           
 
     delete keySelector;
     for (auto i : threads)

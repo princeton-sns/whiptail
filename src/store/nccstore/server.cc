@@ -111,6 +111,13 @@ void NCCServer::HandleExecute(const TransportAddress &remote, const NCCExecute &
 }
 
 void NCCServer::ExecuteTransaction(const NCCExecute &msg, TxnRecord &txn) {
+
+    // For Leader, we don't need to execute the transaction again, finished
+    if (txn.executed) {
+        Debug("[%lu] Transaction already executed", txn.tx_id);
+        return;
+    }
+
     NCCExecuteReply reply;
     reply.mutable_rid()->set_client_id(msg.rid().client_id());
     reply.mutable_rid()->set_client_req_id(msg.rid().client_req_id());
@@ -192,7 +199,26 @@ void NCCServer::ExecuteTransaction(const NCCExecute &msg, TxnRecord &txn) {
         // tr <- tw
         // new_ver <- [req.value, (tw, tr), "undecided"]
         // DS[req.key] <- DS[req.key] + new_ver
+
+        Debug("[%lu] Getting versions for key %s ********************************** before write", txn.tx_id, key.c_str());
+        auto versions = store_.GetVersions(key);
+        Debug("[%lu] Versions: %d", txn.tx_id, versions.size());
+        for (const auto& version : versions) {
+            Debug("[%lu] Version: %s, tw=%lu.%lu, tr=%lu.%lu, status=%d", txn.tx_id, version.value.c_str(), version.tw.getTimestamp(), version.tw.getID(), version.tr.getTimestamp(), version.tr.getID(), version.status);
+        }
+        Debug("[%lu] End of versions for key %s ********************************** before write", txn.tx_id, key.c_str());
+
+
+        Debug("[%lu] Writing key %s, value %s, tw=%lu.%lu", txn.tx_id, key.c_str(), value.c_str(), tw.getTimestamp(), tw.getID());
         store_.Write(key, value, tw);
+
+        Debug("[%lu] Getting versions for key %s ********************************** after write", txn.tx_id, key.c_str());
+        versions = store_.GetVersions(key);
+        Debug("[%lu] Versions: %d", txn.tx_id, versions.size());
+        for (const auto& version : versions) {
+            Debug("[%lu] Version: %s, tw=%lu.%lu, tr=%lu.%lu, status=%d", txn.tx_id, version.value.c_str(), version.tw.getTimestamp(), version.tw.getID(), version.tr.getTimestamp(), version.tr.getID(), version.status);
+        }
+        Debug("[%lu] End of versions for key %s ********************************** after write", txn.tx_id, key.c_str());
 
         // Algorithm 5.2: resp <- ["done", (tw, tr)]
         NCCWriteResult *write_result = reply.add_writes();
@@ -214,7 +240,7 @@ void NCCServer::ExecuteTransaction(const NCCExecute &msg, TxnRecord &txn) {
 
     // Save reply for Response Timing Control
     txn.reply = reply;
-
+    txn.executed = true;
     // RTC Debug Switch: ENABLE_RTC can be toggled in server.h
     if (ENABLE_RTC) {
         // RTC enabled: Add to response queues and check dependencies
@@ -269,11 +295,11 @@ void NCCServer::CheckAndSendResponse(const string &key) {
     while (!queue.empty()) {
         PendingResponse &pr = queue.front();
         
+        Debug("[%lu] Checking if all preceding writes are committed for key %s, tw=%lu.%lu", pr.tx_id, key.c_str(), pr.tw.getTimestamp(), pr.tw.getID());
         // Check if all preceding writes are committed
         if (AllPrecedingCommitted(key, pr.tx_id, pr.tw)) {
             auto txn_it = transactions_.find(pr.tx_id);
             if (txn_it != transactions_.end() && !txn_it->second.responded) {
-                // Send the response
                 SendExecuteReply(*txn_it->second.client_addr, txn_it->second.reply);
                 txn_it->second.responded = true;
             }
@@ -292,6 +318,8 @@ bool NCCServer::AllPrecedingCommitted(const string &key, uint64_t tx_id, const T
     for (const auto &v : undecided) {
         if (v.tw < tx_ts) {
             // There's an earlier undecided write
+            Debug("[%lu] Waiting for preceding undecided write with tw=%lu.%lu on key %s",
+                  tx_id, v.tw.getTimestamp(), v.tw.getID(), key.c_str());
             return false;
         }
     }
@@ -344,11 +372,25 @@ void NCCServer::CommitTransaction(uint64_t tx_id) {
         return;
     }
 
+    if (txn_it->second.committed) {
+        Debug("[%lu] Transaction already committed", tx_id);
+        return;
+    }
+
     // Mark all versions of this transaction as committed
     for (const auto& kv : txn_it->second.write_set) {
         const std::string& key = kv.first;
         // Set status to committed for version with tw = txn.tx_ts
+        Debug("[%lu] Setting key %s version %lu.%lu as committed", tx_id, key.c_str(), txn_it->second.tx_ts.getTimestamp(), txn_it->second.tx_ts.getID());
         store_.SetCommitted(key, txn_it->second.tx_ts);
+
+        Debug("[%lu] Getting versions for key %s **********************************", tx_id, key.c_str());
+        auto versions = store_.GetVersions(key);
+        Debug("[%lu] Versions: %d", tx_id, versions.size());
+        for (const auto& version : versions) {
+            Debug("[%lu] Version: %s, tw=%lu.%lu, tr=%lu.%lu, status=%d", tx_id, version.value.c_str(), version.tw.getTimestamp(), version.tw.getID(), version.tr.getTimestamp(), version.tr.getID(), version.status);
+        }
+        Debug("[%lu] End of versions for key %s **********************************", tx_id, key.c_str());
     }
 
     txn_it->second.committed = true;
@@ -628,7 +670,7 @@ void NCCServer::ReplicaUpcall(opnum_t opnum, const string &op, string &response)
     uint64_t tx_id = request.txnid();
 
     if (request.op() == proto::Request::EXECUTE) {
-        Debug("[%lu] Replica executing EXECUTE", tx_id);
+        Debug("[%lu] Replica received EXECUTE", tx_id);
         
         // Execute the operation
         if (request.has_execute()) {
@@ -641,7 +683,7 @@ void NCCServer::ReplicaUpcall(opnum_t opnum, const string &op, string &response)
             }
         }
     } else if (request.op() == proto::Request::COMMIT) {
-        Debug("[%lu] Replica executing COMMIT", tx_id);
+        Debug("[%lu] Replica received COMMIT", tx_id);
         
         if (request.has_commit()) {
             const proto::NCCCommit &commit_msg = request.commit();

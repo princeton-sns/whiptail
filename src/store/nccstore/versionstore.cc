@@ -91,21 +91,19 @@ bool VersionedKVStore::SetCommitted(const std::string& key, const Timestamp& tw)
     
     auto& versions = key_it->second;
     for (size_t i = 0; i < versions.size(); ++i) {
-        if (versions[i].tw == tw) {
-            versions[i].status = COMMITTED;
+        auto& version = versions[i];
+        if (version.tw == tw) {
+            version.status = COMMITTED;
             
-            // OPTIMIZATION: Update latest committed index
             auto index_it = latest_committed_index_.find(key);
             if (index_it == latest_committed_index_.end() || 
                 index_it->second < 0 || 
-                versions[index_it->second].tw < tw) {
-                // This is the new latest committed version
+                version.tw < tw) {
                 latest_committed_index_[key] = i;
             }
-            return true;
         }
     }
-    return false;
+    return true;
 }
 
 bool VersionedKVStore::RemoveVersion(const std::string& key, const Timestamp& tw) {
@@ -152,8 +150,15 @@ std::vector<Version> VersionedKVStore::GetUndecidedVersions(const std::string& k
         return result;
     }
 
-    // Find all undecided versions with tw >= ts
-    for (const auto& version : key_it->second) {
+    int start_idx = 0;
+    auto idx_it = latest_committed_index_.find(key);
+    if (idx_it != latest_committed_index_.end() && idx_it->second >= 0) {
+        start_idx = idx_it->second + 1;
+    }
+
+    const auto &versions = key_it->second;
+    for (size_t i = static_cast<size_t>(start_idx); i < versions.size(); ++i) {
+        const auto &version = versions[i];
         if (version.tw >= ts && version.status == UNDECIDED) {
             result.push_back(version);
         }
@@ -168,11 +173,10 @@ std::pair<bool, Version> VersionedKVStore::GetVersion(const std::string& key,
     if (key_it == versions_.end()) {
         return std::make_pair(false, Version("", Timestamp(0, 0)));
     }
-    
-    for (const auto& v : key_it->second) {
-        if (v.tw == tw) {
-            return std::make_pair(true, v);
-        }
+
+    int idx = FindVersionByTw(key, tw);
+    if (idx >= 0) {
+        return std::make_pair(true, key_it->second[static_cast<size_t>(idx)]);
     }
     return std::make_pair(false, Version("", Timestamp(0, 0)));
 }
@@ -183,7 +187,14 @@ std::pair<bool, Version> VersionedKVStore::GetMostRecentVersion(const std::strin
         return std::make_pair(false, Version("", Timestamp(0, 0)));
     }
 
-    // Return the version with largest tw (last element in vector)
+    auto index_it = latest_committed_index_.find(key);
+    if (index_it != latest_committed_index_.end() && index_it->second >= 0) {
+        int latest_idx = index_it->second;
+        if (latest_idx < static_cast<int>(key_it->second.size())) {
+            return std::make_pair(true, key_it->second[latest_idx]);
+        }
+    }
+
     return std::make_pair(true, key_it->second.back());
 }
 

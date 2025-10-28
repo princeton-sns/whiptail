@@ -66,13 +66,14 @@ private:
         Timestamp tx_ts;
         std::set<std::string> read_set;
         std::map<std::string, std::string> write_set;
+        bool executed;
         bool committed;
         bool responded;
         TransportAddress *client_addr;
         proto::NCCExecute execute_msg;  // Store original execute message for replication
         proto::NCCExecuteReply reply;
 
-        TxnRecord() : tx_id(0), tx_ts(0, 0), committed(false), 
+        TxnRecord() : tx_id(0), tx_ts(0, 0), executed(false), committed(false),
                       responded(false), client_addr(nullptr) {}
     };
 
