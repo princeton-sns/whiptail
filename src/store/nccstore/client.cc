@@ -472,35 +472,46 @@ void NCCClient::SendCommitDecision(NCCSession &session, bool commit, uint64_t re
     Debug("[%lu] Sending commit decision: %s to %lu shards",
           tx_id, commit ? "COMMIT" : "ABORT", num_shards);
 
-    for (int shard : session.participants()) {
-        auto ccb = [this, sid](int status) {
-              Debug("[%lu] Commit reply from shard, status=%d", sid, status);
-            
-            auto session_it = sessions_.find(sid);
+      auto session_it = sessions_.find(sid);
             if (session_it == sessions_.end()) {
                 Warning("Commit reply for unknown session %lu", sid);
                 return;
             }
             
             NCCSession &sess = session_it->second;
+            sess.commit_cb_ (::COMMITTED);
+
+    
+    for (int shard : session.participants()) {
+        // auto ccb = [this, sid](int status) {
+        //       Debug("[%lu] Commit reply from shard, status=%d", sid, status);
             
-            // Decrement counter
-            sess.commit_outstanding_--;
+        //     auto session_it = sessions_.find(sid);
+        //     if (session_it == sessions_.end()) {
+        //         Warning("Commit reply for unknown session %lu", sid);
+        //         return;
+        //     }
             
-            if (sess.commit_outstanding_ == 0) {
-                // All commit replies received, invoke callback
-                if (sess.pending_commit_) {
-                    sess.commit_cb_(::COMMITTED);
-                } else {
-                    sess.commit_cb_(::ABORTED_SYSTEM);
-                }
+        //     NCCSession &sess = session_it->second;
+            
+        //     // Decrement counter
+        //     sess.commit_outstanding_--;
+            
+        //     if (sess.commit_outstanding_ == 0) {
+        //         // All commit replies received, invoke callback
+        //         if (sess.pending_commit_) {
+        //             sess.commit_cb_(::COMMITTED);
+        //         } else {
+        //             sess.commit_cb_(::ABORTED_SYSTEM);
+        //         }
                 
-                // Clean up commit state
-                sess.commit_cb_ = commit_callback();
-                return ;
-            }
-            return ;
-        };
+        //         // Clean up commit state
+        //         sess.commit_cb_ = commit_callback();
+        //         return ;
+        //     }
+        //     return ;
+        // };
+        auto ccb = [](int){};
         auto ctcb = [](int) {};
 
         shard_clients_[shard]->Commit(tx_id, commit, ccb, ctcb, 5000);
