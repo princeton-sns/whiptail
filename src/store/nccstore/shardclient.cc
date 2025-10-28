@@ -105,7 +105,6 @@ void ShardClient::Commit(uint64_t tx_id,
     // Send to closest replica in this shard
     transport_->SendMessageToReplica(this, shard_idx_, replica_, commit_);
 
-    // TODO: Setup timeout
 }
 
 void ShardClient::ReadOnly(uint64_t tx_id,
@@ -190,9 +189,10 @@ void ShardClient::HandleCommitReply(const proto::NCCCommitReply &reply) {
     for (auto it = pending_commits_.begin(); it != pending_commits_.end(); ++it) {
         if (it->second->tx_id == tx_id) {
             PendingCommit *pc = it->second;
-            pc->ccb(reply.status());
-            delete pc;
+            // Remove from map before invoking the callback to avoid double-free
+            // if the callback destroys the ShardClient or otherwise touches the map.
             pending_commits_.erase(it);
+            delete pc;
             return;
         }
     }

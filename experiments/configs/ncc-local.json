@@ -7,7 +7,7 @@
      "cc"
    ]
  ],
-     "cc":["2pl","ncc"],
+     "cc":["ncc"],
 "client_num_ops_txn":1,
  "replication_protocol": "strong",
  "client_protocol_mode": "span-lock",

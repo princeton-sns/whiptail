@@ -601,6 +601,7 @@ void BenchmarkClient::CooldownDone()
 void BenchmarkClient::OnReply(uint64_t transaction_id, int result, bool erase_session)
 {
     Debug("[%lu] OnReply with result %d.", transaction_id, result);
+    Debug("session_states_.size(): %lu", session_states_.size());
     auto search = session_states_.find(transaction_id);
     ASSERT(search != session_states_.end());
 
@@ -608,6 +609,7 @@ void BenchmarkClient::OnReply(uint64_t transaction_id, int result, bool erase_se
     auto transaction = ss.transaction();
     auto lat = ss.lat();
 
+    Debug("Started: %d, CooldownStarted: %d", started, cooldownStarted);
     if (started)
     {
         // record latency
@@ -667,20 +669,25 @@ BenchmarkClient::BenchState BenchmarkClient::GetBenchState(struct timeval &diff)
     gettimeofday(&currTime, NULL);
 
     diff = timeval_sub(currTime, startTime);
+    Debug("current diff: %ld", diff.tv_sec);
     if (diff.tv_sec > exp_duration_)
     {
+        Debug("Experiment is done");
         return DONE;
     }
     else if (diff.tv_sec > exp_duration_ - warmupSec)
     {
+        Debug("Experiment is cooling down");
         return COOL_DOWN;
     }
     else if (started)
     {
+        Debug("Experiment is measuring");
         return MEASURE;
     }
     else
     {
+        Debug("Experiment is warming up");
         return WARM_UP;
     }
 }

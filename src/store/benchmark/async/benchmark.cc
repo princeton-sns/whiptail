@@ -53,6 +53,14 @@
 #include "store/strongstore/networkconfig.h"
 #include "store/nccstore/client.h"
 
+#ifdef DEBUG
+bool debug = true;
+#else
+bool debug = false;
+#endif
+
+#include "gperftools/profiler.h"
+
 enum protomode_t
 {
     PROTO_UNKNOWN,
@@ -421,6 +429,8 @@ void FlushStats();
 
 int main(int argc, char **argv)
 {
+    ProfilerStart("cpu.prof");   // 开始采样
+
     gflags::SetUsageMessage(
         "executes transactions from various transactional workload\n"
         "           benchmarks against various distributed replicated "
@@ -864,6 +874,9 @@ int main(int argc, char **argv)
     Notice("Cleaning up after experiment.");
 
     FlushStats();
+    ProfilerFlush();
+    Notice("Profiler flushed.");
+    ProfilerStop();           
 
     delete keySelector;
     for (auto i : threads)
