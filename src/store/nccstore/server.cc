@@ -79,6 +79,9 @@ void NCCServer::ReceiveMessage(const TransportAddress &remote,
         PingMessage ping_msg;
         ping_msg.ParseFromString(data);
         HandlePingMessage(this, remote, ping_msg);
+    } else if (type == smart_retry_.GetTypeName()) {
+        smart_retry_.ParseFromString(data);
+        HandleSmartRetry(remote, smart_retry_);
     } else {
         Panic("Received unexpected message type: %s", type.c_str());
     }
@@ -694,9 +697,7 @@ void NCCServer::ReplicaUpcall(opnum_t opnum, const string &op, string &response)
             if (txn_it != transactions_.end()) {
                 // Execute transaction
                 ExecuteTransaction(execute_msg, txn_it->second);
-            } else {
-                Warning("[%lu] Replica received EXECUTE for unknown transaction", tx_id);
-            }
+            } 
         }
     } else if (request.op() == proto::Request::COMMIT) {
         Debug("[%lu] Replica received COMMIT", tx_id);
