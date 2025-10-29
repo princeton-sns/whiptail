@@ -1,4 +1,3 @@
-set(CMAKE_BUILD_TYPE Debug)
 
 add_subdirectory(common)
 add_subdirectory(retwis)
