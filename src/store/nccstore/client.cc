@@ -467,6 +467,9 @@ void NCCClient::SendCommitDecision(NCCSession &session, bool commit, uint64_t re
     session.commit_outstanding_ = num_shards;
     session.pending_commit_ = commit;
 
+    // make a copy of participants
+    std::set<int> participants_copy = session.participants();
+    
     Debug("[%lu] Sending commit decision: %s to %lu shards",
           tx_id, commit ? "COMMIT" : "ABORT", num_shards);
 
@@ -480,7 +483,7 @@ void NCCClient::SendCommitDecision(NCCSession &session, bool commit, uint64_t re
             sess.commit_cb_ (::COMMITTED);
 
     Debug("Before commit, participants size: %lu", session.participants().size());
-    for (int shard : session.participants()) {
+    for (int shard : participants_copy) {
         // auto ccb = [this, sid](int status) {
         //       Debug("[%lu] Commit reply from shard, status=%d", sid, status);
             
