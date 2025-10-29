@@ -292,7 +292,6 @@ void NCCClient::HandleExecuteReply(NCCSession &session, uint64_t req_id,
         SendCommitDecision(session, commit, req_id);
         
         // Clean up PendingRequest
-        delete req;
         pending_requests_.erase(req_it);
     }
 }
@@ -447,7 +446,6 @@ void NCCClient::HandleSmartRetryReply(NCCSession &session, uint64_t req_id,
         }
 
         // Clean up PendingRequest
-        delete req;
         pending_requests_.erase(req_it);
     }
 }
@@ -481,7 +479,7 @@ void NCCClient::SendCommitDecision(NCCSession &session, bool commit, uint64_t re
             NCCSession &sess = session_it->second;
             sess.commit_cb_ (::COMMITTED);
 
-    
+    Debug("Before commit, participants size: %lu", session.participants().size());
     for (int shard : session.participants()) {
         // auto ccb = [this, sid](int status) {
         //       Debug("[%lu] Commit reply from shard, status=%d", sid, status);
@@ -607,7 +605,6 @@ void NCCClient::HandleReadOnlyReply(NCCSession &session, uint64_t req_id,
         session.set_committed(true);
         req->ccb(::COMMITTED);
 
-        delete req;
         pending_requests_.erase(req_it);
     }
 }

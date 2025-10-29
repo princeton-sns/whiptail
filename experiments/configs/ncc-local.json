@@ -5,7 +5,8 @@
    ],
    [
      "cc"
-   ]
+   ],
+   ["mpl"]
  ],
      "cc":["ncc"],
 "client_num_ops_txn":1,
@@ -90,9 +91,9 @@
  "client_num_keys": 1000000,
  "benchmark_name": "retwis",
  "bench_mode": "closed",
- "mpl": 1,
+ "mpl": [1],
  "client_key_selector": "zipf",
- "client_zipf_coefficient": 0.01,
+ "client_zipf_coefficient": 0.99,
  "client_arrival_rate": 1,
  "client_stay_probability": 1.0,
  "client_switch_probability": 0.0,
@@ -133,7 +134,7 @@
  "client_debug_stats": true,
  "server_debug_stats": true,
  "server_load_time": 5,
- "client_experiment_length": 65,
+ "client_experiment_length": 15,
  "client_rand_sleep": 0,
  "client_ramp_up": 5,
  "client_ramp_down": 5,
