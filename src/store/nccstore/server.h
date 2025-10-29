@@ -68,12 +68,13 @@ private:
         std::map<std::string, std::string> write_set;
         bool executed;
         bool committed;
+        bool is_committing;
         bool responded;
         TransportAddress *client_addr;
         proto::NCCExecute execute_msg;  // Store original execute message for replication
         proto::NCCExecuteReply reply;
 
-        TxnRecord() : tx_id(0), tx_ts(0, 0), executed(false), committed(false),
+        TxnRecord() : tx_id(0), tx_ts(0, 0), executed(false), committed(false), is_committing(false),
                       responded(false), client_addr(nullptr) {}
     };
 
@@ -93,7 +94,7 @@ private:
     // Core NCC algorithms
     void ExecuteTransaction(const proto::NCCExecute &msg, TxnRecord &txn);
     bool CheckEarlyAbort(uint64_t tx_id, const Timestamp &tx_ts, const std::string &key);
-    void CheckAndSendResponse(const std::string &key);
+    void CheckAndSendResponse(const std::string &key, bool is_replica);
     void NotifyWaitingTransactions(const std::string &key);
     bool AllPrecedingCommitted(const std::string &key, uint64_t tx_id, const Timestamp &tx_ts);
 

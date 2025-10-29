@@ -120,6 +120,8 @@ void NCCServer::ExecuteTransaction(const NCCExecute &msg, TxnRecord &txn) {
         Debug("[%lu] Transaction already executed", txn.tx_id);
         return;
     }
+    auto is_replica = txn.client_addr == nullptr;
+    Debug("[%lu] Is replica: %s", txn.tx_id, is_replica ? "true" : "false");
 
     NCCExecuteReply reply;
     reply.mutable_rid()->set_client_id(msg.rid().client_id());
@@ -170,7 +172,9 @@ void NCCServer::ExecuteTransaction(const NCCExecute &msg, TxnRecord &txn) {
     if (should_abort) {
         reply.set_status(STATUS_ABORT);
         txn.committed = false;
-        SendExecuteReply(*txn.client_addr, reply);
+        if (!is_replica) {
+            SendExecuteReply(*txn.client_addr, reply);
+        }
         return;
     }
 
@@ -237,7 +241,9 @@ void NCCServer::ExecuteTransaction(const NCCExecute &msg, TxnRecord &txn) {
         for (const auto& kv : txn.write_set) {
             store_.RemoveVersion(kv.first, txn.tx_ts);
         }
-        SendExecuteReply(*txn.client_addr, reply);
+        if (!is_replica) {
+            SendExecuteReply(*txn.client_addr, reply);
+        }
         return;
     }
 
@@ -274,15 +280,17 @@ void NCCServer::ExecuteTransaction(const NCCExecute &msg, TxnRecord &txn) {
 
         // Try to send response immediately if no dependencies
         for (const string &key : txn.read_set) {
-            CheckAndSendResponse(key);
+            CheckAndSendResponse(key, is_replica);
         }
         for (const auto &kv : txn.write_set) {
-            CheckAndSendResponse(kv.first);
+            CheckAndSendResponse(kv.first, is_replica);
         }
     } else {
         // RTC disabled: Send response immediately for performance testing
         Debug("[%lu] RTC disabled, sending response immediately", txn.tx_id);
-        SendExecuteReply(*txn.client_addr, reply);
+        if (!is_replica) {
+            SendExecuteReply(*txn.client_addr, reply);
+        }
         txn.responded = true;
     }
 }
@@ -301,7 +309,7 @@ bool NCCServer::CheckEarlyAbort(uint64_t tx_id, const Timestamp &tx_ts, const st
     return false;
 }
 
-void NCCServer::CheckAndSendResponse(const string &key) {
+void NCCServer::CheckAndSendResponse(const string &key, bool is_replica) {
     auto &queue = response_queues_[key];
 
     Debug("Checking response queue for key %s, size=%d", key.c_str(), queue.size());
@@ -314,7 +322,9 @@ void NCCServer::CheckAndSendResponse(const string &key) {
             Debug("[%lu] All preceding writes are committed for key %s, tw=%lu.%lu", pr.tx_id, key.c_str(), pr.tw.getTimestamp(), pr.tw.getID());
             auto txn_it = transactions_.find(pr.tx_id);
             if (txn_it != transactions_.end() && !txn_it->second.responded) {
-                SendExecuteReply(*txn_it->second.client_addr, txn_it->second.reply);
+                if (!is_replica) {
+                    SendExecuteReply(*txn_it->second.client_addr, txn_it->second.reply);
+                }
                 txn_it->second.responded = true;
             }
             queue.pop();
@@ -354,8 +364,10 @@ void NCCServer::HandleCommit(const TransportAddress &remote, const NCCCommit &ms
         Warning("[%lu] Commit for unknown transaction", tx_id);
         SendCommitReply(remote, tx_id, STATUS_OK);
         return;
+        
     }
 
+    txn_it->second.is_committing = true;
     // Replicate Commit/Abort decision through VR
     if (enable_replica_) {
         replica_client_->CommitOrAbort(
@@ -433,7 +445,7 @@ void NCCServer::AbortTransaction(uint64_t tx_id) {
 }
 
 void NCCServer::NotifyWaitingTransactions(const string &key) {
-    CheckAndSendResponse(key);
+    CheckAndSendResponse(key, false);
 }
 
 void NCCServer::HandleReadOnly(const TransportAddress &remote, const NCCReadOnly &msg) {
@@ -695,16 +707,27 @@ void NCCServer::ReplicaUpcall(opnum_t opnum, const string &op, string &response)
             
             auto txn_it = transactions_.find(tx_id);
             if (txn_it != transactions_.end()) {
-                // Execute transaction
+                // Leader 
                 ExecuteTransaction(execute_msg, txn_it->second);
-            } 
+            } else {
+                uint64_t tx_id = execute_msg.tx_id();
+                Timestamp tx_ts(execute_msg.tx_ts());
+                TxnRecord &txn = transactions_[tx_id];
+                txn.tx_id = tx_id;
+                txn.tx_ts = tx_ts;
+                txn.committed = false;
+                txn.responded = false;
+                txn.client_addr = nullptr;  // Replica has no client address
+                txn.execute_msg.CopyFrom(execute_msg); 
+                ExecuteTransaction(execute_msg, txn);
+            }
         }
     } else if (request.op() == proto::Request::COMMIT) {
         Debug("[%lu] Replica received COMMIT", tx_id);
         
         if (request.has_commit()) {
             const proto::NCCCommit &commit_msg = request.commit();
-            
+
             if (commit_msg.commit()) {
                 CommitTransaction(tx_id);
             } else {
