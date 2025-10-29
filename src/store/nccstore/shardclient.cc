@@ -54,7 +54,7 @@ void ShardClient::Execute(uint64_t tx_id,
                           uint32_t timeout) {
     uint64_t req_id = last_req_id_++;
 
-    Debug("[shard %d] Execute tx=%lu, req=%lu", shard_idx_, tx_id, req_id);
+    Debug("Send Execute to shard %d, tx=%lu, req=%lu", shard_idx_, tx_id, req_id);
 
     PendingExecute *pe = new PendingExecute(tx_id, req_id);
     pe->ecb = ecb;

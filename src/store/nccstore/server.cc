@@ -243,6 +243,15 @@ void NCCServer::ExecuteTransaction(const NCCExecute &msg, TxnRecord &txn) {
     txn.executed = true;
     // RTC Debug Switch: ENABLE_RTC can be toggled in server.h
     if (ENABLE_RTC) {
+        Debug("[%lu] RTC enabled, adding to response queues", txn.tx_id);
+        Debug("[%lu] Read set: %d", txn.tx_id, txn.read_set.size());
+        for (const string &key : txn.read_set) {
+            Debug("[%lu] Read key: %s", txn.tx_id, key.c_str());
+        }
+        Debug("[%lu] Write set: %d", txn.tx_id, txn.write_set.size());
+        for (const auto &kv : txn.write_set) {
+            Debug("[%lu] Write key: %s", txn.tx_id, kv.first.c_str());
+        }
         // RTC enabled: Add to response queues and check dependencies
         for (const string &key : txn.read_set) {
             PendingResponse pr;
@@ -291,13 +300,15 @@ bool NCCServer::CheckEarlyAbort(uint64_t tx_id, const Timestamp &tx_ts, const st
 
 void NCCServer::CheckAndSendResponse(const string &key) {
     auto &queue = response_queues_[key];
-    
+
+    Debug("Checking response queue for key %s, size=%d", key.c_str(), queue.size());
     while (!queue.empty()) {
         PendingResponse &pr = queue.front();
         
         Debug("[%lu] Checking if all preceding writes are committed for key %s, tw=%lu.%lu", pr.tx_id, key.c_str(), pr.tw.getTimestamp(), pr.tw.getID());
         // Check if all preceding writes are committed
         if (AllPrecedingCommitted(key, pr.tx_id, pr.tw)) {
+            Debug("[%lu] All preceding writes are committed for key %s, tw=%lu.%lu", pr.tx_id, key.c_str(), pr.tw.getTimestamp(), pr.tw.getID());
             auto txn_it = transactions_.find(pr.tx_id);
             if (txn_it != transactions_.end() && !txn_it->second.responded) {
                 SendExecuteReply(*txn_it->second.client_addr, txn_it->second.reply);
@@ -306,6 +317,8 @@ void NCCServer::CheckAndSendResponse(const string &key) {
             queue.pop();
         } else {
             // Can't send yet, wait for dependencies
+            Debug("[%lu] Can't send yet, wait for dependencies", pr.tx_id);
+
             break;
         }
     }
@@ -670,7 +683,8 @@ void NCCServer::ReplicaUpcall(opnum_t opnum, const string &op, string &response)
     uint64_t tx_id = request.txnid();
 
     if (request.op() == proto::Request::EXECUTE) {
-        Debug("[%lu] Replica received EXECUTE", tx_id);
+        Debug("[%lu] Replica received EXECUTE, has_execute=%s", tx_id, request.has_execute() ? "true" : "false");
+    
         
         // Execute the operation
         if (request.has_execute()) {
@@ -680,6 +694,8 @@ void NCCServer::ReplicaUpcall(opnum_t opnum, const string &op, string &response)
             if (txn_it != transactions_.end()) {
                 // Execute transaction
                 ExecuteTransaction(execute_msg, txn_it->second);
+            } else {
+                Warning("[%lu] Replica received EXECUTE for unknown transaction", tx_id);
             }
         }
     } else if (request.op() == proto::Request::COMMIT) {

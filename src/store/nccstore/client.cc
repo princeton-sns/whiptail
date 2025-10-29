@@ -157,6 +157,7 @@ void NCCClient::Get(Session &s, const string &key, get_callback gcb,
     // In NCC, reads are buffered and executed at commit time
     // For now, we just track the read in the session
     // The actual read will happen during commit
+    session.add_read(key, "");
 
     // Return immediately with empty value (will be filled at commit)
     Timestamp zero_ts(0, 0);
