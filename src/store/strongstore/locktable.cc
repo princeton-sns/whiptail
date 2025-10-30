@@ -153,6 +153,12 @@ namespace strongstore
     {
         LockReleaseResult r;
 
+        for (auto &pending_read : transaction.getPendingReadSet())
+        {
+            Debug("[%lu] ReleaseForRead: %s", transaction_id, pending_read.c_str());
+            locks_.ReleaseForRead(pending_read, transaction_id, r.notify_rws);
+        }
+
         for (auto &write : transaction.getWriteSet())
         {
             Debug("[%lu] ReleaseForWrite: %s", transaction_id, write.first.c_str());
