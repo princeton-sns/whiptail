@@ -1,30 +1,30 @@
 /***********************************************************************
- *
- * store/strongstore/shardclient.h:
- *
- * Copyright 2022 Jeffrey Helt, Matthew Burke, Amit Levy, Wyatt Lloyd
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation
- * files (the "Software"), to deal in the Software without
- * restriction, including without limitation the rights to use, copy,
- * modify, merge, publish, distribute, sublicense, and/or sell copies
- * of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
- * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
- * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- *
- **********************************************************************/
+*
+* store/strongstore/shardclient.h:
+*
+* Copyright 2022 Jeffrey Helt, Matthew Burke, Amit Levy, Wyatt Lloyd
+*
+* Permission is hereby granted, free of charge, to any person
+* obtaining a copy of this software and associated documentation
+* files (the "Software"), to deal in the Software without
+* restriction, including without limitation the rights to use, copy,
+* modify, merge, publish, distribute, sublicense, and/or sell copies
+* of the Software, and to permit persons to whom the Software is
+* furnished to do so, subject to the following conditions:
+*
+* The above copyright notice and this permission notice shall be
+* included in all copies or substantial portions of the Software.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+* NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+* BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+* ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+* CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+* SOFTWARE.
+*
+**********************************************************************/
 #ifndef _STRONG_SHARDCLIENT_H_
 #define _STRONG_SHARDCLIENT_H_
 
@@ -69,6 +69,7 @@ namespace strongstore
     };
 
     typedef std::function<void(int, const std::string &, const std::string &, Timestamp)> get_callback;
+    typedef std::function<void(const std::string &)> immediate_get_callback;
     typedef std::function<void(int, const std::string &)> get_timeout_callback;
 
     typedef std::function<void(int, const std::string &, const std::string &)> put_callback;
@@ -109,44 +110,44 @@ namespace strongstore
 
         void Begin(uint64_t transaction_id, const Timestamp &start_time);
         void Get(uint64_t id, const std::string &key, get_callback gcb,
-                 get_timeout_callback gtcb, uint32_t timeout);
+                get_timeout_callback gtcb, uint32_t timeout);
 
         void GetForUpdate(uint64_t transaction_id, const std::string &key,
-                          get_callback gcb, get_timeout_callback gtcb,
-                          uint32_t timeout);
+                        get_callback gcb, get_timeout_callback gtcb,
+                        uint32_t timeout);
 
         void Put(uint64_t transaction_id, const std::string &key, const std::string &value,
-                 put_callback pcb, put_timeout_callback ptcb,
-                 uint32_t timeout);
+                put_callback pcb, put_timeout_callback ptcb,
+                uint32_t timeout);
 
         void ROCommit(uint64_t transaction_id, const std::vector<std::string> &keys,
-                      const Timestamp &commit_timestamp,
-                      const Timestamp &min_read_timestamp,
-                      ro_commit_callback ccb, ro_commit_slow_callback cscb,
-                      ro_commit_timeout_callback ctcb, uint32_t timeout);
+                    const Timestamp &commit_timestamp,
+                    const Timestamp &min_read_timestamp,
+                    ro_commit_callback ccb, ro_commit_slow_callback cscb,
+                    ro_commit_timeout_callback ctcb, uint32_t timeout);
 
         void RWCommitCoordinator(uint64_t transaction_id,
-                                 const std::set<int> participants,
-                                 Timestamp &nonblock_timestamp,
-                                 rw_coord_commit_callback ccb,
-                                 rw_coord_commit_timeout_callback ctcb, uint32_t timeout);
+                                const std::set<int> participants,
+                                Timestamp &nonblock_timestamp,
+                                rw_coord_commit_callback ccb,
+                                rw_coord_commit_timeout_callback ctcb, uint32_t timeout);
         void RWCommitParticipant(uint64_t transaction_id,
-                                 int coordinator_shard,
-                                 Timestamp &nonblock_timestamp,
-                                 rw_part_commit_callback ccb,
-                                 rw_part_commit_timeout_callback ctcb, uint32_t timeout);
+                                int coordinator_shard,
+                                Timestamp &nonblock_timestamp,
+                                rw_part_commit_callback ccb,
+                                rw_part_commit_timeout_callback ctcb, uint32_t timeout);
 
         void PrepareOK(uint64_t transaction_id, int participant_shard,
-                       const Timestamp &prepare_timestamp, const Timestamp &nonblock_ts,
-                       prepare_callback pcb,
-                       prepare_timeout_callback ptcb, uint32_t timeout);
+                    const Timestamp &prepare_timestamp, const Timestamp &nonblock_ts,
+                    prepare_callback pcb,
+                    prepare_timeout_callback ptcb, uint32_t timeout);
 
         void PrepareAbort(uint64_t transaction_id, int participant_shard,
-                          prepare_callback pcb, prepare_timeout_callback ptcb,
-                          uint32_t timeout);
+                        prepare_callback pcb, prepare_timeout_callback ptcb,
+                        uint32_t timeout);
 
         void Abort(uint64_t transaction_id, abort_callback acb,
-                   abort_timeout_callback atcb, uint32_t timeout);
+                abort_timeout_callback atcb, uint32_t timeout);
 
         void Wound(uint64_t transaction_id);
         void AbortGet(uint64_t transaction_id);
@@ -208,10 +209,9 @@ namespace strongstore
         bool CheckPriorReadsAndWrites(uint64_t transaction_id, const std::string &key, get_callback gcb);
 
         void Get(uint64_t transaction_id, const std::string &key,
-                 get_callback gcb, get_timeout_callback gtcb,
-                 uint32_t timeout, bool for_update);
-        void GetBuffered(uint64_t transaction_id, const std::string &key,
-                    get_callback gc, get_timeout_callback gtcb, uint32_t timeout);
+                get_callback gcb, get_timeout_callback gtcb,
+                uint32_t timeout, bool for_update);
+
         void HandleGetReply(const proto::GetReply &reply);
         void HandleRWCommitCoordinatorReply(const proto::RWCommitCoordinatorReply &reply);
         void HandleRWCommitParticipantReply(const proto::RWCommitParticipantReply &reply);

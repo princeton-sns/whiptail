@@ -1,30 +1,30 @@
 /***********************************************************************
- *
- * store/strongstore/client.h:
- *
- * Copyright 2022 Jeffrey Helt, Matthew Burke, Amit Levy, Wyatt Lloyd
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation
- * files (the "Software"), to deal in the Software without
- * restriction, including without limitation the rights to use, copy,
- * modify, merge, publish, distribute, sublicense, and/or sell copies
- * of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
- * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
- * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- *
- **********************************************************************/
+*
+* store/strongstore/client.h:
+*
+* Copyright 2022 Jeffrey Helt, Matthew Burke, Amit Levy, Wyatt Lloyd
+*
+* Permission is hereby granted, free of charge, to any person
+* obtaining a copy of this software and associated documentation
+* files (the "Software"), to deal in the Software without
+* restriction, including without limitation the rights to use, copy,
+* modify, merge, publish, distribute, sublicense, and/or sell copies
+* of the Software, and to permit persons to whom the Software is
+* furnished to do so, subject to the following conditions:
+*
+* The above copyright notice and this permission notice shall be
+* included in all copies or substantial portions of the Software.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+* NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+* BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+* ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+* CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+* SOFTWARE.
+*
+**********************************************************************/
 #ifndef _STRONG_CLIENT_H_
 #define _STRONG_CLIENT_H_
 
@@ -185,10 +185,10 @@ namespace strongstore
     {
     public:
         Client(Consistency consistency, const NetworkConfiguration &net_config,
-               const std::string &client_region, transport::Configuration &config,
-               uint64_t id, int nshards, int closestReplic, Transport *transport,
-               Partitioner *part, TrueTime &tt, bool debug_stats,
-               double nb_time_alpha);
+            const std::string &client_region, transport::Configuration &config,
+            uint64_t id, int nshards, int closestReplic, Transport *transport,
+            Partitioner *part, TrueTime &tt, bool debug_stats,
+            double nb_time_alpha);
         virtual ~Client();
 
         virtual Session &BeginSession() override;
@@ -201,23 +201,23 @@ namespace strongstore
 
         // Begin a retried transaction.
         virtual void Retry(Session &session, begin_callback bcb,
-                           begin_timeout_callback btcb, uint32_t timeout) override;
+                        begin_timeout_callback btcb, uint32_t timeout) override;
 
         // Get the value corresponding to key.
         virtual void Get(Session &session, const std::string &key,
-                         get_callback gcb, get_timeout_callback gtcb,
-                         uint32_t timeout = GET_TIMEOUT) override;
+                        get_callback gcb, get_timeout_callback gtcb,
+                        uint32_t timeout = GET_TIMEOUT) override;
 
         // Get the value corresponding to key.
         // Provide hint that transaction will later write the key.
         virtual void GetForUpdate(Session &session, const std::string &key,
-                                  get_callback gcb, get_timeout_callback gtcb,
-                                  uint32_t timeout = GET_TIMEOUT) override;
+                                get_callback gcb, get_timeout_callback gtcb,
+                                uint32_t timeout = GET_TIMEOUT) override;
 
         // Set the value for the given key.
         virtual void Put(Session &session, const std::string &key, const std::string &value,
-                         put_callback pcb, put_timeout_callback ptcb,
-                         uint32_t timeout = PUT_TIMEOUT) override;
+                        put_callback pcb, put_timeout_callback ptcb,
+                        uint32_t timeout = PUT_TIMEOUT) override;
 
         // Commit all Get(s) and Put(s) since Begin().
         virtual void Commit(Session &session, commit_callback ccb, commit_timeout_callback ctcb,
@@ -225,14 +225,14 @@ namespace strongstore
 
         // Abort all Get(s) and Put(s) since Begin().
         virtual void Abort(Session &session, abort_callback acb, abort_timeout_callback atcb,
-                           uint32_t timeout) override;
+                        uint32_t timeout) override;
         // Force transaction to abort.
         void ForceAbort(const uint64_t transaction_id) override;
 
         // Commit all Get(s) and Put(s) since Begin().
         void ROCommit(Session &session, const std::unordered_set<std::string> &keys,
-                      commit_callback ccb, commit_timeout_callback ctcb,
-                      uint32_t timeout) override;
+                    commit_callback ccb, commit_timeout_callback ctcb,
+                    uint32_t timeout) override;
 
     private:
         const static std::size_t MAX_SHARDS = 16;
@@ -261,11 +261,11 @@ namespace strongstore
         void AbortCallback(StrongSession &session, uint64_t req_id);
 
         void ROCommitCallback(StrongSession &session, uint64_t req_id, int shard_idx,
-                              const std::vector<Value> &values,
-                              const std::vector<PreparedTransaction> &prepares);
+                            const std::vector<Value> &values,
+                            const std::vector<PreparedTransaction> &prepares);
 
         void ROCommitSlowCallback(StrongSession &session, uint64_t req_id, int shard_idx,
-                                  uint64_t rw_transaction_id, const Timestamp &commit_ts, bool is_commit);
+                                uint64_t rw_transaction_id, const Timestamp &commit_ts, bool is_commit);
 
         void HandleWound(const uint64_t transaction_id);
 
@@ -280,12 +280,12 @@ namespace strongstore
 
         // For tracking RO reply progress
         SnapshotResult ReceiveFastPath(StrongSession &session, uint64_t transaction_id,
-                                       int shard_idx,
-                                       const std::vector<Value> &values,
-                                       const std::vector<PreparedTransaction> &prepares);
+                                    int shard_idx,
+                                    const std::vector<Value> &values,
+                                    const std::vector<PreparedTransaction> &prepares);
         SnapshotResult ReceiveSlowPath(StrongSession &session, uint64_t transaction_id,
-                                       uint64_t rw_transaction_id,
-                                       bool is_commit, const Timestamp &commit_ts);
+                                    uint64_t rw_transaction_id,
+                                    bool is_commit, const Timestamp &commit_ts);
         SnapshotResult FindSnapshot(std::unordered_map<uint64_t, PreparedTransaction> &prepared,
                                     std::vector<CommittedTransaction> &committed);
         void AddValues(StrongSession &session, const std::vector<Value> &values);

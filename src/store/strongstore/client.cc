@@ -1,30 +1,30 @@
 /***********************************************************************
- *
- * store/strongstore/client.cc:
- *
- * Copyright 2022 Jeffrey Helt, Matthew Burke, Amit Levy, Wyatt Lloyd
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation
- * files (the "Software"), to deal in the Software without
- * restriction, including without limitation the rights to use, copy,
- * modify, merge, publish, distribute, sublicense, and/or sell copies
- * of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
- * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
- * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- *
- **********************************************************************/
+*
+* store/strongstore/client.cc:
+*
+* Copyright 2022 Jeffrey Helt, Matthew Burke, Amit Levy, Wyatt Lloyd
+*
+* Permission is hereby granted, free of charge, to any person
+* obtaining a copy of this software and associated documentation
+* files (the "Software"), to deal in the Software without
+* restriction, including without limitation the rights to use, copy,
+* modify, merge, publish, distribute, sublicense, and/or sell copies
+* of the Software, and to permit persons to whom the Software is
+* furnished to do so, subject to the following conditions:
+*
+* The above copyright notice and this permission notice shall be
+* included in all copies or substantial portions of the Software.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+* NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+* BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+* ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+* CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+* SOFTWARE.
+*
+**********************************************************************/
 #include "store/strongstore/client.h"
 
 #include <rss/lib.h>
@@ -43,28 +43,28 @@ namespace strongstore
 {
 
     Client::Client(Consistency consistency, const NetworkConfiguration &net_config,
-                   const std::string &client_region,
-                   transport::Configuration &config, uint64_t client_id,
-                   int nShards, int closestReplica, Transport *transport,
-                   Partitioner *part, TrueTime &tt, bool debug_stats,
-                   double nb_time_alpha)
+                const std::string &client_region,
+                transport::Configuration &config, uint64_t client_id,
+                int nShards, int closestReplica, Transport *transport,
+                Partitioner *part, TrueTime &tt, bool debug_stats,
+                double nb_time_alpha)
         : coord_choices_{},
-          min_lats_{},
-          sessions_{},
-          sessions_by_transaction_id_{},
-          net_config_{net_config},
-          client_region_{client_region},
-          service_name_{"spanner-" + std::to_string(client_id) + "-" + std::to_string(std::rand())},
-          config_{config},
-          client_id_{client_id},
-          nshards_(nShards),
-          transport_{transport},
-          part_(part),
-          tt_{tt},
-          next_transaction_id_{client_id_ << 26},
-          consistency_{consistency},
-          nb_time_alpha_{nb_time_alpha},
-          debug_stats_{debug_stats}
+        min_lats_{},
+        sessions_{},
+        sessions_by_transaction_id_{},
+        net_config_{net_config},
+        client_region_{client_region},
+        service_name_{"spanner-" + std::to_string(client_id) + "-" + std::to_string(std::rand())},
+        config_{config},
+        client_id_{client_id},
+        nshards_(nShards),
+        transport_{transport},
+        part_(part),
+        tt_{tt},
+        next_transaction_id_{client_id_ << 26},
+        consistency_{consistency},
+        nb_time_alpha_{nb_time_alpha},
+        debug_stats_{debug_stats}
     {
         Debug("Initializing StrongStore client with id [%lu]", client_id_);
 
@@ -224,7 +224,7 @@ namespace strongstore
         for (auto &c : coord_choices_)
         {
             Debug("shards: %s, min_coord: %d", c.first.to_string().c_str(),
-                  c.second);
+                c.second);
         }
 
         Debug("Printing min_lats:");
@@ -382,11 +382,12 @@ namespace strongstore
     }
 
     /* Begins a transaction. All subsequent operations before a commit() or
-     * abort() are part of this transaction.
-     */
+    * abort() are part of this transaction.
+    */
     void Client::Begin(Session &session, begin_callback bcb, begin_timeout_callback btcb, uint32_t timeout)
     {
-        rss::StartTransaction(service_name_, session, std::bind(&Client::ContinueBegin, this, std::ref(session), bcb));
+        ContinueBegin(session, bcb);
+        //rss::StartTransaction(service_name_, session, std::bind(&Client::ContinueBegin, this, std::ref(session), bcb));
     }
 
     void Client::ContinueBegin(Session &s, begin_callback bcb)
@@ -416,10 +417,11 @@ namespace strongstore
     }
 
     /* Begins a transaction, retrying the transaction indicated by session.
-     */
+    */
     void Client::Retry(Session &session, begin_callback bcb, begin_timeout_callback btcb, uint32_t timeout)
     {
-        rss::StartTransaction(service_name_, session, std::bind(&Client::ContinueRetry, this, std::ref(session), bcb));
+        ContinueRetry(session, bcb);
+        //rss::StartTransaction(service_name_, session, std::bind(&Client::ContinueRetry, this, std::ref(session), bcb));
     }
 
     void Client::ContinueRetry(Session &s, begin_callback bcb)
@@ -446,8 +448,8 @@ namespace strongstore
     }
 
     /* Returns the value corresponding to the supplied key. */
-    void Client::Get(Session &s, const std::string &key, get_callback gcb,
-                     get_timeout_callback gtcb, uint32_t timeout)
+    void Client::Get(Session &s, const std::string &key, get_callback gcb, 
+                    get_timeout_callback gtcb, uint32_t timeout)
     {
         auto &session = static_cast<StrongSession &>(s);
 
@@ -462,7 +464,7 @@ namespace strongstore
             return;
         }
 
-        ASSERT(session.executing());
+        //ASSERT(session.executing());
 
         // Contact the appropriate shard to get the value.
         int i = (*part_)(key, nshards_, -1, session.participants());
@@ -490,7 +492,7 @@ namespace strongstore
 
     /* Returns the value corresponding to the supplied key. */
     void Client::GetForUpdate(Session &s, const std::string &key, get_callback gcb,
-                              get_timeout_callback gtcb, uint32_t timeout)
+                            get_timeout_callback gtcb, uint32_t timeout)
     {
         auto &session = static_cast<StrongSession &>(s);
 
@@ -505,7 +507,7 @@ namespace strongstore
             return;
         }
 
-        ASSERT(session.executing());
+        //ASSERT(session.executing());
 
         // Contact the appropriate shard to get the value.
         int i = (*part_)(key, nshards_, -1, session.participants());
@@ -533,7 +535,7 @@ namespace strongstore
 
     /* Sets the value corresponding to the supplied key. */
     void Client::Put(Session &s, const std::string &key, const std::string &value,
-                     put_callback pcb, put_timeout_callback ptcb, uint32_t timeout)
+                    put_callback pcb, put_timeout_callback ptcb, uint32_t timeout)
     {
         auto &session = static_cast<StrongSession &>(s);
 
@@ -619,7 +621,7 @@ namespace strongstore
         }
 
         auto cccb = std::bind(&Client::CommitCallback, this, std::ref(session), req->id,
-                              std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
+                            std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
         auto cctcb = [](int) {};
 
         auto pccb = [transaction_id = tid](int status)
@@ -682,7 +684,7 @@ namespace strongstore
             Debug("min_read_timestamp_: %lu.%lu", min_read_ts.getTimestamp(), min_read_ts.getID());
         }
 
-        rss::EndTransaction(service_name_, session);
+        //rss::EndTransaction(service_name_, session);
 
         transport_->Timer(ms, std::bind(ccb, tstatus));
     }
@@ -735,7 +737,7 @@ namespace strongstore
             pending_reqs_.erase(req_id);
             delete req;
 
-            rss::EndTransaction(service_name_, session);
+            //rss::EndTransaction(service_name_, session);
 
             Debug("[%lu] Abort finished", tid);
             acb();
@@ -744,8 +746,8 @@ namespace strongstore
 
     /* Commits RO transaction. */
     void Client::ROCommit(Session &s, const std::unordered_set<std::string> &keys,
-                          commit_callback ccb, commit_timeout_callback ctcb,
-                          uint32_t timeout)
+                        commit_callback ccb, commit_timeout_callback ctcb,
+                        uint32_t timeout)
     {
         auto &session = static_cast<StrongSession &>(s);
 
@@ -794,8 +796,8 @@ namespace strongstore
         Debug("[%lu] min_ts: %lu.%lu", tid, min_ts.getTimestamp(), min_ts.getID());
 
         auto roccb = std::bind(&Client::ROCommitCallback, this, std::ref(session), req->id,
-                               std::placeholders::_1, std::placeholders::_2,
-                               std::placeholders::_3);
+                            std::placeholders::_1, std::placeholders::_2,
+                            std::placeholders::_3);
         auto rocscb = std::bind(&Client::ROCommitSlowCallback, this, std::ref(session), req->id,
                                 std::placeholders::_1, std::placeholders::_2,
                                 std::placeholders::_3, std::placeholders::_4);
@@ -808,8 +810,8 @@ namespace strongstore
     }
 
     void Client::ROCommitCallback(StrongSession &session, uint64_t req_id, int shard_idx,
-                                  const std::vector<Value> &values,
-                                  const std::vector<PreparedTransaction> &prepares)
+                                const std::vector<Value> &values,
+                                const std::vector<PreparedTransaction> &prepares)
     {
         auto tid = session.transaction_id();
 
@@ -836,7 +838,7 @@ namespace strongstore
             auto &min_read_ts = session.min_read_ts();
             Debug("min_read_timestamp_: %lu.%lu", min_read_ts.getTimestamp(), min_read_ts.getID());
 
-            rss::EndTransaction(service_name_, session);
+            //rss::EndTransaction(service_name_, session);
 
             Debug("[%lu] COMMIT OK", tid);
             ccb(COMMITTED);
@@ -848,7 +850,7 @@ namespace strongstore
     }
 
     void Client::ROCommitSlowCallback(StrongSession &session, uint64_t req_id, int shard_idx,
-                                      uint64_t rw_transaction_id, const Timestamp &commit_ts, bool is_commit)
+                                    uint64_t rw_transaction_id, const Timestamp &commit_ts, bool is_commit)
     {
         auto search = pending_reqs_.find(req_id);
         if (search == pending_reqs_.end())
@@ -875,7 +877,7 @@ namespace strongstore
             auto &min_read_ts = session.min_read_ts();
             Debug("min_read_timestamp_: %lu.%lu", min_read_ts.getTimestamp(), min_read_ts.getID());
 
-            rss::EndTransaction(service_name_, session);
+            //rss::EndTransaction(service_name_, session);
 
             Debug("[%lu] COMMIT OK", tid);
             ccb(COMMITTED);
@@ -887,10 +889,10 @@ namespace strongstore
     }
 
     SnapshotResult Client::ReceiveFastPath(StrongSession &session,
-                                           uint64_t transaction_id,
-                                           int shard_idx,
-                                           const std::vector<Value> &values,
-                                           const std::vector<PreparedTransaction> &prepares)
+                                        uint64_t transaction_id,
+                                        int shard_idx,
+                                        const std::vector<Value> &values,
+                                        const std::vector<PreparedTransaction> &prepares)
     {
         Debug("[%lu] Received fast path RO response", transaction_id);
 
@@ -912,8 +914,8 @@ namespace strongstore
     }
 
     SnapshotResult Client::ReceiveSlowPath(StrongSession &session, uint64_t transaction_id,
-                                           uint64_t rw_transaction_id,
-                                           bool is_commit, const Timestamp &commit_ts)
+                                        uint64_t rw_transaction_id,
+                                        bool is_commit, const Timestamp &commit_ts)
     {
         Debug("[%lu] Received slow path RO response", transaction_id);
         ASSERT(consistency_ == RSS);

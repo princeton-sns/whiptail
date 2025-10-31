@@ -8,7 +8,7 @@
     ]
   ],
   "cc": [
-    "2pl"  ],
+    "ncc"  ],
   "client_num_ops_txn": 1,
   "replication_protocol": "strong",
   "client_protocol_mode": "span-lock",
@@ -125,8 +125,8 @@
   "pin_server_processes": [
     2
   ],
-  "client_debug_output": false,
-  "server_debug_output": false,
+  "client_debug_output": true,
+  "server_debug_output": true,
   "client_debug_stats": true,
   "server_debug_stats": true,
   "server_load_time": 5,

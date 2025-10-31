@@ -1,30 +1,30 @@
 /***********************************************************************
- *
- * store/strongstore/shardclient.cc:
- *
- * Copyright 2022 Jeffrey Helt, Matthew Burke, Amit Levy, Wyatt Lloyd
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation
- * files (the "Software"), to deal in the Software without
- * restriction, including without limitation the rights to use, copy,
- * modify, merge, publish, distribute, sublicense, and/or sell copies
- * of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
- * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
- * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- *
- **********************************************************************/
+*
+* store/strongstore/shardclient.cc:
+*
+* Copyright 2022 Jeffrey Helt, Matthew Burke, Amit Levy, Wyatt Lloyd
+*
+* Permission is hereby granted, free of charge, to any person
+* obtaining a copy of this software and associated documentation
+* files (the "Software"), to deal in the Software without
+* restriction, including without limitation the rights to use, copy,
+* modify, merge, publish, distribute, sublicense, and/or sell copies
+* of the Software, and to permit persons to whom the Software is
+* furnished to do so, subject to the following conditions:
+*
+* The above copyright notice and this permission notice shall be
+* included in all copies or substantial portions of the Software.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+* NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+* BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+* ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+* CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+* SOFTWARE.
+*
+**********************************************************************/
 #include "store/strongstore/shardclient.h"
 
 #include "lib/configuration.h"
@@ -36,14 +36,14 @@ namespace strongstore
     using namespace proto;
 
     ShardClient::ShardClient(const transport::Configuration &config,
-                             Transport *transport, uint64_t client_id, int shard,
-                             wound_callback wcb)
+                            Transport *transport, uint64_t client_id, int shard,
+                            wound_callback wcb)
         : last_req_id_{0},
-          config_{config},
-          transport_{transport},
-          client_id_{client_id},
-          shard_idx_{shard},
-          wcb_{wcb}
+        config_{config},
+        transport_{transport},
+        client_id_{client_id},
+        shard_idx_{shard},
+        wcb_{wcb}
     {
         transport_->Register(this, config_, -1, -1);
 
@@ -54,8 +54,8 @@ namespace strongstore
     ShardClient::~ShardClient() {}
 
     void ShardClient::ReceiveMessage(const TransportAddress &remote,
-                                     const std::string &type,
-                                     const std::string &data, void *meta_data)
+                                    const std::string &type,
+                                    const std::string &data, void *meta_data)
     {
         if (type == get_reply_.GetTypeName())
         {
@@ -163,33 +163,22 @@ namespace strongstore
     }
 
     void ShardClient::Get(uint64_t transaction_id, const std::string &key,
-                          get_callback gcb, get_timeout_callback gtcb,
-                          uint32_t timeout)
+                        get_callback gcb, get_timeout_callback gtcb,
+                        uint32_t timeout)
     {
-        GetBuffered(transaction_id, key, gcb, gtcb, timeout);
-    }
-
-    void ShardClient::GetBuffered(uint64_t transaction_id, const std::string &key,
-        get_callback gc, get_timeout_callback gtcb, uint32_t timeout) {
-        auto search = transactions_.find(transaction_id);
-        ASSERT(search != transactions_.end());
-
-        auto &t = search->second;
-        t.addPendingReadSet(key);
-
-        gc(REPLY_OK, key, "", Timestamp());
+        Get(transaction_id, key, gcb, gtcb, timeout, false);
     }
 
     void ShardClient::GetForUpdate(uint64_t transaction_id, const std::string &key,
-                                   get_callback gcb, get_timeout_callback gtcb,
-                                   uint32_t timeout)
+                                get_callback gcb, get_timeout_callback gtcb,
+                                uint32_t timeout)
     {
         Get(transaction_id, key, gcb, gtcb, timeout, true);
     }
 
     void ShardClient::Get(uint64_t transaction_id, const std::string &key,
-                          get_callback gcb, get_timeout_callback gtcb,
-                          uint32_t timeout, bool for_update)
+                        get_callback gcb, get_timeout_callback gtcb,
+                        uint32_t timeout, bool for_update)
     {
         // Send the GET operation to appropriate shard.
         Debug("[shard %i] Sending GET [%s]", shard_idx_, key.c_str());
@@ -238,7 +227,7 @@ namespace strongstore
         delete req;
 
         Debug("[%lu] [shard %i] Received GET reply: %s %d",
-              transaction_id, shard_idx_, key.c_str(), status);
+            transaction_id, shard_idx_, key.c_str(), status);
 
         std::string val;
         Timestamp ts;
@@ -256,8 +245,8 @@ namespace strongstore
     }
 
     void ShardClient::Put(uint64_t transaction_id, const std::string &key, const std::string &value,
-                          put_callback pcb, put_timeout_callback ptcb,
-                          uint32_t timeout)
+                        put_callback pcb, put_timeout_callback ptcb,
+                        uint32_t timeout)
     {
         auto search = transactions_.find(transaction_id);
         ASSERT(search != transactions_.end());
@@ -269,12 +258,12 @@ namespace strongstore
     }
 
     void ShardClient::ROCommit(uint64_t transaction_id,
-                               const std::vector<std::string> &keys,
-                               const Timestamp &commit_timestamp,
-                               const Timestamp &min_read_timestamp,
-                               ro_commit_callback ccb,
-                               ro_commit_slow_callback cscb,
-                               ro_commit_timeout_callback ctcb, uint32_t timeout)
+                            const std::vector<std::string> &keys,
+                            const Timestamp &commit_timestamp,
+                            const Timestamp &min_read_timestamp,
+                            ro_commit_callback ccb,
+                            ro_commit_slow_callback cscb,
+                            ro_commit_timeout_callback ctcb, uint32_t timeout)
     {
         Debug("[%lu] [shard %i] Sending ROCommit", transaction_id, shard_idx_);
 
@@ -427,21 +416,15 @@ namespace strongstore
         transactions_.erase(transaction_id);
         read_sets_.erase(transaction_id);
 
-
-        std::vector<Value> values;
-        for (const auto &v: reply.values()){
-            values.push_back(Value(v));
-        }
-
         Debug("[shard %i] COMMIT timestamp %lu.%lu", shard_idx_,
-              reply.commit_timestamp().timestamp(), reply.commit_timestamp().id());
-        ccb(reply.status(),Timestamp(reply.commit_timestamp()), Timestamp(reply.nonblock_timestamp()));
+            reply.commit_timestamp().timestamp(), reply.commit_timestamp().id());
+        ccb(reply.status(), Timestamp(reply.commit_timestamp()), Timestamp(reply.nonblock_timestamp()));
     }
 
     void ShardClient::RWCommitParticipant(uint64_t transaction_id,
-                                          int coordinator_shard, Timestamp &nonblock_timestamp,
-                                          rw_part_commit_callback ccb, rw_part_commit_timeout_callback ctcb,
-                                          uint32_t timeout)
+                                        int coordinator_shard, Timestamp &nonblock_timestamp,
+                                        rw_part_commit_callback ccb, rw_part_commit_timeout_callback ctcb,
+                                        uint32_t timeout)
     {
         Debug("[%lu] [shard %i] Sending RWCommitParticipant", transaction_id, shard_idx_);
 
@@ -525,7 +508,7 @@ namespace strongstore
         if (itr == pendingPrepareOKs.end())
         {
             Debug("[%d][%lu] PrepareOKReply for stale request.", shard_idx_,
-                  req_id);
+                req_id);
             return; // stale request
         }
 
@@ -535,14 +518,14 @@ namespace strongstore
         delete req;
 
         Debug("[shard %i] COMMIT timestamp [%lu.%lu]", shard_idx_,
-              reply.commit_timestamp().timestamp(), reply.commit_timestamp().id());
+            reply.commit_timestamp().timestamp(), reply.commit_timestamp().id());
         pcb(reply.status(), Timestamp(reply.commit_timestamp()));
     }
 
     void ShardClient::PrepareAbort(uint64_t transaction_id, int participant_shard,
-                                   prepare_callback pcb,
-                                   prepare_timeout_callback ptcb,
-                                   uint32_t timeout)
+                                prepare_callback pcb,
+                                prepare_timeout_callback ptcb,
+                                uint32_t timeout)
     {
         Debug("[shard %i] Sending PrepareAbort [%lu]", shard_idx_, transaction_id);
 
@@ -559,7 +542,7 @@ namespace strongstore
         prepare_abort_.set_participant_shard(participant_shard);
 
         transport_->SendMessageToReplica(this, shard_idx_, replica_,
-                                         prepare_abort_);
+                                        prepare_abort_);
     }
 
     void ShardClient::HandlePrepareAbortReply(
@@ -572,7 +555,7 @@ namespace strongstore
         if (itr == pendingPrepareAborts.end())
         {
             Debug("[%d][%lu] PrepareAbortReply for stale request.", shard_idx_,
-                  req_id);
+                req_id);
             return; // stale request
         }
 
@@ -651,7 +634,7 @@ namespace strongstore
         if (itr == pendingAborts.end())
         {
             Debug("[%d][%lu] PrepareAbortReply for stale request.", shard_idx_,
-                  req_id);
+                req_id);
             return; // stale request
         }
 

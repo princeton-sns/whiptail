@@ -1,30 +1,30 @@
 /***********************************************************************
- *
- * store/benchmark/async/bench_client.h:
- *
- * Copyright 2022 Jeffrey Helt, Matthew Burke, Amit Levy, Wyatt Lloyd
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation
- * files (the "Software"), to deal in the Software without
- * restriction, including without limitation the rights to use, copy,
- * modify, merge, publish, distribute, sublicense, and/or sell copies
- * of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
- * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
- * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- *
- **********************************************************************/
+*
+* store/benchmark/async/bench_client.h:
+*
+* Copyright 2022 Jeffrey Helt, Matthew Burke, Amit Levy, Wyatt Lloyd
+*
+* Permission is hereby granted, free of charge, to any person
+* obtaining a copy of this software and associated documentation
+* files (the "Software"), to deal in the Software without
+* restriction, including without limitation the rights to use, copy,
+* modify, merge, publish, distribute, sublicense, and/or sell copies
+* of the Software, and to permit persons to whom the Software is
+* furnished to do so, subject to the following conditions:
+*
+* The above copyright notice and this permission notice shall be
+* included in all copies or substantial portions of the Software.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+* NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+* BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+* ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+* CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+* SOFTWARE.
+*
+**********************************************************************/
 #ifndef OPEN_BENCHMARK_CLIENT_H
 #define OPEN_BENCHMARK_CLIENT_H
 
@@ -73,6 +73,7 @@ public:
 
     void SendNext();
     void ExecuteCallback(uint64_t transaction_id, transaction_status_t result);
+    void IssueTransaction(const uint64_t session_id);
 
     inline bool IsFullyDone() { return done; }
 
@@ -104,7 +105,8 @@ private:
     {
     public:
         SessionState(Session &session, AsyncTransaction *transaction, execute_callback ecb, std::size_t client_index)
-            : lat_{}, session_{session}, transaction_{transaction}, ecb_{ecb}, n_attempts_{1}, op_index_{1}, current_client_index_{client_index}, current_client_txn_count_{0} {}
+            : lat_{}, session_{session}, transaction_{transaction}, ecb_{ecb}, n_attempts_{1}, op_index_{0}, current_client_index_{client_index},
+            read_phase_completed_{true}, current_client_txn_count_{0}, outstanding_gets_{0} {}
 
         Session &session() { return session_; }
         AsyncTransaction *transaction() const { return transaction_; }
@@ -116,6 +118,11 @@ private:
 
         uint64_t op_index() const { return op_index_; }
         void incr_op_index() { op_index_++; }
+        void finish_read_phase() { read_phase_completed_ = true; }
+        bool get_read_phase_completed() { return read_phase_completed_; }
+        uint64_t get_outstanding_gets() { return outstanding_gets_; }
+        void increment_outstanding_gets() { outstanding_gets_++; }
+        void decrement_outstanding_gets() { outstanding_gets_--; }
 
         std::size_t current_client_index() const { return current_client_index_; }
 
@@ -126,13 +133,13 @@ private:
             ecb_ = ecb;
             current_client_index_ = client_index;
             n_attempts_ = 1;
-            op_index_ = 1;
+            op_index_ = 0;
         }
 
         void retry_transaction()
         {
             n_attempts_++;
-            op_index_ = 1;
+            op_index_ = 0;
         }
 
     private:
@@ -144,6 +151,10 @@ private:
         std::size_t op_index_;
         std::size_t current_client_index_;
         std::size_t current_client_txn_count_;
+        bool read_phase_completed_;
+        uint64_t outstanding_gets_;
+
+
     };
 
     void ExecuteAbort(const uint64_t session_id, transaction_status_t status);
@@ -151,14 +162,17 @@ private:
     void SendNextInSession(const uint64_t session_id);
 
     void ExecuteNextOperation(const uint64_t session_id);
+    void CommitAfterAwaitingGets(const uint64_t session_id);
 
+    void ImmediateGetCallback(const uint64_t session_id,
+                    const std::string &key);
     void GetCallback(const uint64_t session_id,
-                     int status, const std::string &key, const std::string &val, Timestamp ts);
+                    int status, const std::string &key, const std::string &val, Timestamp ts);
     void GetTimeout(const uint64_t session_id,
                     int status, const std::string &key);
 
     void PutCallback(const uint64_t session_id,
-                     int status, const std::string &key, const std::string &val);
+                    int status, const std::string &key, const std::string &val);
     void PutTimeout(const uint64_t session_id,
                     int status, const std::string &key, const std::string &val);
 
