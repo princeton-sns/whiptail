@@ -36,8 +36,7 @@
 #include <sstream>
 #include <thread>
 #include <vector>
-#include <execinfo.h>
-#include <unistd.h>
+
 #include "lib/latency.h"
 #include "lib/tcptransport.h"
 #include "lib/timeval.h"
@@ -53,12 +52,6 @@
 #include "store/strongstore/client.h"
 #include "store/strongstore/networkconfig.h"
 #include "store/nccstore/client.h"
-
-#ifdef DEBUG
-bool debug = true;
-#else
-bool debug = false;
-#endif
 
 enum protomode_t
 {
@@ -423,13 +416,11 @@ Partitioner *part;
 KeySelector *keySelector;
 
 void Signal(int signal);
-void segfault_handler(int sig);
 void Cleanup();
 void FlushStats();
 
 int main(int argc, char **argv)
 {
-
     gflags::SetUsageMessage(
         "executes transactions from various transactional workload\n"
         "           benchmarks against various distributed replicated "
@@ -858,14 +849,12 @@ int main(int argc, char **argv)
         std::this_thread::sleep_for(std::chrono::milliseconds(250));
     }
 
-    // tport->Timer(FLAGS_exp_duration * 1000 - 1000, FlushStats);
+    tport->Timer(FLAGS_exp_duration * 1000 - 1000, FlushStats);
     // tport->Timer(FLAGS_exp_duration * 1000, Cleanup);
 
     std::signal(SIGKILL, Signal);
     std::signal(SIGTERM, Signal);
     std::signal(SIGINT, Signal);
-
-    std::signal(SIGSEGV, segfault_handler);
 
     CALLGRIND_START_INSTRUMENTATION;
     tport->Run();
@@ -901,27 +890,6 @@ void Signal(int signal)
     Notice("Gracefully stopping bench clients after signal %d.", signal);
     tport->Stop();
     Cleanup();
-}
-
-void segfault_handler(int sig) {
-    void *array[20];
-    size_t size;
-
-    // Get void*'s for all entries on the stack
-    size = backtrace(array, 20);
-
-    // Print signal info
-    fprintf(stderr, "\n\033[31mCaught signal %d (Segmentation fault)\033[0m\n", sig);
-    fprintf(stderr, "Stack trace (most recent call first):\n");
-
-    // Print stack trace symbols to stderr
-    backtrace_symbols_fd(array, size, STDERR_FILENO);
-
-    // Optionally flush to log file or syslog
-    // FILE* log = fopen("segfault.log", "a");
-    // if (log) { backtrace_symbols_fd(array, size, fileno(log)); fclose(log); }
-
-    _exit(1);  // Use _exit() instead of exit() to avoid calling destructors
 }
 
 void Cleanup()

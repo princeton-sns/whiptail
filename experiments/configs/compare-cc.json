@@ -8,9 +8,7 @@
     ]
   ],
   "cc": [
-    "2pl",
-    "ncc"
-  ],
+    "2pl"  ],
   "client_num_ops_txn": 1,
   "replication_protocol": "strong",
   "client_protocol_mode": "span-lock",
@@ -109,7 +107,7 @@
   "client_max_attempts": -1,
   "client_max_backoff": 2500,
   "client_message_timeout": 60000,
-  "run_locally": false,
+  "run_locally": true,
   "replication_protocol_settings": {
     "message_transport_type": "tcp"
   },
@@ -120,21 +118,21 @@
   "experiment_name": "",
   "codebase_name": "rss",
   "pin_client_processes": [
-    [
+    
       1
-    ]
+    
   ],
   "pin_server_processes": [
     2
   ],
-  "client_debug_output": true,
-  "server_debug_output": true,
+  "client_debug_output": false,
+  "server_debug_output": false,
   "client_debug_stats": true,
   "server_debug_stats": true,
   "server_load_time": 5,
-  "client_experiment_length": 95,
+  "client_experiment_length": 35,
   "client_rand_sleep": 0,
-  "client_ramp_up": 30,
+  "client_ramp_up": 10,
   "client_ramp_down": 5,
   "default_remote_shell": "bash",
   "server_host_format_str": "%s%s%s",
@@ -330,16 +328,16 @@
   "plot_tput_lat_y_label": "Latency (ms)",
   "input_latency_scale": 1000,
   "output_latency_scale": 1,
-  "src_commit_hash": "han_baselines",
+  "src_commit_hash": "han_baseline_ncc",
   "stats_file_name": "stats.json",
-  "base_local_exp_directory": "/users/lisirrx/whiptail/experiments/results",
+  "base_local_exp_directory": "/workspaces/whiptail/experiments/results",
   "base_mounted_fs_path": "/mnt/extra",
-  "base_remote_bin_directory_nfs": "/users/lisirrx/whiptail",
+  "base_remote_bin_directory_nfs": "/workspaces/whiptail",
   "base_remote_exp_directory": "/mnt/extra/experiments",
   "bin_directory_name": "bin",
   "client_bin_name": "benchmark",
   "client_name_format_str": "%s",
-  "emulab_user": "lisirrx",
+  "emulab_user": "root",
   "max_bandwidth": "10gibps",
   "max_file_descriptors": 1000000,
   "max_retries": 0,
@@ -347,7 +345,7 @@
   "out_directory_name": "out",
   "server_bin_name": "server",
   "fig_workspace": "microsecondparty",
-  "src_directory": "/users/lisirrx/whiptail/src",
+  "src_directory": "/workspaces/whiptail/src",
   "make_collect_bins": [
     "store/benchmark/async/benchmark",
     "store/server"

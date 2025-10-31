@@ -26,7 +26,6 @@
  *
  **********************************************************************/
 #include "store/server.h"
-#include "gperftools/profiler.h"
 
 #include <gflags/gflags.h>
 #include <string>
@@ -390,9 +389,7 @@ int main(int argc, char **argv)
     default:
         NOT_REACHABLE();
     }
-    std::string name = std::to_string(cc) + ".prof";
 
-    ProfilerStart(name.c_str());
     switch (proto)
     {
     case PROTO_STRONG:
@@ -582,7 +579,6 @@ int main(int argc, char **argv)
     }
     Debug("Created replica???");
 
-   
     std::signal(SIGKILL, Cleanup);
     std::signal(SIGTERM, Cleanup);
     std::signal(SIGINT, Cleanup);
@@ -591,8 +587,6 @@ int main(int argc, char **argv)
     tport->Run();
     CALLGRIND_STOP_INSTRUMENTATION;
     CALLGRIND_DUMP_STATS;
-
-    ProfilerStop();
 
     if (FLAGS_stats_file.size() > 0)
     {

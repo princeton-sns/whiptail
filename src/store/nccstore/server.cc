@@ -207,26 +207,7 @@ void NCCServer::ExecuteTransaction(const NCCExecute &msg, TxnRecord &txn) {
         // new_ver <- [req.value, (tw, tr), "undecided"]
         // DS[req.key] <- DS[req.key] + new_ver
 
-        Debug("[%lu] Getting versions for key %s ********************************** before write", txn.tx_id, key.c_str());
-        auto versions = store_.GetVersions(key);
-        Debug("[%lu] Versions: %d", txn.tx_id, versions.size());
-        for (const auto& version : versions) {
-            Debug("[%lu] Version: %s, tw=%lu.%lu, tr=%lu.%lu, status=%d", txn.tx_id, version.value.c_str(), version.tw.getTimestamp(), version.tw.getID(), version.tr.getTimestamp(), version.tr.getID(), version.status);
-        }
-        Debug("[%lu] End of versions for key %s ********************************** before write", txn.tx_id, key.c_str());
-
-
-        Debug("[%lu] Writing key %s, value %s, tw=%lu.%lu", txn.tx_id, key.c_str(), value.c_str(), tw.getTimestamp(), tw.getID());
         store_.Write(key, value, tw);
-
-        Debug("[%lu] Getting versions for key %s ********************************** after write", txn.tx_id, key.c_str());
-        versions = store_.GetVersions(key);
-        Debug("[%lu] Versions: %d", txn.tx_id, versions.size());
-        for (const auto& version : versions) {
-            Debug("[%lu] Version: %s, tw=%lu.%lu, tr=%lu.%lu, status=%d", txn.tx_id, version.value.c_str(), version.tw.getTimestamp(), version.tw.getID(), version.tr.getTimestamp(), version.tr.getID(), version.status);
-        }
-        Debug("[%lu] End of versions for key %s ********************************** after write", txn.tx_id, key.c_str());
-
         // Algorithm 5.2: resp <- ["done", (tw, tr)]
         NCCWriteResult *write_result = reply.add_writes();
         write_result->set_key(key);
@@ -253,14 +234,7 @@ void NCCServer::ExecuteTransaction(const NCCExecute &msg, TxnRecord &txn) {
     // RTC Debug Switch: ENABLE_RTC can be toggled in server.h
     if (ENABLE_RTC) {
         Debug("[%lu] RTC enabled, adding to response queues", txn.tx_id);
-        Debug("[%lu] Read set: %d", txn.tx_id, txn.read_set.size());
-        for (const string &key : txn.read_set) {
-            Debug("[%lu] Read key: %s", txn.tx_id, key.c_str());
-        }
-        Debug("[%lu] Write set: %d", txn.tx_id, txn.write_set.size());
-        for (const auto &kv : txn.write_set) {
-            Debug("[%lu] Write key: %s", txn.tx_id, kv.first.c_str());
-        }
+       
         // RTC enabled: Add to response queues and check dependencies
         for (const string &key : txn.read_set) {
             PendingResponse pr;
