@@ -120,11 +120,11 @@ public:
     void Retry(Session &session, begin_callback bcb,
                begin_timeout_callback btcb, uint32_t timeout) override;
 
-    void Get(Session &s, const std::string &key, get_callback gcb,
-             get_timeout_callback gtcb, uint32_t timeout) override;
+    void Get(Session &s, const std::string &key, ::get_callback gcb,
+             ::get_timeout_callback gtcb, uint32_t timeout) override;
 
-    void GetForUpdate(Session &s, const std::string &key, get_callback gcb,
-                      get_timeout_callback gtcb, uint32_t timeout) override;
+    void GetForUpdate(Session &s, const std::string &key, ::get_callback gcb,
+                      ::get_timeout_callback gtcb, uint32_t timeout) override;
 
     void Put(Session &s, const std::string &key, const std::string &value,
              put_callback pcb, put_timeout_callback ptcb,
@@ -168,6 +168,8 @@ private:
     void SendCommitDecision(NCCSession &session, bool commit, uint64_t req_id);
 
     // Callback handlers
+    void HandleGetReply(NCCSession &session, uint64_t req_id,
+                        int shard, int status, const proto::NCCGetReply &reply);
     void HandleExecuteReply(NCCSession &session, uint64_t req_id, 
                             int shard, int status, const proto::NCCExecuteReply &reply);
     void HandleCommitReply(uint64_t req_id, int shard, int status);
@@ -193,7 +195,9 @@ private:
     uint64_t last_req_id_;
 
     std::vector<ShardClient *> shard_clients_;
+
     std::unordered_map<uint64_t, PendingRequest *> pending_requests_;
+    std::unordered_map<uint64_t, std::pair<std::string, ::get_callback>> pending_gets_;  // req_id -> (key, callback from Client interface)
     std::unordered_map<uint64_t, NCCSession> sessions_;  // Store sessions by id
 
     Stats stats_;

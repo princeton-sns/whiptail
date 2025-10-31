@@ -21,6 +21,10 @@
 
 namespace nccstore {
 
+// Shard-level Get reply callbacks (avoid name clash with Client get_callback)
+typedef std::function<void(int, const proto::NCCGetReply &)> shard_get_callback;
+typedef std::function<void(int)> shard_get_timeout_callback;
+
 typedef std::function<void(int, const proto::NCCExecuteReply &)> execute_callback;
 typedef std::function<void(int)> execute_timeout_callback;
 
@@ -41,10 +45,17 @@ public:
                 int shard_idx);
     ~ShardClient();
 
-    // Execute transaction at this shard
+    // Get read operations at this shard
+    void Get(uint64_t tx_id,
+             const Timestamp &tx_ts,
+             const std::vector<std::string> &read_keys,
+             shard_get_callback gcb,
+             shard_get_timeout_callback gtcb,
+             uint32_t timeout);
+
+    // Execute transaction at this shard (writes only)
     void Execute(uint64_t tx_id,
                  const Timestamp &tx_ts,
-                 const std::vector<std::string> &read_keys,
                  const std::map<std::string, std::string> &writes,
                  execute_callback ecb,
                  execute_timeout_callback etcb,
@@ -81,14 +92,26 @@ public:
                         void *meta_data) override;
 
 private:
+    struct PendingGet {
+        uint64_t tx_id;
+        uint64_t req_id;
+        shard_get_callback gcb;
+        shard_get_timeout_callback gtcb;
+        uint64_t timeout_id_;
+
+        PendingGet(uint64_t tid, uint64_t rid)
+            : tx_id(tid), req_id(rid), timeout_id_(0) {}
+    };
+
     struct PendingExecute {
         uint64_t tx_id;
         uint64_t req_id;
         execute_callback ecb;
         execute_timeout_callback etcb;
+        uint64_t timeout_id_;
 
         PendingExecute(uint64_t tid, uint64_t rid)
-            : tx_id(tid), req_id(rid) {}
+            : tx_id(tid), req_id(rid), timeout_id_(0) {}
     };
 
     struct PendingCommit {
@@ -121,6 +144,7 @@ private:
             : tx_id(tid), req_id(rid) {}
     };
 
+    void HandleGetReply(const proto::NCCGetReply &reply);
     void HandleExecuteReply(const proto::NCCExecuteReply &reply);
     void HandleCommitReply(const proto::NCCCommitReply &reply);
     void HandleReadOnlyReply(const proto::NCCReadOnlyReply &reply);
@@ -133,12 +157,15 @@ private:
     int replica_;  // Closest replica index
     uint64_t last_req_id_;
 
+    std::unordered_map<uint64_t, PendingGet *> pending_gets_;
     std::unordered_map<uint64_t, PendingExecute *> pending_executes_;
     std::unordered_map<uint64_t, PendingCommit *> pending_commits_;
     std::unordered_map<uint64_t, PendingReadOnly *> pending_readonly_;
     std::unordered_map<uint64_t, PendingSmartRetry *> pending_smart_retry_;
 
     // Protocol message buffers
+    proto::NCCGet get_;
+    proto::NCCGetReply get_reply_;
     proto::NCCExecute execute_;
     proto::NCCExecuteReply execute_reply_;
     proto::NCCCommit commit_;

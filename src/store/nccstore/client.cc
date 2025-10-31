@@ -142,11 +142,12 @@ void NCCClient::Retry(Session &session, begin_callback bcb,
     Begin(session, bcb, btcb, timeout);
 }
 
-void NCCClient::Get(Session &s, const string &key, get_callback gcb,
-                    get_timeout_callback gtcb, uint32_t timeout) {
+void NCCClient::Get(Session &s, const string &key, ::get_callback gcb,
+                    ::get_timeout_callback gtcb, uint32_t timeout) {
     auto &session = static_cast<NCCSession &>(s);
 
-    Debug("[%lu] GET %s", session.transaction_id(), key.c_str());
+    uint64_t tx_id = session.transaction_id();
+    Debug("[%lu] GET %s", tx_id, key.c_str());
 
     // Determine shard for this key
     vector<int> participants_vec;
@@ -154,14 +155,25 @@ void NCCClient::Get(Session &s, const string &key, get_callback gcb,
     
     session.add_participant(shard);
 
-    // In NCC, reads are buffered and executed at commit time
-    // For now, we just track the read in the session
-    // The actual read will happen during commit
+    // Track the read in session
     session.add_read(key, "");
 
-    // Return immediately with empty value (will be filled at commit)
-    Timestamp zero_ts(0, 0);
-    gcb(REPLY_OK, key, "", zero_ts);
+    // Create a request ID for this Get operation
+    uint64_t req_id = last_req_id_++;
+
+    // Store user callback for this Get request
+    pending_gets_[req_id] = std::make_pair(key, gcb);
+
+    // Send Get request immediately
+    vector<string> read_keys = {key};
+    auto get_reply_cb = bind(&NCCClient::HandleGetReply, this, ref(session),
+                            req_id, shard, placeholders::_1, placeholders::_2);
+    auto get_timeout_cb = [this, req_id, gtcb](int) {
+        
+    };
+
+    shard_clients_[shard]->Get(tx_id, session.tx_ts(), read_keys,
+                               get_reply_cb, get_timeout_cb, timeout);
 }
 
 void NCCClient::Put(Session &s, const string &key, const string &value,
@@ -196,20 +208,8 @@ void NCCClient::Commit(Session &s, commit_callback ccb,
     req->ccb = ccb;
     req->ctcb = ctcb;
 
-    const auto &participants = session.participants();
-    req->outstanding_responses = participants.size();
-
-    Debug("[%lu] Participants: %lu shards", tx_id, participants.size());
-
-    // Organize operations by shard
-    map<int, vector<string>> shard_reads;
+    // Organize writes by shard (reads are already done via Get)
     map<int, map<string, string>> shard_writes;
-
-    for (const auto &kv : session.reads()) {
-        vector<int> participants_vec;
-        int shard = (*part_)(kv.first, num_shards_, -1, participants_vec);
-        shard_reads[shard].push_back(kv.first);
-    }
 
     for (const auto &kv : session.writes()) {
         vector<int> participants_vec;
@@ -217,18 +217,107 @@ void NCCClient::Commit(Session &s, commit_callback ccb,
         shard_writes[shard][kv.first] = kv.second;
     }
 
-    // Send execute to all participant shards
-    for (int shard : participants) {
-        vector<string> read_keys = shard_reads[shard];
-        map<string, string> writes = shard_writes[shard];
+    // Count shards with writes
+    int shards_with_writes = 0;
+    for (const auto &kv : shard_writes) {
+        if (!kv.second.empty()) {
+            shards_with_writes++;
+        }
+    }
+
+    req->outstanding_responses = shards_with_writes;
+    Debug("[%lu] Participants: %lu shards with writes", tx_id, shards_with_writes);
+
+    // Send execute (writes only) to shards with writes
+    for (const auto &kv : shard_writes) {
+        int shard = kv.first;
+        const map<string, string> &writes = kv.second;
+        if (writes.empty()) {
+            continue;
+        }
 
         auto ecb = bind(&NCCClient::HandleExecuteReply, this, ref(session),
                        req_id, shard, placeholders::_1, placeholders::_2);
         auto etcb = [](int) {};
 
-        shard_clients_[shard]->Execute(tx_id, session.tx_ts(), read_keys,
+        shard_clients_[shard]->Execute(tx_id, session.tx_ts(),
                                        writes, ecb, etcb, timeout);
     }
+
+    // If no writes, proceed directly to safeguard check
+    if (session.writes().empty()) {
+        req->outstanding_responses = 0;
+        // All Execute responses received (none needed), perform safeguard check
+        bool commit = SafeguardCheck(session);
+
+        Debug("[%lu] Safeguard check result: %s", session.transaction_id(),
+              commit ? "COMMIT" : "ABORT");
+
+        if (!commit && req->smart_retry_attempts < 3) {
+            // Safeguard check failed, try SmartRetry
+            Debug("[%lu] Attempting SmartRetry (attempt %d)", 
+                  session.transaction_id(), req->smart_retry_attempts + 1);
+            TrySmartRetry(session, req_id);
+            return; 
+        }
+
+        // Store callback in session
+        session.commit_cb_ = req->ccb;
+
+        // Send commit decision to all participants
+        SendCommitDecision(session, commit, req_id);
+        
+        // Clean up PendingRequest
+        pending_requests_.erase(req_id);
+        delete req;
+    }
+}
+
+void NCCClient::HandleGetReply(NCCSession &session, uint64_t req_id,
+                               int shard, int status,
+                               const proto::NCCGetReply &reply) {
+    Debug("[%lu] HandleGetReply from shard %d, status=%d",
+          session.transaction_id(), shard, status);
+
+    auto it = pending_gets_.find(req_id);
+    if (it == pending_gets_.end()) {
+        Warning("Received get reply for unknown request %lu", req_id);
+        return;
+    }
+
+    const string &key = it->second.first;
+    ::get_callback gcb = it->second.second;  // Use Client interface get_callback
+    pending_gets_.erase(it);
+
+    if (status == STATUS_ABORT) {
+        // Server aborted early
+        Debug("[%lu] Server early abort on Get from shard %d", session.transaction_id(), shard);
+        Timestamp zero_ts(0, 0);
+        gcb(REPLY_FAIL, key, "", zero_ts);
+        return;
+    }
+
+    // Process read results
+    string value = "";
+    Timestamp tw(0, 0);
+    Timestamp tr(0, 0);
+
+    for (int i = 0; i < reply.reads_size(); i++) {
+        const auto &read_result = reply.reads(i);
+        if (read_result.key() == key) {
+            value = read_result.value();
+            tw = Timestamp(read_result.tw());
+            tr = Timestamp(read_result.tr());
+            
+            // Update session with read result
+            session.add_read(key, value);
+            session.add_read_timestamp(key, tw, tr);
+            break;
+        }
+    }
+
+    // Call user callback with result
+    gcb(status == STATUS_OK ? REPLY_OK : REPLY_FAIL, key, value, tw);
 }
 
 void NCCClient::HandleExecuteReply(NCCSession &session, uint64_t req_id,
@@ -252,15 +341,7 @@ void NCCClient::HandleExecuteReply(NCCSession &session, uint64_t req_id,
     }
 
     if (!req->aborted) {
-        // Collect (tw, tr) pairs from this shard
-        for (int i = 0; i < reply.reads_size(); i++) {
-            const auto &read_result = reply.reads(i);
-            Timestamp tw(read_result.tw());
-            Timestamp tr(read_result.tr());
-            session.add_read(read_result.key(), read_result.value());
-            session.add_read_timestamp(read_result.key(), tw, tr);
-        }
-
+        // Collect (tw, tr) pairs from writes (reads already collected in HandleGetReply)
         for (int i = 0; i < reply.writes_size(); i++) {
             const auto &write_result = reply.writes(i);
             Timestamp tw(write_result.tw());

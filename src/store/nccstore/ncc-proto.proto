@@ -71,6 +71,24 @@ message NCCReadOnlyReply {
     repeated NCCReadResult reads = 3;
 }
 
+// Get request: client sends read operations to server (before Execute)
+message NCCGet {
+    required RequestIDMessage rid = 1;
+    required uint64 tx_id = 2;
+    required TimestampMessage tx_ts = 3;  // pre-assigned timestamp
+    repeated string read_keys = 4;
+}
+
+// Get response: server returns read results with (tw, tr) pairs
+message NCCGetReply {
+    required RequestIDMessage rid = 1;
+    // 0 = OK
+    // -1 = ABORT (early abort)
+    // -2 = RETRY
+    required int32 status = 2;
+    repeated NCCReadResult reads = 3;
+}
+
 // Smart retry request (Algorithm 5.4)
 message NCCSmartRetry {
     required RequestIDMessage rid = 1;
@@ -90,13 +108,15 @@ message NCCSmartRetryReply {
 // Request wrapper for VR replication
 message Request {
     enum Operation {
-        EXECUTE = 1;
-        COMMIT = 2;
+        GET = 1;
+        EXECUTE = 2;
+        COMMIT = 3;
     }
     required Operation op = 1;
     required uint64 txnid = 2;
-    optional NCCExecute execute = 3;
-    optional NCCCommit commit = 4;
+    optional NCCGet get = 3;
+    optional NCCExecute execute = 4;
+    optional NCCCommit commit = 5;
 }
 
 // Reply wrapper for VR replication
@@ -105,7 +125,8 @@ message Reply {
     // -1 = failed
     // -2 = retry
     required int32 status = 1;
-    optional NCCExecuteReply execute_reply = 2;
-    optional NCCCommitReply commit_reply = 3;
+    optional NCCGetReply get_reply = 2;
+    optional NCCExecuteReply execute_reply = 3;
+    optional NCCCommitReply commit_reply = 4;
 }
 

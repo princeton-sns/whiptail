@@ -32,6 +32,13 @@ public:
                   int shard);
     ~ReplicaClient();
 
+    // Replicate Get operation
+    void Get(uint64_t tx_id,
+             const proto::NCCGet &get_msg,
+             replica_callback rcb,
+             replica_timeout_callback rtcb,
+             uint32_t timeout);
+
     // Replicate Execute operation
     void Execute(uint64_t tx_id,
                  const proto::NCCExecute &execute_msg,

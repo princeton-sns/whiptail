@@ -69,29 +69,42 @@ private:
         bool executed;
         bool committed;
         bool is_committing;
-        bool responded;
+        bool get_responded;  // Whether Get reply has been sent
+        bool execute_responded;  // Whether Execute reply has been sent
         TransportAddress *client_addr;
         proto::NCCExecute execute_msg;  // Store original execute message for replication
-        proto::NCCExecuteReply reply;
+        proto::NCCGet get_msg;  // Store original get message for replication
+        proto::NCCGetReply get_reply;
+        proto::NCCExecuteReply execute_reply;
 
         TxnRecord() : tx_id(0), tx_ts(0, 0), executed(false), committed(false), is_committing(false),
-                      responded(false), client_addr(nullptr) {}
+                      get_responded(false), execute_responded(false), client_addr(nullptr) {}
     };
 
     // Pending response for Response Timing Control
+    enum class ResponseType {
+        GET,
+        EXEC
+    };
+    
     struct PendingResponse {
         uint64_t tx_id;
         std::string key;
         Timestamp tw;  // timestamp of this operation
+        ResponseType type;  // GET or EXEC
+        
+        PendingResponse() : tx_id(0), tw(0, 0), type(ResponseType::GET) {}
     };
 
     // Message handlers
+    void HandleGet(const TransportAddress &remote, const proto::NCCGet &msg);
     void HandleExecute(const TransportAddress &remote, const proto::NCCExecute &msg);
     void HandleCommit(const TransportAddress &remote, const proto::NCCCommit &msg);
     void HandleReadOnly(const TransportAddress &remote, const proto::NCCReadOnly &msg);
     void HandleSmartRetry(const TransportAddress &remote, const proto::NCCSmartRetry &msg);
 
     // Core NCC algorithms
+    void ExecuteGet(const proto::NCCGet &msg, TxnRecord &txn);
     void ExecuteTransaction(const proto::NCCExecute &msg, TxnRecord &txn);
     bool CheckEarlyAbort(uint64_t tx_id, const Timestamp &tx_ts, const std::string &key);
     void CheckAndSendResponse(const std::string &key, bool is_replica);
@@ -103,6 +116,7 @@ private:
     void AbortTransaction(uint64_t tx_id);
 
     // Send responses
+    void SendGetReply(const TransportAddress &remote, const proto::NCCGetReply &reply);
     void SendExecuteReply(const TransportAddress &remote, const proto::NCCExecuteReply &reply);
     void SendCommitReply(const TransportAddress &remote, uint64_t tx_id, int status);
     void SendReadOnlyReply(const TransportAddress &remote, const proto::NCCReadOnlyReply &reply);
@@ -150,6 +164,8 @@ private:
     Latency_t commit_lat_;
 
     // Protocol message buffers
+    proto::NCCGet get_;
+    proto::NCCGetReply get_reply_;
     proto::NCCExecute execute_;
     proto::NCCExecuteReply execute_reply_;
     proto::NCCCommit commit_;

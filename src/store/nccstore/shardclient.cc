@@ -31,6 +31,9 @@ ShardClient::ShardClient(const transport::Configuration &config,
 }
 
 ShardClient::~ShardClient() {
+    for (auto &kv : pending_gets_) {
+        delete kv.second;
+    }
     for (auto &kv : pending_executes_) {
         delete kv.second;
     }
@@ -45,9 +48,48 @@ ShardClient::~ShardClient() {
     }
 }
 
+void ShardClient::Get(uint64_t tx_id,
+                      const Timestamp &tx_ts,
+                      const vector<string> &read_keys,
+                      shard_get_callback gcb,
+                      shard_get_timeout_callback gtcb,
+                      uint32_t timeout) {
+    uint64_t req_id = last_req_id_++;
+
+    Debug("Send Get to shard %d, tx=%lu, req=%lu", shard_idx_, tx_id, req_id);
+
+    PendingGet *pg = new PendingGet(tx_id, req_id);
+    pg->gcb = gcb;
+    pg->gtcb = gtcb;
+    pending_gets_[req_id] = pg;
+
+    get_.Clear();
+    get_.mutable_rid()->set_client_id(client_id_);
+    get_.mutable_rid()->set_client_req_id(req_id);
+    get_.set_tx_id(tx_id);
+    tx_ts.serialize(get_.mutable_tx_ts());
+
+    for (const string &key : read_keys) {
+        get_.add_read_keys(key);
+    }
+
+    // Send to closest replica in this shard
+    transport_->SendMessageToReplica(this, shard_idx_, replica_, get_);
+
+    // Setup timeout
+    pg->timeout_id_ = transport_->Timer(timeout, [this, req_id]() {
+        auto it = pending_gets_.find(req_id);
+        if (it != pending_gets_.end()) {
+            PendingGet *pg = it->second;
+            pg->gtcb(REPLY_FAIL);
+            delete pg;
+            pending_gets_.erase(it);
+        }
+    });
+}
+
 void ShardClient::Execute(uint64_t tx_id,
                           const Timestamp &tx_ts,
-                          const vector<string> &read_keys,
                           const map<string, string> &writes,
                           execute_callback ecb,
                           execute_timeout_callback etcb,
@@ -67,10 +109,6 @@ void ShardClient::Execute(uint64_t tx_id,
     execute_.set_tx_id(tx_id);
     tx_ts.serialize(execute_.mutable_tx_ts());
 
-    for (const string &key : read_keys) {
-        execute_.add_read_keys(key);
-    }
-
     for (const auto &kv : writes) {
         WriteMessage *write = execute_.add_writes();
         write->set_key(kv.first);
@@ -80,7 +118,16 @@ void ShardClient::Execute(uint64_t tx_id,
     // Send to closest replica in this shard
     transport_->SendMessageToReplica(this, shard_idx_, replica_, execute_);
 
-    // TODO: Setup timeout
+    // Setup timeout
+    pe->timeout_id_ = transport_->Timer(timeout, [this, req_id]() {
+        auto it = pending_executes_.find(req_id);
+        if (it != pending_executes_.end()) {
+            PendingExecute *pe = it->second;
+            pe->etcb(REPLY_FAIL);
+            delete pe;
+            pending_executes_.erase(it);
+        }
+    });
 }
 
 void ShardClient::Commit(uint64_t tx_id,
@@ -142,7 +189,10 @@ void ShardClient::ReceiveMessage(const TransportAddress &remote,
                                  const string &type,
                                  const string &data,
                                  void *meta_data) {
-    if (type == execute_reply_.GetTypeName()) {
+    if (type == get_reply_.GetTypeName()) {
+        get_reply_.ParseFromString(data);
+        HandleGetReply(get_reply_);
+    } else if (type == execute_reply_.GetTypeName()) {
         execute_reply_.ParseFromString(data);
         HandleExecuteReply(execute_reply_);
     } else if (type == commit_reply_.GetTypeName()) {
@@ -159,6 +209,28 @@ void ShardClient::ReceiveMessage(const TransportAddress &remote,
     }
 }
 
+void ShardClient::HandleGetReply(const proto::NCCGetReply &reply) {
+    uint64_t req_id = reply.rid().client_req_id();
+
+    Debug("[shard %d] HandleGetReply req=%lu, status=%d",
+          shard_idx_, req_id, reply.status());
+
+    auto it = pending_gets_.find(req_id);
+    if (it == pending_gets_.end()) {
+        Warning("Received get reply for unknown request %lu", req_id);
+        return;
+    }
+
+    PendingGet *pg = it->second;
+    if (pg->timeout_id_ != 0) {
+        transport_->CancelTimer(pg->timeout_id_);
+    }
+    pg->gcb(reply.status(), reply);
+
+    delete pg;
+    pending_gets_.erase(it);
+}
+
 void ShardClient::HandleExecuteReply(const proto::NCCExecuteReply &reply) {
     uint64_t req_id = reply.rid().client_req_id();
 
@@ -172,6 +244,9 @@ void ShardClient::HandleExecuteReply(const proto::NCCExecuteReply &reply) {
     }
 
     PendingExecute *pe = it->second;
+    if (pe->timeout_id_ != 0) {
+        transport_->CancelTimer(pe->timeout_id_);
+    }
     pe->ecb(reply.status(), reply);
 
     delete pe;

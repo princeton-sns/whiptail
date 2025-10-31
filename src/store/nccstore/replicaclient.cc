@@ -36,6 +36,32 @@ ReplicaClient::~ReplicaClient() {
     }
 }
 
+void ReplicaClient::Get(uint64_t tx_id,
+                        const proto::NCCGet &get_msg,
+                        replica_callback rcb,
+                        replica_timeout_callback rtcb,
+                        uint32_t timeout) {
+    Debug("[shard %d] Replicating GET: %lu", shard_idx_, tx_id);
+
+    // Create request for VR
+    string request_str;
+    proto::Request request;
+    request.set_op(proto::Request::GET);
+    request.set_txnid(tx_id);
+    request.mutable_get()->CopyFrom(get_msg);
+    request.SerializeToString(&request_str);
+
+    uint64_t req_id = last_req_id_++;
+    PendingRequest *pending = new PendingRequest(req_id);
+    pending_requests_[req_id] = pending;
+    pending->rcb = rcb;
+    pending->rtcb = rtcb;
+
+    vr_client_->Invoke(request_str,
+                       bind(&ReplicaClient::ReplicaCallback, this, req_id,
+                            placeholders::_1, placeholders::_2));
+}
+
 void ReplicaClient::Execute(uint64_t tx_id,
                             const proto::NCCExecute &execute_msg,
                             replica_callback rcb,

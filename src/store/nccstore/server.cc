@@ -66,7 +66,10 @@ void NCCServer::ReceiveMessage(const TransportAddress &remote,
                                 void *meta_data) {
 
     Debug("Received message type: %s", type.c_str());
-    if (type == execute_.GetTypeName()) {
+    if (type == get_.GetTypeName()) {
+        get_.ParseFromString(data);
+        HandleGet(remote, get_);
+    } else if (type == execute_.GetTypeName()) {
         execute_.ParseFromString(data);
         HandleExecute(remote, execute_);
     } else if (type == commit_.GetTypeName()) {
@@ -87,6 +90,24 @@ void NCCServer::ReceiveMessage(const TransportAddress &remote,
     }
 }
 
+void NCCServer::HandleGet(const TransportAddress &remote, const NCCGet &msg) {
+    uint64_t tx_id = msg.tx_id();
+    Timestamp tx_ts(msg.tx_ts());
+
+    Debug("[%lu] HandleGet, ts=%lu.%lu", tx_id, tx_ts.getTimestamp(), tx_ts.getID());
+
+    TxnRecord &txn = transactions_[tx_id];
+    txn.tx_id = tx_id;
+    txn.tx_ts = tx_ts;
+    txn.get_responded = false;
+    txn.client_addr = remote.clone();
+    txn.get_msg.CopyFrom(msg);  // Store get message (not for replication, but for reference)
+
+    // Get operation does NOT go through VR replication
+    // Execute directly and return reply
+    ExecuteGet(msg, txn);
+}
+
 void NCCServer::HandleExecute(const TransportAddress &remote, const NCCExecute &msg) {
     uint64_t tx_id = msg.tx_id();
     Timestamp tx_ts(msg.tx_ts());
@@ -97,7 +118,7 @@ void NCCServer::HandleExecute(const TransportAddress &remote, const NCCExecute &
     txn.tx_id = tx_id;
     txn.tx_ts = tx_ts;
     txn.committed = false;
-    txn.responded = false;
+    txn.execute_responded = false;
     txn.client_addr = remote.clone();
     txn.execute_msg.CopyFrom(msg);  // Store execute message for replication
 
@@ -113,17 +134,11 @@ void NCCServer::HandleExecute(const TransportAddress &remote, const NCCExecute &
     }
 }
 
-void NCCServer::ExecuteTransaction(const NCCExecute &msg, TxnRecord &txn) {
-
-    // For Leader, we don't need to execute the transaction again, finished
-    if (txn.executed) {
-        Debug("[%lu] Transaction already executed", txn.tx_id);
-        return;
-    }
+void NCCServer::ExecuteGet(const NCCGet &msg, TxnRecord &txn) {
     auto is_replica = txn.client_addr == nullptr;
-    Debug("[%lu] Is replica: %s", txn.tx_id, is_replica ? "true" : "false");
+    Debug("[%lu] ExecuteGet, is_replica=%s", txn.tx_id, is_replica ? "true" : "false");
 
-    NCCExecuteReply reply;
+    NCCGetReply reply;
     reply.mutable_rid()->set_client_id(msg.rid().client_id());
     reply.mutable_rid()->set_client_req_id(msg.rid().client_req_id());
     reply.set_status(STATUS_OK);
@@ -155,7 +170,6 @@ void NCCServer::ExecuteTransaction(const NCCExecute &msg, TxnRecord &txn) {
             // Algorithm 5.2: curr_ver.tr <- max{t, curr_ver.tr}
             store_.UpdateReadTimestamp(key, tw, txn.tx_ts);
             
-        
             read_result->set_value(result.second.first);
             tw.serialize(read_result->mutable_tw());
             Timestamp updated_tr = std::max(txn.tx_ts, result.second.second);
@@ -167,6 +181,88 @@ void NCCServer::ExecuteTransaction(const NCCExecute &msg, TxnRecord &txn) {
             zero_ts.serialize(read_result->mutable_tw());
             txn.tx_ts.serialize(read_result->mutable_tr());
         }
+    }
+
+    if (should_abort) {
+        reply.set_status(STATUS_ABORT);
+        txn.committed = false;
+        txn.get_reply = reply;
+        if (!is_replica) {
+            SendGetReply(*txn.client_addr, reply);
+        }
+        return;
+    }
+
+    // Save reply for Response Timing Control
+    txn.get_reply = reply;
+    // RTC Debug Switch: ENABLE_RTC can be toggled in server.h
+    if (ENABLE_RTC) {
+        Debug("[%lu] RTC enabled for Get, adding to response queues", txn.tx_id);
+        
+        // RTC enabled: Add to response queues and check dependencies
+        for (const string &key : txn.read_set) {
+            PendingResponse pr;
+            pr.tx_id = txn.tx_id;
+            pr.key = key;
+            pr.tw = txn.tx_ts;
+            pr.type = ResponseType::GET;
+            response_queues_[key].push(pr);
+        }
+
+        // Try to send response immediately if no dependencies
+        for (const string &key : txn.read_set) {
+            CheckAndSendResponse(key, is_replica);
+        }
+    } else {
+        // RTC disabled: Send response immediately for performance testing
+        Debug("[%lu] RTC disabled, sending Get response immediately", txn.tx_id);
+        if (!is_replica) {
+            SendGetReply(*txn.client_addr, reply);
+        }
+        txn.get_responded = true;
+    }
+}
+
+void NCCServer::ExecuteTransaction(const NCCExecute &msg, TxnRecord &txn) {
+
+    // For Leader, we don't need to execute the transaction again, finished
+    if (txn.executed) {
+        Debug("[%lu] Transaction already executed", txn.tx_id);
+        return;
+    }
+    auto is_replica = txn.client_addr == nullptr;
+    Debug("[%lu] Is replica: %s", txn.tx_id, is_replica ? "true" : "false");
+
+    NCCExecuteReply reply;
+    reply.mutable_rid()->set_client_id(msg.rid().client_id());
+    reply.mutable_rid()->set_client_req_id(msg.rid().client_req_id());
+    reply.set_status(STATUS_OK);
+
+    bool should_abort = false;
+
+    // Execute reads (from previous Get operations) for replication
+    // Read results are NOT returned to client, but reads need to be executed
+    // to update tr timestamps and ensure data consistency
+    for (const string &key : txn.read_set) {
+        // Check for early abort
+        if (CheckEarlyAbort(txn.tx_id, txn.tx_ts, key)) {
+            Debug("[%lu] Early abort on read of key %s during Execute", txn.tx_id, key.c_str());
+            should_abort = true;
+            break;
+        }
+
+        // Read the version (Algorithm 5.2: curr_ver <- DS[req.key].most_recent)
+        auto result = store_.Read(key, txn.tx_ts);
+        
+        if (result.first) {
+            // Found a version
+            Timestamp tw = result.second.second;  // tw of the version read
+            
+            // Algorithm 5.2: curr_ver.tr <- max{t, curr_ver.tr}
+            // This ensures read timestamps are updated for replication consistency
+            store_.UpdateReadTimestamp(key, tw, txn.tx_ts);
+        }
+        // Note: We don't add read results to reply - only writes are returned
     }
 
     if (should_abort) {
@@ -229,43 +325,33 @@ void NCCServer::ExecuteTransaction(const NCCExecute &msg, TxnRecord &txn) {
     }
 
     // Save reply for Response Timing Control
-    txn.reply = reply;
+    txn.execute_reply = reply;
     txn.executed = true;
     // RTC Debug Switch: ENABLE_RTC can be toggled in server.h
     if (ENABLE_RTC) {
-        Debug("[%lu] RTC enabled, adding to response queues", txn.tx_id);
+        Debug("[%lu] RTC enabled for Execute, adding to response queues", txn.tx_id);
        
-        // RTC enabled: Add to response queues and check dependencies
-        for (const string &key : txn.read_set) {
-            PendingResponse pr;
-            pr.tx_id = txn.tx_id;
-            pr.key = key;
-            pr.tw = txn.tx_ts;
-            response_queues_[key].push(pr);
-        }
-
+        // RTC enabled: Add to response queues and check dependencies (only writes)
         for (const auto &kv : txn.write_set) {
             PendingResponse pr;
             pr.tx_id = txn.tx_id;
             pr.key = kv.first;
             pr.tw = txn.tx_ts;
+            pr.type = ResponseType::EXEC;
             response_queues_[kv.first].push(pr);
         }
 
         // Try to send response immediately if no dependencies
-        for (const string &key : txn.read_set) {
-            CheckAndSendResponse(key, is_replica);
-        }
         for (const auto &kv : txn.write_set) {
             CheckAndSendResponse(kv.first, is_replica);
         }
     } else {
         // RTC disabled: Send response immediately for performance testing
-        Debug("[%lu] RTC disabled, sending response immediately", txn.tx_id);
+        Debug("[%lu] RTC disabled, sending Execute response immediately", txn.tx_id);
         if (!is_replica) {
             SendExecuteReply(*txn.client_addr, reply);
         }
-        txn.responded = true;
+        txn.execute_responded = true;
     }
 }
 
@@ -290,16 +376,26 @@ void NCCServer::CheckAndSendResponse(const string &key, bool is_replica) {
     while (!queue.empty()) {
         PendingResponse &pr = queue.front();
         
-        Debug("[%lu] Checking if all preceding writes are committed for key %s, tw=%lu.%lu", pr.tx_id, key.c_str(), pr.tw.getTimestamp(), pr.tw.getID());
+        Debug("[%lu] Checking if all preceding writes are committed for key %s, tw=%lu.%lu, type=%d", 
+              pr.tx_id, key.c_str(), pr.tw.getTimestamp(), pr.tw.getID(), 
+              static_cast<int>(pr.type));
         // Check if all preceding writes are committed
         if (AllPrecedingCommitted(key, pr.tx_id, pr.tw)) {
-            Debug("[%lu] All preceding writes are committed for key %s, tw=%lu.%lu", pr.tx_id, key.c_str(), pr.tw.getTimestamp(), pr.tw.getID());
+            Debug("[%lu] All preceding writes are committed for key %s, tw=%lu.%lu", 
+                  pr.tx_id, key.c_str(), pr.tw.getTimestamp(), pr.tw.getID());
             auto txn_it = transactions_.find(pr.tx_id);
-            if (txn_it != transactions_.end() && !txn_it->second.responded) {
-                if (!is_replica) {
-                    SendExecuteReply(*txn_it->second.client_addr, txn_it->second.reply);
+            if (txn_it != transactions_.end()) {
+                if (pr.type == ResponseType::GET && !txn_it->second.get_responded) {
+                    if (!is_replica) {
+                        SendGetReply(*txn_it->second.client_addr, txn_it->second.get_reply);
+                    }
+                    txn_it->second.get_responded = true;
+                } else if (pr.type == ResponseType::EXEC && !txn_it->second.execute_responded) {
+                    if (!is_replica) {
+                        SendExecuteReply(*txn_it->second.client_addr, txn_it->second.execute_reply);
+                    }
+                    txn_it->second.execute_responded = true;
                 }
-                txn_it->second.responded = true;
             }
             queue.pop();
         } else {
@@ -458,6 +554,10 @@ void NCCServer::HandleReadOnly(const TransportAddress &remote, const NCCReadOnly
     }
 
     SendReadOnlyReply(remote, reply);
+}
+
+void NCCServer::SendGetReply(const TransportAddress &remote, const NCCGetReply &reply) {
+    transport_->SendMessage(this, remote, reply);
 }
 
 void NCCServer::SendExecuteReply(const TransportAddress &remote, const NCCExecuteReply &reply) {
@@ -656,6 +756,11 @@ void NCCServer::LeaderUpcall(opnum_t opnum, const string &op, bool &replicate, s
         replicate = true;
         response = op;
         break;
+    case proto::Request::GET:
+        // Get operations are NOT replicated
+        replicate = false;
+        response = op;
+        break;
     default:
         Panic("Unrecognized operation.");
     }
@@ -690,7 +795,8 @@ void NCCServer::ReplicaUpcall(opnum_t opnum, const string &op, string &response)
                 txn.tx_id = tx_id;
                 txn.tx_ts = tx_ts;
                 txn.committed = false;
-                txn.responded = false;
+                txn.get_responded = false;
+                txn.execute_responded = false;
                 txn.client_addr = nullptr;  // Replica has no client address
                 txn.execute_msg.CopyFrom(execute_msg); 
                 ExecuteTransaction(execute_msg, txn);
