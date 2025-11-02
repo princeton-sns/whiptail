@@ -16,13 +16,13 @@ namespace retwis {
     Operation OneShotReads::GetNextOperation(std::size_t op_index) {
         Debug("ONE_SHOT_READS %lu", op_index);
         if (op_index == 0) {
-            return BeginRW();
+            return BeginRO();
         } else if (op_index < this->readOpsTxn + 1) {
-            return Get(GetKey(op_index - 1));
-        } else if (op_index == this->readOpsTxn + 1) {
-            return Commit();
-        } else {
+            std::unordered_set<std::string> keys_;
+            auto key = GetKey(op_index - 1);
+            keys_.insert(key);   
+            return ROCommit(std::move(keys_));
+        } else 
             return Wait();
-        }
     }
 }

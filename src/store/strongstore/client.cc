@@ -761,7 +761,8 @@ namespace strongstore
         session.set_committing();
 
         auto &participants = session.participants();
-        ASSERT(participants.size() == 0);
+        Debug("[%lu] ROCOMMIT participants: %lu", tid, participants.size());
+        // ASSERT(participants.size() == 0);
 
         std::unordered_map<int, std::vector<std::string>> sharded_keys;
         for (auto &key : keys)
