@@ -688,10 +688,10 @@ void BenchmarkClient::CooldownDone()
     curr_bdcb_();
 }
 
-void BenchmarkClient::OnReply(uint64_t transaction_id, int result, bool erase_session)
+void BenchmarkClient::OnReply(uint64_t session_id, int result, bool erase_session)
 {
-    Debug("[%lu] OnReply with result %d.", transaction_id, result);
-    auto search = session_states_.find(transaction_id);
+    Debug("OnReply with result %d for session %lu.", result, session_id);
+    auto search = session_states_.find(session_id);
     ASSERT(search != session_states_.end());
 
     auto &ss = search->second;
@@ -761,7 +761,7 @@ BenchmarkClient::BenchState BenchmarkClient::GetBenchState(struct timeval &diff)
     {
         return DONE;
     }
-    else if (diff.tv_sec > exp_duration_ - warmupSec)
+    else if (diff.tv_sec > exp_duration_ - cooldownSec)
     {
         return COOL_DOWN;
     }
