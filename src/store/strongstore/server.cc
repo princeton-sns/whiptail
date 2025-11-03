@@ -573,8 +573,18 @@ namespace strongstore
             // Debug("[%lu] Coordinator preparing", transaction_id);
 
             LockAcquireResult ar = locks_.AcquireLocks(transaction_id, transaction);
+            
             if (ar.status == LockStatus::ACQUIRED)
             {
+                Notice("Coordinator Leader: [%lu] Acquired locks", transaction_id);
+            for (auto &write : transaction.getWriteSet())
+            {
+                Notice("[%lu] write: %s", transaction_id, write.first.c_str());
+            }
+            for (auto &read : transaction.getReadSet())
+            {
+                Notice("[%lu] read: %s", transaction_id, read.first.c_str());
+            }
                 ASSERT(ar.wound_rws.size() == 0);
                 const Timestamp prepare_ts = GetPrepareTimestamp(client_id);
                 transactions_.FinishCoordinatorPrepare(transaction_id, prepare_ts);
@@ -606,6 +616,19 @@ namespace strongstore
             else if (ar.status == LockStatus::WAITING)
             {
                 Debug("[%lu] Waiting", transaction_id);
+                Notice("Coordinator Leader: [%lu] Waiting", transaction_id);
+                for (auto &write : transaction.getWriteSet())
+                {
+                    Notice("[%lu] write: %s", transaction_id, write.first.c_str());
+                }
+                for (auto &read : transaction.getReadSet())
+                {
+                    Notice("[%lu] read: %s", transaction_id, read.first.c_str());
+                }
+                for (auto &wound_rw : ar.wound_rws)
+                {
+                    Notice("[%lu] wound_rw: %lu", transaction_id, wound_rw);
+                }
 
                 auto reply = new PendingRWCommitCoordinatorReply(client_id, client_req_id, remote.clone());
                 pending_rw_commit_c_replies_[transaction_id] = reply;
@@ -662,6 +685,15 @@ namespace strongstore
             LockAcquireResult ar = locks_.AcquireLocks(transaction_id, transaction);
             if (ar.status == LockStatus::ACQUIRED)
             {
+                Notice("Coordinator Leader Continue: [%lu] Acquired locks ", transaction_id);
+                for (auto &write : transaction.getWriteSet())
+                {
+                    Notice("[%lu] write: %s", transaction_id, write.first.c_str());
+                }
+                for (auto &read : transaction.getReadSet())
+                {
+                    Notice("[%lu] read: %s", transaction_id, read.first.c_str());
+                }
                 ASSERT(ar.wound_rws.size() == 0);
                 const Timestamp prepare_ts = GetPrepareTimestamp(client_id);
                 transactions_.FinishCoordinatorPrepare(transaction_id, prepare_ts);
@@ -1508,6 +1540,15 @@ namespace strongstore
             min_prepare_timestamp_ = std::max(min_prepare_timestamp_, commit_ts);
         }
 
+        Notice("Coordinator: [%lu] Releasing locks", transaction_id);
+        for (auto &write : transaction.getWriteSet())
+        {
+            Notice("[%lu] write: %s", transaction_id, write.first.c_str());
+        }
+        for (auto &read : transaction.getReadSet())
+        {
+            Notice("[%lu] read: %s", transaction_id, read.first.c_str());
+        }
         LockReleaseResult rr = locks_.ReleaseLocks(transaction_id, transaction);
         TransactionFinishResult fr = transactions_.Commit(transaction_id);
 
@@ -1659,7 +1700,7 @@ namespace strongstore
                     }
                     ASSERT(s == PREPARING);
 
-                    Notice("[%lu] Acquiring locks", transaction_id);
+                    Notice("Replica Upcall: [%lu] Acquiring locks", transaction_id);
                     for (auto &write : transaction.getWriteSet())
                     {
                         Notice("[%lu] write: %s", transaction_id, write.first.c_str());
@@ -1679,7 +1720,7 @@ namespace strongstore
                 }
 
                 uint64_t commit_wait_us = tt_.TimeToWaitUntilMicros(commit_ts.getTimestamp());
-                Debug("[%lu] delaying commit by %lu us", transaction_id, commit_wait_us);
+                Notice("[%lu] delaying commit by %lu us", transaction_id, commit_wait_us);
                 if (commit_wait_us > 0){
                         transport_->TimerMicro(commit_wait_us, std::bind(&Server::CoordinatorCommitTransaction, this, transaction_id, commit_ts));
                 } else {
