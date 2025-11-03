@@ -1672,18 +1672,17 @@ namespace strongstore
                     ASSERT(ar.status == LockStatus::ACQUIRED);
 
                     transactions_.FinishCoordinatorPrepare(transaction_id, commit_ts);
+                    CoordinatorCommitTransaction(transaction_id, commit_ts);
+
                 }
                 else
                 {
+                    uint64_t commit_wait_us = tt_.TimeToWaitUntilMicros(commit_ts.getTimestamp());
+                    Notice("[%lu] delaying commit by %lu us", transaction_id, commit_wait_us);
+                    
+                    transport_->TimerMicro(commit_wait_us, std::bind(&Server::CoordinatorCommitTransaction, this, transaction_id, commit_ts));
+                   
                     // Debug("[%lu] Already prepared", transaction_id);
-                }
-
-                uint64_t commit_wait_us = tt_.TimeToWaitUntilMicros(commit_ts.getTimestamp());
-                Notice("[%lu] delaying commit by %lu us", transaction_id, commit_wait_us);
-                if (commit_wait_us > 0){
-                        transport_->TimerMicro(commit_wait_us, std::bind(&Server::CoordinatorCommitTransaction, this, transaction_id, commit_ts));
-                } else {
-                    CoordinatorCommitTransaction(transaction_id, commit_ts);
                 }
             }
             else
