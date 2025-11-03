@@ -1678,7 +1678,7 @@ namespace strongstore
                 else
                 {
                     uint64_t commit_wait_us = tt_.TimeToWaitUntilMicros(commit_ts.getTimestamp());
-                    Notice("[%lu] delaying commit by %lu us", transaction_id, commit_wait_us);
+                    Debug("[%lu] delaying commit by %lu us", transaction_id, commit_wait_us);
                     
                     transport_->TimerMicro(commit_wait_us, std::bind(&Server::CoordinatorCommitTransaction, this, transaction_id, commit_ts));
                    
