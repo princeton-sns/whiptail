@@ -576,7 +576,7 @@ namespace strongstore
             
             if (ar.status == LockStatus::ACQUIRED)
             {
-                Notice("Coordinator Leader: [%lu] Acquired locks", transaction_id);
+                // Notice("Coordinator Leader: [%lu] Acquired locks", transaction_id);
 
                 ASSERT(ar.wound_rws.size() == 0);
                 const Timestamp prepare_ts = GetPrepareTimestamp(client_id);
@@ -609,7 +609,7 @@ namespace strongstore
             else if (ar.status == LockStatus::WAITING)
             {
                 Debug("[%lu] Waiting", transaction_id);
-                Notice("Coordinator Leader: [%lu] Waiting", transaction_id);
+                // Notice("Coordinator Leader: [%lu] Waiting", transaction_id);
             
 
                 auto reply = new PendingRWCommitCoordinatorReply(client_id, client_req_id, remote.clone());
@@ -667,7 +667,7 @@ namespace strongstore
             LockAcquireResult ar = locks_.AcquireLocks(transaction_id, transaction);
             if (ar.status == LockStatus::ACQUIRED)
             {
-                Notice("Coordinator Leader Continue: [%lu] Acquired locks ", transaction_id);
+                // Notice("Coordinator Leader Continue: [%lu] Acquired locks ", transaction_id);
                 ASSERT(ar.wound_rws.size() == 0);
                 const Timestamp prepare_ts = GetPrepareTimestamp(client_id);
                 transactions_.FinishCoordinatorPrepare(transaction_id, prepare_ts);
@@ -1192,7 +1192,7 @@ namespace strongstore
             LockAcquireResult ar = locks_.AcquireLocks(transaction_id, transaction);
             if (ar.status == LockStatus::ACQUIRED)
             {
-                Notice("Coordinator HandlePrepareOK: [%lu] Acquired locks", transaction_id);
+                // Notice("Coordinator HandlePrepareOK: [%lu] Acquired locks", transaction_id);
                 ASSERT(ar.wound_rws.size() == 0);
                 const Timestamp prepare_ts = GetPrepareTimestamp(client_id);
                 transactions_.FinishCoordinatorPrepare(transaction_id, prepare_ts);
@@ -1515,7 +1515,7 @@ namespace strongstore
             min_prepare_timestamp_ = std::max(min_prepare_timestamp_, commit_ts);
         }
 
-        Notice("Coordinator: [%lu] Releasing locks", transaction_id);
+        // Notice("Coordinator: [%lu] Releasing locks", transaction_id);
         LockReleaseResult rr = locks_.ReleaseLocks(transaction_id, transaction);
         TransactionFinishResult fr = transactions_.Commit(transaction_id);
 
@@ -1667,7 +1667,7 @@ namespace strongstore
                     }
                     ASSERT(s == PREPARING);
 
-                    Notice("Replica Upcall: [%lu] Acquiring locks", transaction_id);
+                    // Notice("Replica Upcall: [%lu] Acquiring locks", transaction_id);
                     LockAcquireResult ar = locks_.AcquireLocks(transaction_id, transaction);
                     ASSERT(ar.status == LockStatus::ACQUIRED);
 
