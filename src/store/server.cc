@@ -400,7 +400,7 @@ int main(int argc, char **argv)
             server = new strongstore::Server(consistency, shard_config,
                 replica_config, FLAGS_server_id,
                 FLAGS_group_idx, FLAGS_replica_idx,
-                tport, tt, FLAGS_debug_stats, FLAGS_enable_replica);
+                tport, tt, FLAGS_debug_stats);
                 break;
         case OCC:
             server = new strongstore::OCCServer(consistency, shard_config,

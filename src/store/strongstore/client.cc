@@ -386,8 +386,7 @@ namespace strongstore
     */
     void Client::Begin(Session &session, begin_callback bcb, begin_timeout_callback btcb, uint32_t timeout)
     {
-        ContinueBegin(session, bcb);
-        //rss::StartTransaction(service_name_, session, std::bind(&Client::ContinueBegin, this, std::ref(session), bcb));
+        rss::StartTransaction(service_name_, session, std::bind(&Client::ContinueBegin, this, std::ref(session), bcb));
     }
 
     void Client::ContinueBegin(Session &s, begin_callback bcb)
@@ -420,8 +419,7 @@ namespace strongstore
     */
     void Client::Retry(Session &session, begin_callback bcb, begin_timeout_callback btcb, uint32_t timeout)
     {
-        ContinueRetry(session, bcb);
-        //rss::StartTransaction(service_name_, session, std::bind(&Client::ContinueRetry, this, std::ref(session), bcb));
+        rss::StartTransaction(service_name_, session, std::bind(&Client::ContinueRetry, this, std::ref(session), bcb));
     }
 
     void Client::ContinueRetry(Session &s, begin_callback bcb)
@@ -448,7 +446,7 @@ namespace strongstore
     }
 
     /* Returns the value corresponding to the supplied key. */
-    void Client::Get(Session &s, const std::string &key, get_callback gcb, 
+    void Client::Get(Session &s, const std::string &key, get_callback gcb,
                     get_timeout_callback gtcb, uint32_t timeout)
     {
         auto &session = static_cast<StrongSession &>(s);
@@ -464,7 +462,7 @@ namespace strongstore
             return;
         }
 
-        //ASSERT(session.executing());
+        ASSERT(session.executing());
 
         // Contact the appropriate shard to get the value.
         int i = (*part_)(key, nshards_, -1, session.participants());
@@ -507,7 +505,7 @@ namespace strongstore
             return;
         }
 
-        //ASSERT(session.executing());
+        ASSERT(session.executing());
 
         // Contact the appropriate shard to get the value.
         int i = (*part_)(key, nshards_, -1, session.participants());
@@ -684,7 +682,7 @@ namespace strongstore
             Debug("min_read_timestamp_: %lu.%lu", min_read_ts.getTimestamp(), min_read_ts.getID());
         }
 
-        //rss::EndTransaction(service_name_, session);
+        rss::EndTransaction(service_name_, session);
 
         transport_->Timer(ms, std::bind(ccb, tstatus));
     }
@@ -737,7 +735,7 @@ namespace strongstore
             pending_reqs_.erase(req_id);
             delete req;
 
-            //rss::EndTransaction(service_name_, session);
+            rss::EndTransaction(service_name_, session);
 
             Debug("[%lu] Abort finished", tid);
             acb();
@@ -761,8 +759,7 @@ namespace strongstore
         session.set_committing();
 
         auto &participants = session.participants();
-        Debug("[%lu] ROCOMMIT participants: %lu", tid, participants.size());
-        // ASSERT(participants.size() == 0);
+        ASSERT(participants.size() == 0);
 
         std::unordered_map<int, std::vector<std::string>> sharded_keys;
         for (auto &key : keys)
@@ -839,7 +836,7 @@ namespace strongstore
             auto &min_read_ts = session.min_read_ts();
             Debug("min_read_timestamp_: %lu.%lu", min_read_ts.getTimestamp(), min_read_ts.getID());
 
-            //rss::EndTransaction(service_name_, session);
+            rss::EndTransaction(service_name_, session);
 
             Debug("[%lu] COMMIT OK", tid);
             ccb(COMMITTED);
@@ -878,7 +875,7 @@ namespace strongstore
             auto &min_read_ts = session.min_read_ts();
             Debug("min_read_timestamp_: %lu.%lu", min_read_ts.getTimestamp(), min_read_ts.getID());
 
-            //rss::EndTransaction(service_name_, session);
+            rss::EndTransaction(service_name_, session);
 
             Debug("[%lu] COMMIT OK", tid);
             ccb(COMMITTED);
