@@ -1,14 +1,10 @@
 {
   "experiment_independent_vars": [
     [
-      "consistency"
-    ],
-    [
       "cc"
     ]
   ],
-  "cc": [
-    "ncc"  ],
+  "cc":["2pl"],
   "client_num_ops_txn": 1,
   "replication_protocol": "strong",
   "client_protocol_mode": "span-lock",
@@ -23,9 +19,16 @@
     "eu-west-1-1",
     "eu-west-1-1"
   ],
-  "consistency": [
-    "ss"
-  ],
+  "consistency": "ss",
+  "client_debug_output": false,
+  "server_debug_output": false,
+  "client_debug_stats": true,
+  "server_debug_stats": true,
+  "server_load_time": 5,
+  "client_experiment_length": 35,
+  "client_rand_sleep": 0,
+  "client_ramp_up": 5,
+  "client_ramp_down": 5,
   "num_instances": 1,
   "shard_config_format_str": "shard-%d.config",
   "replica_config_format_str": "replica-%d.config",
@@ -85,7 +88,7 @@
   "bench_mode": "closed",
   "mpl": 10,
   "client_key_selector": "zipf",
-  "client_zipf_coefficient": 0.01,
+  "client_zipf_coefficient": 1.2,
   "client_arrival_rate": 1,
   "client_stay_probability": 1.0,
   "client_switch_probability": 0.0,
@@ -95,8 +98,8 @@
   "read_ops_txn": 1,
   "mixed_write_ops_txn": 1,
   "mixed_read_ops_txn": 1,
-  "read_percent": 50,
-  "write_percent": 50,
+  "read_percent": 5,
+  "write_percent": 95,
   "mixed_rw_percent": 0,
   "network_latency_window": 0,
   "sent_redundancy": 1,
@@ -125,15 +128,7 @@
   "pin_server_processes": [
     2
   ],
-  "client_debug_output": true,
-  "server_debug_output": true,
-  "client_debug_stats": true,
-  "server_debug_stats": true,
-  "server_load_time": 5,
-  "client_experiment_length": 35,
-  "client_rand_sleep": 0,
-  "client_ramp_up": 10,
-  "client_ramp_down": 5,
+ 
   "default_remote_shell": "bash",
   "server_host_format_str": "%s%s%s",
   "client_host_format_str": "%s%s%s",

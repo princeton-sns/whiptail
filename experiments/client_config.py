@@ -68,16 +68,21 @@ if __name__ == "__main__":
     cores = 20
     sites = 2
     node_names = [
-        "client-0-1", "client-1-0", "client-1-1", "client-2-0", "client-2-1",
-        "client-3-0", "client-3-1", "client-4-0", "client-4-1", "client-5-0",
-        "client-5-1", "client-6-0", "client-6-1", "client-7-0", "client-7-1"
+        "client-0-0", "client-0-1", "client-0-2",
+        "client-1-0", "client-1-1", "client-1-2",
+        "client-2-0", "client-2-1", "client-2-2",
+        "client-3-0", "client-3-1", "client-3-2",
+        "client-4-0", "client-4-1", "client-4-2",
+        "client-5-0", "client-5-1", "client-5-2",
+        "client-6-0", "client-6-1", "client-6-2",
+        "client-7-0", "client-7-1", "client-7-2"
     ]
     # 🧠 Example input: 16 nodes, each with 40 logical CPUs
-    nodes = [{"name": n, "cpus": 40} for n in node_names]
+    nodes = [{"name": n, "cpus": 16} for n in node_names]
 
 
     # Total client process counts for each experiment group
-    client_totals = [1,2,4,8,15,30,60,75,90,105,120,135,150,180,240,300]
+    client_totals = [1,2,4,8,16, 32, 64, 128, 160, 192]
 
     print(client_totals)
     config = generate_config(nodes, client_totals)

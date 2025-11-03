@@ -611,8 +611,9 @@ void BenchmarkClient::CleanupContinue()
     auto n = session_states_.size();
     Notice("Waiting for %lu outstanding transactions.", n);
 
-    if (n > 0)
+    if (n > 0 && cooldown_counter_ < 10)
     {
+        cooldown_counter_++;
         transport_.TimerMicro(1e6, std::bind(&BenchmarkClient::CleanupContinue, this));
     }
     else

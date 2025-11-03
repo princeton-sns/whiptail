@@ -99,6 +99,7 @@ protected:
 
     Stats stats;
     Transport &transport_;
+    int cooldown_counter_{0};
 
 private:
     class SessionState
