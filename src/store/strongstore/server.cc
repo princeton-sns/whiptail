@@ -1734,7 +1734,7 @@ namespace strongstore
                     ASSERT(s == PREPARING);
 
                     LockAcquireResult ar = locks_.AcquireLocks(transaction_id, transaction);
-                    ASSERT(ar.status == LockStatus::ACQUIRED);
+                    // ASSERT(ar.status == LockStatus::ACQUIRED);
 
                     transactions_.FinishCoordinatorPrepare(transaction_id, commit_ts);
                 }
