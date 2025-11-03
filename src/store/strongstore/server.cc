@@ -1659,6 +1659,15 @@ namespace strongstore
                     }
                     ASSERT(s == PREPARING);
 
+                    Notice("[%lu] Acquiring locks", transaction_id);
+                    for (auto &write : transaction.getWriteSet())
+                    {
+                        Notice("[%lu] write: %s", transaction_id, write.first.c_str());
+                    }
+                    for (auto &read : transaction.getReadSet())
+                    {
+                        Notice("[%lu] read: %s", transaction_id, read.first.c_str());
+                    }
                     LockAcquireResult ar = locks_.AcquireLocks(transaction_id, transaction);
                     ASSERT(ar.status == LockStatus::ACQUIRED);
 
@@ -1671,7 +1680,11 @@ namespace strongstore
 
                 uint64_t commit_wait_us = tt_.TimeToWaitUntilMicros(commit_ts.getTimestamp());
                 Debug("[%lu] delaying commit by %lu us", transaction_id, commit_wait_us);
-                transport_->TimerMicro(commit_wait_us, std::bind(&Server::CoordinatorCommitTransaction, this, transaction_id, commit_ts));
+                if (commit_wait_us > 0){
+                        transport_->TimerMicro(commit_wait_us, std::bind(&Server::CoordinatorCommitTransaction, this, transaction_id, commit_ts));
+                } else {
+                    CoordinatorCommitTransaction(transaction_id, commit_ts);
+                }
             }
             else
             { // Participant commit
