@@ -579,6 +579,7 @@ void BenchmarkClient::ExecuteCallback(uint64_t session_id,
                 // stats.Increment(ttype + "_backoff", backoff);
                 Debug("Backing off for %lu us: %lu", backoff, n_attempts);
             }
+            OnReply(session_id, ABORTED_SYSTEM, true);
 
             /*transport_.TimerMicro(backoff, [this, session_id]
                                 {
