@@ -626,8 +626,8 @@ namespace strongstore
         {
             Debug("[%lu] PREPARE callback status %d", transaction_id, status);
         };
-        auto pctcb = [transaction_id = tid](int) {
-            Notice("[%lu] PREPARE timeout", transaction_id);
+        auto pctcb = [&tid](int) {
+            Notice("[%lu] PREPARE timeout", tid);
         };
 
         for (auto p : participants)
@@ -801,9 +801,8 @@ namespace strongstore
         auto rocscb = std::bind(&Client::ROCommitSlowCallback, this, std::ref(session), req->id,
                                 std::placeholders::_1, std::placeholders::_2,
                                 std::placeholders::_3, std::placeholders::_4);
-        auto roctcb = [transaction_id = tid](int) {
-            Notice("[%lu] ROCOMMIT timeout", transaction_id);
-
+        auto roctcb = [&tid]() {
+            Notice("[%lu] ROCOMMIT timeout", tid);
         }; // TODO: Handle timeout
 
         for (auto &s : sharded_keys)

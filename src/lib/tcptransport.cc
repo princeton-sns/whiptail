@@ -845,8 +845,9 @@ void TCPTransport::TCPOutgoingEventCallback(struct bufferevent *bev,
     }
     else if (what & BEV_EVENT_ERROR)
     {
-        Warning("Error on outgoing TCP connection to server: %s",
-                evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()));
+        Warning("Error on outgoing TCP connection to server: %s for %s:%d",
+                evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()),
+                inet_ntoa(addr.addr.sin_addr), htons(addr.addr.sin_port));
         bufferevent_free(bev);
 
         // transport->mtx.lock();
