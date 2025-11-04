@@ -19,10 +19,10 @@ namespace retwis {
         Debug("ONE_SHOT_RW %lu", op_index);
         if (op_index == 0) {
             return BeginRW();
-        } else if (op_index < mixedWriteOpsTxn + 1) {
-            return Put(GetKey(op_index - 1), GetKey(op_index - 1));
-        } else if (op_index < mixedWriteOpsTxn + mixedReadOpsTxn + 1) {
+        } else if (op_index < mixedReadOpsTxn + 1) {
             return Get(GetKey(op_index - 1));
+        } else if (op_index < mixedWriteOpsTxn + mixedReadOpsTxn + 1) {
+            return Put(GetKey(op_index - 1), GetKey(op_index - 1));
         } else if (op_index == mixedWriteOpsTxn + mixedReadOpsTxn + 1 ) {
             return Commit();
         } else {
