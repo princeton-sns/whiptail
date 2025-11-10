@@ -102,7 +102,7 @@ void BenchmarkClient::Start(bench_done_callback bdcb)
     transport_.TimerMicro(0, std::bind(&BenchmarkClient::SendNext, this));
 }
 
-void BenchmarkClient::IssueTransaction(const uint64_t session_id) {
+void BenchmarkClient::IssueTransaction(const uint64_t session_id, bool abortTxn) {
     /* Issue each part of a transaction */
     Debug("[%lu] IssueTransaction", session_id);
     auto search = session_states_.find(session_id);
@@ -198,17 +198,24 @@ read_phase_label:
     auto acb = std::bind(&BenchmarkClient::AbortCallback, this, session_id, ABORTED_USER);
     auto atcb = std::bind(&BenchmarkClient::AbortTimeout, this);
     // Time to commit or abort
-    Operation end_op = transaction->GetNextOperation(ss.op_index());
-    if (end_op.type == COMMIT)
-        client.Commit(session, ccb, ctcb, timeout_);
-    else if (end_op.type == ROCOMMIT)
-        client.ROCommit(session, end_op.keys, ccb, ctcb, timeout_);
-    else if (end_op.type == ABORT)
+
+    if (abortTxn) {
         client.Abort(session, acb, atcb, timeout_);
-    else if (end_op.type == WAIT)
-        ;
-    else
-        NOT_REACHABLE();
+    }
+    else {
+        Operation end_op = transaction->GetNextOperation(ss.op_index());
+        if (end_op.type == COMMIT)
+            client.Commit(session, ccb, ctcb, timeout_);
+        else if (end_op.type == ROCOMMIT)
+            client.ROCommit(session, end_op.keys, ccb, ctcb, timeout_);
+        else if (end_op.type == ABORT)
+            client.Abort(session, acb, atcb, timeout_);
+        else if (end_op.type == WAIT)
+            ;
+        else
+            NOT_REACHABLE();
+    }
+   
 }
 
 void BenchmarkClient::SendNext()
@@ -257,7 +264,7 @@ void BenchmarkClient::SendNext()
 
         if (send_next)
         {
-            Debug("next arrival in %lu us", next_arrival_us);
+            Notice("next arrival in %lu us", next_arrival_us);
             transport_.TimerMicro(next_arrival_us, std::bind(&BenchmarkClient::SendNext, this));
         }
     }
@@ -277,6 +284,7 @@ void BenchmarkClient::SendNextInSession(const uint64_t session_id)
 
     if (switch_dist_(rand_))
     {
+        Notice("Switching to next session");
         auto cur_client_index = ss.current_client_index();
         std::size_t next_client_index = (cur_client_index + 1) % clients_.size();
 
@@ -402,11 +410,21 @@ void BenchmarkClient::GetCallback(const uint64_t session_id, int status,
     auto search = session_states_.find(session_id);
     ASSERT(search != session_states_.end());
     auto &ss = search->second;
+
+    if (status == REPLY_FAIL) {
+        IssueTransaction(session_id, true);
+        return;
+    }
+
     ss.decrement_outstanding_gets();
     if (ss.get_outstanding_gets() == 0)
-        IssueTransaction(session_id);
-    else
+    {
+        Notice("All gets completed, issuing transaction");
+        IssueTransaction(session_id, false);
+    }
+    else {
         return;     
+    }
 }
 
 void BenchmarkClient::GetTimeout(const uint64_t session_id,

@@ -73,7 +73,7 @@ public:
 
     void SendNext();
     void ExecuteCallback(uint64_t transaction_id, transaction_status_t result);
-    void IssueTransaction(const uint64_t session_id);
+    void IssueTransaction(const uint64_t session_id, bool abortTxn = false);
 
     inline bool IsFullyDone() { return done; }
 
