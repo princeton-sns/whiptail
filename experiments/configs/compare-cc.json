@@ -12,6 +12,27 @@
     "us-east-1-0",
     "us-east-1-1",
     "us-east-1-2",
+    "us-east-1-3",
+    "us-east-1-4",
+    "us-east-1-5",
+    "us-east-1-6",
+    "us-east-1-7",
+    "us-east-1-8",
+    "us-east-1-9",
+    "us-east-1-10",
+    "us-east-1-11",
+    "us-east-1-12",
+    "us-east-1-13",
+    "us-east-1-14",
+    "us-east-1-15",
+    "us-east-1-16",
+    "us-east-1-17",
+    "us-east-1-18",
+    "us-east-1-19",
+    "us-east-1-20",
+    "us-east-1-21",
+    "us-east-1-22",
+    "us-east-1-23",
     "us-west-1-0",
     "us-west-1-1",
     "us-west-1-2",
@@ -25,7 +46,7 @@
   "client_debug_stats": true,
   "server_debug_stats": true,
   "server_load_time": 5,
-  "client_experiment_length": 35,
+  "client_experiment_length": 15,
   "client_rand_sleep": 0,
   "client_ramp_up": 5,
   "client_ramp_down": 5,
@@ -34,12 +55,33 @@
   "replica_config_format_str": "replica-%d.config",
   "network_config": "network.json",
   "fault_tolerance": 1,
-  "num_shards": 3,
+  "num_shards": 10,
   "server_regions": {
     "us-east-1": [
       "us-east-1-0",
       "us-east-1-1",
       "us-east-1-2",
+      "us-east-1-3",
+      "us-east-1-4",
+      "us-east-1-5",
+      "us-east-1-6",
+      "us-east-1-7",
+      "us-east-1-8",
+      "us-east-1-9",
+      "us-east-1-10",
+      "us-east-1-11",
+      "us-east-1-12",
+      "us-east-1-13",
+      "us-east-1-14",
+      "us-east-1-15",
+      "us-east-1-16",
+      "us-east-1-17",
+      "us-east-1-18",
+      "us-east-1-19",
+      "us-east-1-20",
+      "us-east-1-21",
+      "us-east-1-22",
+      "us-east-1-23",
       "client-0-0"
     ],
     "eu-west-1": [
@@ -60,6 +102,41 @@
       "us-east-1-0",
       "us-east-1-1",
       "us-east-1-2"
+    ],
+    [
+      "us-east-1-3",
+      "us-east-1-4",
+      "us-east-1-5"
+    ],
+    [
+      "us-east-1-6",
+      "us-east-1-7",
+      "us-east-1-8"
+    ],
+    [
+      "us-east-1-9",
+      "us-east-1-10",
+      "us-east-1-11"
+    ],
+    [
+      "us-east-1-12",
+      "us-east-1-13",
+      "us-east-1-14"
+    ],
+    [
+      "us-east-1-15",
+      "us-east-1-16",
+      "us-east-1-17"
+    ],
+    [
+      "us-east-1-18",
+      "us-east-1-19",
+      "us-east-1-20"
+    ],
+    [
+      "us-east-1-21",
+      "us-east-1-22",
+      "us-east-1-23"
     ],
     [
       "us-west-1-0",
@@ -88,7 +165,7 @@
   "bench_mode": "closed",
   "mpl": 10,
   "client_key_selector": "zipf",
-  "client_zipf_coefficient": 1.2,
+  "client_zipf_coefficient": 0.99,
   "client_arrival_rate": 1,
   "client_stay_probability": 1.0,
   "client_switch_probability": 0.0,
@@ -96,17 +173,17 @@
   "nb_time_alpha": 1.0,
   "write_ops_txn": 1,
   "read_ops_txn": 1,
-  "mixed_write_ops_txn": 1,
-  "mixed_read_ops_txn": 1,
-  "read_percent": 5,
-  "write_percent": 95,
-  "mixed_rw_percent": 0,
+  "mixed_write_ops_txn": 5,
+  "mixed_read_ops_txn": 5,
+  "read_percent": 0,
+  "write_percent": 0,
+  "mixed_rw_percent": 100,
   "network_latency_window": 0,
   "sent_redundancy": 1,
   "loop_queue_interval_us": 150,
   "server_preload_keys": true,
   "client_abort_backoff": 1,
-  "client_retry_aborted": true,
+  "client_retry_aborted": false,
   "client_max_attempts": -1,
   "client_max_backoff": 2500,
   "client_message_timeout": 60000,
@@ -120,11 +197,6 @@
   ],
   "experiment_name": "",
   "codebase_name": "rss",
-  "pin_client_processes": [
-    
-      1
-    
-  ],
   "pin_server_processes": [
     2
   ],

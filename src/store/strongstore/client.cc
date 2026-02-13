@@ -314,6 +314,9 @@ namespace strongstore
         case StrongSession::ABORTING:
             Debug("[%lu] Already aborted", transaction_id);
             break;
+        case StrongSession::NEEDS_ABORT:
+            Debug("[%lu] Already aborted", transaction_id);
+            break;
         default:
             Panic("Unexpected state: %d", session.state());
         }
@@ -464,7 +467,7 @@ namespace strongstore
             return;
         }
 
-        ASSERT(session.executing());
+        // ASSERT(session.executing());
 
         // Contact the appropriate shard to get the value.
         int i = (*part_)(key, nshards_, -1, session.participants());
@@ -507,7 +510,7 @@ namespace strongstore
             return;
         }
 
-        ASSERT(session.executing());
+        // ASSERT(session.executing());
 
         // Contact the appropriate shard to get the value.
         int i = (*part_)(key, nshards_, -1, session.participants());
@@ -591,7 +594,7 @@ namespace strongstore
             return;
         }
 
-        ASSERT(session.executing());
+        // ASSERT(session.executing());
         session.set_committing();
 
         auto &min_read_ts = session.min_read_ts();

@@ -27,6 +27,7 @@
  *
  **********************************************************************/
 
+#include <execinfo.h>
 #include <gflags/gflags.h>
 #include <valgrind/callgrind.h>
 
@@ -416,6 +417,7 @@ Partitioner *part;
 KeySelector *keySelector;
 
 void Signal(int signal);
+void SignalSegv(int signal);
 void Cleanup();
 void FlushStats();
 
@@ -855,6 +857,7 @@ int main(int argc, char **argv)
     std::signal(SIGKILL, Signal);
     std::signal(SIGTERM, Signal);
     std::signal(SIGINT, Signal);
+    std::signal(SIGSEGV, SignalSegv);
 
     CALLGRIND_START_INSTRUMENTATION;
     tport->Run();
@@ -884,7 +887,16 @@ int main(int argc, char **argv)
 
     return 0;
 }
+void SignalSegv(int signal){
+    // Print out stack trace on segfault
+    void *array[50];
+    size_t size = backtrace(array, 50);
 
+    fprintf(stderr, "Error: signal %d:\n", signal);
+    backtrace_symbols_fd(array, size, STDERR_FILENO);
+
+    exit(1);
+}
 void Signal(int signal)
 {
     Notice("Gracefully stopping bench clients after signal %d.", signal);

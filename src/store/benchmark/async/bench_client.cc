@@ -195,7 +195,7 @@ read_phase_label:
     
     auto ccb = std::bind(&BenchmarkClient::CommitCallback, this, session_id, std::placeholders::_1);
     auto ctcb = std::bind(&BenchmarkClient::CommitTimeout, this);
-    auto acb = std::bind(&BenchmarkClient::AbortCallback, this, session_id, ABORTED_USER);
+    auto acb = std::bind(&BenchmarkClient::AbortCallback, this, session_id, ABORTED_SYSTEM);
     auto atcb = std::bind(&BenchmarkClient::AbortTimeout, this);
     // Time to commit or abort
 
@@ -419,7 +419,7 @@ void BenchmarkClient::GetCallback(const uint64_t session_id, int status,
     ss.decrement_outstanding_gets();
     if (ss.get_outstanding_gets() == 0)
     {
-        Notice("All gets completed, issuing transaction");
+        Debug("All gets completed, issuing transaction");
         IssueTransaction(session_id, false);
     }
     else {
@@ -513,7 +513,7 @@ void BenchmarkClient::AbortTimeout()
 void BenchmarkClient::ExecuteCallback(uint64_t session_id,
                                     transaction_status_t result)
 {
-    Debug("[%lu] ExecuteCallback with result %d.", session_id, result);
+    Notice("[%lu] ExecuteCallback with result %d.", session_id, result);
     auto search = session_states_.find(session_id);
     ASSERT(search != session_states_.end());
 
@@ -526,9 +526,11 @@ void BenchmarkClient::ExecuteCallback(uint64_t session_id,
         (maxAttempts != -1 && n_attempts >= static_cast<uint64_t>(maxAttempts)) ||
         !retryAborted)
     {
+        Debug("Enter Commit/Abort callback for transaction %lu with result %d, n_attempts: %lu, max attempts: %lu, retry aborted: %d", session_id, result, n_attempts, maxAttempts, retryAborted);
         bool erase_session = true;
         if (result == COMMITTED)
         {
+            Debug("Enter Commit callback for transaction %lu", session_id);
             stats.Increment(ttype + "_committed", 1);
 
             if (!cooldownStarted)
@@ -573,6 +575,7 @@ void BenchmarkClient::ExecuteCallback(uint64_t session_id,
     }
     else
     {
+        Debug("Enter Abort callback for transaction %lu", session_id);
         stats.Increment(ttype + "_" + std::to_string(result), 1);
         BenchmarkClient::BenchState state = GetBenchState();
         Debug("Current bench state: %d.", state);
@@ -582,6 +585,7 @@ void BenchmarkClient::ExecuteCallback(uint64_t session_id,
         }
         else
         {
+            Debug("Enter Retry callback for transaction %lu", session_id);
             uint64_t backoff = 0;
             if (abortBackoff > 0)
             {
@@ -597,23 +601,27 @@ void BenchmarkClient::ExecuteCallback(uint64_t session_id,
                 // stats.Increment(ttype + "_backoff", backoff);
                 Debug("Backing off for %lu us: %lu", backoff, n_attempts);
             }
-            OnReply(session_id, ABORTED_SYSTEM, true);
-
-            /*transport_.TimerMicro(backoff, [this, session_id]
+            OnReply(session_id, ABORTED_SYSTEM, false);
+            Notice("Set up retry for transaction %lu, backoff: %lu us", session_id, backoff);
+            transport_.TimerMicro(backoff, [this, session_id]
                                 {
+                Notice("Begin Retrying transaction %lu", session_id);
                 auto search = session_states_.find(session_id);
                 ASSERT(search != session_states_.end());
-
+                Notice("Found session %lu", session_id);
                 auto &ss = search->second;
                 ss.retry_transaction();
-
+                Notice("Retried transaction %lu", session_id);
                 stats.Increment(ss.transaction()->GetTransactionType() + "_attempts", 1);
+                Notice("Incremented attempts for transaction %lu", session_id);
+                // auto bcb = std::bind(&BenchmarkClient::ExecuteNextOperation, this, session_id);
+                // auto btcb = []() {};
 
-                auto bcb = std::bind(&BenchmarkClient::ExecuteNextOperation, this, session_id);
-                auto btcb = []() {};
-
-                auto &client = *clients_[ss.current_client_index()];
-                client.Retry(ss.session(), bcb, btcb, timeout_); });*/
+                // auto &client = *clients_[ss.current_client_index()];
+                // client.Retry(ss.session(), bcb, btcb, timeout_); });
+                Notice("End Retrying transaction %lu", session_id);
+                IssueTransaction(session_id, false);
+            });
         }
     }
 }
@@ -709,7 +717,7 @@ void BenchmarkClient::CooldownDone()
 
 void BenchmarkClient::OnReply(uint64_t session_id, int result, bool erase_session)
 {
-    Debug("OnReply with result %d for session %lu.", result, session_id);
+    Notice("OnReply with result %d for session %lu. Erase session: %d", result, session_id, erase_session);
     auto search = session_states_.find(session_id);
     ASSERT(search != session_states_.end());
 
@@ -758,13 +766,18 @@ void BenchmarkClient::OnReply(uint64_t session_id, int result, bool erase_sessio
         }
     }
 
-    delete transaction;
+    if (result == COMMITTED) {
+        delete transaction;
+    } 
+    
 
     if (erase_session)
     {
+        Notice("Erasing session %lu", session_id);
         auto &client = *clients_[ss.current_client_index()];
         client.EndSession(ss.session());
         session_states_.erase(search);
+        n_sessions_started_--;
     }
 
     n++;
