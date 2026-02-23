@@ -478,7 +478,7 @@ void BenchmarkClient::PutTimeout(const uint64_t session_id, int status,
 
 void BenchmarkClient::CommitCallback(const uint64_t session_id, transaction_status_t status)
 {
-    Debug("[%lu] Commit callback.", session_id);
+    Notice("[%lu] Commit callback.", session_id);
     auto search = session_states_.find(session_id);
     ASSERT(search != session_states_.end());
 
@@ -495,7 +495,7 @@ void BenchmarkClient::CommitTimeout()
 
 void BenchmarkClient::AbortCallback(const uint64_t session_id, transaction_status_t status)
 {
-    Debug("[%lu] Abort callback.", session_id);
+    Notice("[%lu] Abort callback.", session_id);
     auto search = session_states_.find(session_id);
     ASSERT(search != session_states_.end());
 
@@ -522,6 +522,7 @@ void BenchmarkClient::ExecuteCallback(uint64_t session_id,
     auto &ttype = transaction->GetTransactionType();
     auto n_attempts = ss.n_attempts();
 
+    // Commit or Abort callback or max attempts reached or retry aborted is disabled
     if (result == COMMITTED || result == ABORTED_USER ||
         (maxAttempts != -1 && n_attempts >= static_cast<uint64_t>(maxAttempts)) ||
         !retryAborted)
@@ -532,43 +533,40 @@ void BenchmarkClient::ExecuteCallback(uint64_t session_id,
         {
             Debug("Enter Commit callback for transaction %lu", session_id);
             stats.Increment(ttype + "_committed", 1);
-
-            if (!cooldownStarted)
-            {
-                bool send_next_in_session = false;
-                uint64_t next_arrival_us = 0;
-                switch (mode_)
-                {
-                case BenchmarkClientMode::OPEN:
-                    send_next_in_session = stay_dist_(rand_);
-                    next_arrival_us = static_cast<uint64_t>(think_time_dist_(rand_));
-                    break;
-
-                case BenchmarkClientMode::CLOSED:
-                    send_next_in_session = true;
-                    next_arrival_us = 0;
-                    break;
-                default:
-                    Panic("Unexpected client mode!");
-                }
-
-                if (send_next_in_session)
-                {
-                    erase_session = false;
-                    Debug("next arrival in session %lu us", next_arrival_us);
-
-                    transport_.TimerMicro(next_arrival_us, std::bind(&BenchmarkClient::SendNextInSession, this, session_id));
-                }
-            }
-            else
-            {
-                Debug("end of session");
-            }
         }
 
         if (retryAborted)
         {
             stats.Add(ttype + "_attempts_list", n_attempts);
+        }
+
+
+        if (!cooldownStarted)
+        {
+            bool send_next_in_session = false;
+            uint64_t next_arrival_us = 0;
+            switch (mode_)
+            {
+            case BenchmarkClientMode::OPEN:
+                send_next_in_session = stay_dist_(rand_);
+                next_arrival_us = static_cast<uint64_t>(think_time_dist_(rand_));
+                break;
+
+            case BenchmarkClientMode::CLOSED:
+                send_next_in_session = true;
+                next_arrival_us = 0;
+                break;
+            default:
+                Panic("Unexpected client mode!");
+            }
+
+            if (send_next_in_session)
+            {
+                erase_session = false;
+                Debug("next arrival in session %lu us", next_arrival_us);
+
+                transport_.TimerMicro(next_arrival_us, std::bind(&BenchmarkClient::SendNextInSession, this, session_id));
+            }
         }
 
         OnReply(session_id, result, erase_session);
