@@ -86,6 +86,7 @@ namespace strongstore
             values_.clear();
             snapshot_ts_ = Timestamp();
             current_participant_ = -1;
+            outstanding_gets_ = 0;
             state_ = EXECUTING;
         }
 
@@ -97,6 +98,7 @@ namespace strongstore
             values_.clear();
             snapshot_ts_ = Timestamp();
             current_participant_ = -1;
+            outstanding_gets_ = 0;
             state_ = EXECUTING;
         }
 
@@ -126,7 +128,22 @@ namespace strongstore
         void set_getting(int p)
         {
             current_participant_ = p;
+            outstanding_gets_++;
             state_ = GETTING;
+        }
+
+        // Called when a GET reply is processed. Returns true if all
+        // outstanding GETs have completed and state transitions to EXECUTING.
+        bool finish_get()
+        {
+            if (outstanding_gets_ > 0)
+                outstanding_gets_--;
+            if (outstanding_gets_ == 0)
+            {
+                set_executing();
+                return true;
+            }
+            return false;
         }
 
         void set_putting(int p)
@@ -157,6 +174,7 @@ namespace strongstore
         std::unordered_map<std::string, std::list<Value>> values_;
         Timestamp snapshot_ts_;
         int current_participant_;
+        int outstanding_gets_ = 0;
         State state_;
     };
 

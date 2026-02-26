@@ -158,6 +158,7 @@ read_phase_label:
         } else {
             // If we've reached this point, the read phase is over. 
             reading = false; // This seems unnecessary but also not incorrect
+            Debug("Exiting read phase");
             return; // We return because we want the execution to suspend 
         }
         ss.incr_op_index();
@@ -177,7 +178,7 @@ read_phase_label:
     // If so, we can enter a writing phase
     Operation potential_write_op = transaction->GetNextOperation(ss.op_index());
     bool writing = (potential_write_op.type == PUT);
-    
+    Debug("Entering write phase");
     while (writing) {
         Operation write_op = transaction->GetNextOperation(ss.op_index());
         if (write_op.type == PUT)
@@ -240,6 +241,7 @@ void BenchmarkClient::SendNext()
     auto &ss = session_states_.find(sid)->second;
     _Latency_StartRec(ss.lat());
 
+    Debug("IssueTransaction in SendNext: %lu", sid);
     IssueTransaction(sid);
 
     if (!cooldownStarted)
@@ -255,7 +257,6 @@ void BenchmarkClient::SendNext()
 
         case BenchmarkClientMode::CLOSED:
             send_next = (n_sessions_started_ < mpl_);
-            std::cerr << "n_sessions_started: " << n_sessions_started_ << std::endl;
             next_arrival_us = 0;
             break;
         default:
@@ -264,7 +265,6 @@ void BenchmarkClient::SendNext()
 
         if (send_next)
         {
-            Notice("next arrival in %lu us", next_arrival_us);
             transport_.TimerMicro(next_arrival_us, std::bind(&BenchmarkClient::SendNext, this));
         }
     }
@@ -284,7 +284,7 @@ void BenchmarkClient::SendNextInSession(const uint64_t session_id)
 
     if (switch_dist_(rand_))
     {
-        Notice("Switching to next session");
+        Debug("Switching to next session");
         auto cur_client_index = ss.current_client_index();
         std::size_t next_client_index = (cur_client_index + 1) % clients_.size();
 
@@ -405,25 +405,30 @@ void BenchmarkClient::GetCallback(const uint64_t session_id, int status,
                                 const std::string &key, const std::string &val, Timestamp ts)
 {   
 
-    // Chris: I'm not handling aborts right now. Handle that. 
     Debug("[%lu] Get(%s) callback", session_id, key.c_str());
     auto search = session_states_.find(session_id);
     ASSERT(search != session_states_.end());
     auto &ss = search->second;
 
+    ss.decrement_outstanding_gets();
+
     if (status == REPLY_FAIL) {
-        IssueTransaction(session_id, true);
-        return;
+        ss.set_has_failed_get();
     }
 
-    ss.decrement_outstanding_gets();
+    Debug("[%lu] Get callback: remaining=%lu has_failed=%d", session_id, ss.get_outstanding_gets(), ss.has_failed_get());
+
     if (ss.get_outstanding_gets() == 0)
     {
-        Debug("All gets completed, issuing transaction");
-        IssueTransaction(session_id, false);
-    }
-    else {
-        return;     
+        if (ss.has_failed_get())
+        {
+            Debug("[%lu] Gets completed with failure, aborting", session_id);
+            IssueTransaction(session_id, true);
+        }
+        else
+        {
+            IssueTransaction(session_id, false);
+        }
     }
 }
 
@@ -449,7 +454,7 @@ void BenchmarkClient::GetTimeout(const uint64_t session_id,
 void BenchmarkClient::PutCallback(const uint64_t session_id, int status,
                                 const std::string &key, const std::string &val)
 {
-    Debug("[%lu] Put(%s,%s) callback.", session_id, key.c_str(), val.c_str());
+    Debug("[%lu] Put(%s,%s) callback. status: %d", session_id, key.c_str(), val.c_str(), status);
     auto search = session_states_.find(session_id);
     ASSERT(search != session_states_.end());
 
@@ -478,7 +483,7 @@ void BenchmarkClient::PutTimeout(const uint64_t session_id, int status,
 
 void BenchmarkClient::CommitCallback(const uint64_t session_id, transaction_status_t status)
 {
-    Notice("[%lu] Commit callback.", session_id);
+    Debug("[%lu] Commit callback.", session_id);
     auto search = session_states_.find(session_id);
     ASSERT(search != session_states_.end());
 
@@ -495,7 +500,7 @@ void BenchmarkClient::CommitTimeout()
 
 void BenchmarkClient::AbortCallback(const uint64_t session_id, transaction_status_t status)
 {
-    Notice("[%lu] Abort callback.", session_id);
+    Debug("[%lu] Abort callback.", session_id);
     auto search = session_states_.find(session_id);
     ASSERT(search != session_states_.end());
 
@@ -513,7 +518,7 @@ void BenchmarkClient::AbortTimeout()
 void BenchmarkClient::ExecuteCallback(uint64_t session_id,
                                     transaction_status_t result)
 {
-    Notice("[%lu] ExecuteCallback with result %d.", session_id, result);
+    Debug("[%lu] ExecuteCallback with result %d.", session_id, result);
     auto search = session_states_.find(session_id);
     ASSERT(search != session_states_.end());
 
@@ -600,24 +605,24 @@ void BenchmarkClient::ExecuteCallback(uint64_t session_id,
                 Debug("Backing off for %lu us: %lu", backoff, n_attempts);
             }
             OnReply(session_id, ABORTED_SYSTEM, false);
-            Notice("Set up retry for transaction %lu, backoff: %lu us", session_id, backoff);
+            Debug("Set up retry for transaction %lu, backoff: %lu us", session_id, backoff);
             transport_.TimerMicro(backoff, [this, session_id]
                                 {
-                Notice("Begin Retrying transaction %lu", session_id);
+                Debug("Begin Retrying transaction %lu", session_id);
                 auto search = session_states_.find(session_id);
                 ASSERT(search != session_states_.end());
-                Notice("Found session %lu", session_id);
+                Debug("Found session %lu", session_id);
                 auto &ss = search->second;
                 ss.retry_transaction();
-                Notice("Retried transaction %lu", session_id);
+                Debug("Retried transaction %lu", session_id);
                 stats.Increment(ss.transaction()->GetTransactionType() + "_attempts", 1);
-                Notice("Incremented attempts for transaction %lu", session_id);
+                Debug("Incremented attempts for transaction %lu", session_id);
                 // auto bcb = std::bind(&BenchmarkClient::ExecuteNextOperation, this, session_id);
                 // auto btcb = []() {};
 
                 // auto &client = *clients_[ss.current_client_index()];
                 // client.Retry(ss.session(), bcb, btcb, timeout_); });
-                Notice("End Retrying transaction %lu", session_id);
+                Debug("End Retrying transaction %lu", session_id);
                 IssueTransaction(session_id, false);
             });
         }
@@ -715,7 +720,7 @@ void BenchmarkClient::CooldownDone()
 
 void BenchmarkClient::OnReply(uint64_t session_id, int result, bool erase_session)
 {
-    Notice("OnReply with result %d for session %lu. Erase session: %d", result, session_id, erase_session);
+    Debug("OnReply with result %d for session %lu. Erase session: %d", result, session_id, erase_session);
     auto search = session_states_.find(session_id);
     ASSERT(search != session_states_.end());
 
@@ -755,7 +760,7 @@ void BenchmarkClient::OnReply(uint64_t session_id, int result, bool erase_sessio
         BenchState state = GetBenchState(diff);
         if ((state == COOL_DOWN || state == DONE) && !cooldownStarted)
         {
-            Debug("Starting cooldown after %ld seconds.", diff.tv_sec);
+            Notice("Starting cooldown after %ld seconds.", diff.tv_sec);
             Finish();
         }
         else
@@ -771,7 +776,7 @@ void BenchmarkClient::OnReply(uint64_t session_id, int result, bool erase_sessio
 
     if (erase_session)
     {
-        Notice("Erasing session %lu", session_id);
+        Debug("Erasing session %lu", session_id);
         auto &client = *clients_[ss.current_client_index()];
         client.EndSession(ss.session());
         session_states_.erase(search);

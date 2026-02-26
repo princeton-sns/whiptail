@@ -107,7 +107,7 @@ private:
     public:
         SessionState(Session &session, AsyncTransaction *transaction, execute_callback ecb, std::size_t client_index)
             : lat_{}, session_{session}, transaction_{transaction}, ecb_{ecb}, n_attempts_{1}, op_index_{0}, current_client_index_{client_index},
-            read_phase_completed_{true}, current_client_txn_count_{0}, outstanding_gets_{0} {}
+            read_phase_completed_{true}, current_client_txn_count_{0}, outstanding_gets_{0}, has_failed_get_{false} {}
 
         Session &session() { return session_; }
         AsyncTransaction *transaction() const { return transaction_; }
@@ -124,6 +124,8 @@ private:
         uint64_t get_outstanding_gets() { return outstanding_gets_; }
         void increment_outstanding_gets() { outstanding_gets_++; }
         void decrement_outstanding_gets() { outstanding_gets_--; }
+        bool has_failed_get() const { return has_failed_get_; }
+        void set_has_failed_get() { has_failed_get_ = true; }
 
         std::size_t current_client_index() const { return current_client_index_; }
 
@@ -135,12 +137,16 @@ private:
             current_client_index_ = client_index;
             n_attempts_ = 1;
             op_index_ = 0;
+            outstanding_gets_ = 0;
+            has_failed_get_ = false;
         }
 
         void retry_transaction()
         {
             n_attempts_++;
             op_index_ = 0;
+            outstanding_gets_ = 0;
+            has_failed_get_ = false;
         }
 
     private:
@@ -154,6 +160,7 @@ private:
         std::size_t current_client_txn_count_;
         bool read_phase_completed_;
         uint64_t outstanding_gets_;
+        bool has_failed_get_;
 
 
     };

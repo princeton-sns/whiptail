@@ -600,21 +600,29 @@ namespace strongstore
     {
         Debug("[%lu] [shard %i] Aborting GET", transaction_id, shard_idx_);
 
-        for (auto it = pendingGets.begin(); it != pendingGets.end(); ++it)
+        // Collect all matching entries first, then erase and callback.
+        std::vector<std::pair<uint64_t, PendingGet *>> to_abort;
+
+        for (auto it = pendingGets.begin(); it != pendingGets.end(); )
         {
             if (it->second->transaction_id == transaction_id)
             {
-                PendingGet *req = it->second;
-                uint64_t transaction_id = req->transaction_id;
-                get_callback gcb = req->gcb;
-                std::string key = req->key;
-
-                pendingGets.erase(it);
-                delete req;
-
-                gcb(REPLY_FAIL, key, "", {});
-                break;
+                to_abort.push_back({it->first, it->second});
+                it = pendingGets.erase(it);
             }
+            else
+            {
+                ++it;
+            }
+        }
+
+        for (auto &entry : to_abort)
+        {
+            PendingGet *req = entry.second;
+            get_callback gcb = req->gcb;
+            std::string key = req->key;
+            delete req;
+            gcb(REPLY_FAIL, key, "", {});
         }
     }
 

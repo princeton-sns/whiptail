@@ -292,15 +292,20 @@ namespace strongstore
 
         int p = -1;
         int coordinator = -1;
-        Debug("[%lu] client state: %d", transaction_id, session.state());
+        Debug("[%lu] HandleWound: client state=%d, participants=%zu", transaction_id, session.state(), session.participants().size());
         switch (session.state())
         {
         case StrongSession::EXECUTING:
             session.set_needs_abort();
             break;
         case StrongSession::GETTING:
-            p = session.current_participant();
-            sclients_[p]->AbortGet(transaction_id);
+            session.set_needs_abort();
+            for (int participant : session.participants())
+            {
+                Debug("[%lu] HandleWound: aborting gets and sending Abort to shard %d", transaction_id, participant);
+                sclients_[participant]->AbortGet(transaction_id);
+                sclients_[participant]->Abort(transaction_id, []() {}, []() {}, 0);
+            }
             break;
         case StrongSession::PUTTING:
             p = session.current_participant();
@@ -467,8 +472,6 @@ namespace strongstore
             return;
         }
 
-        // ASSERT(session.executing());
-
         // Contact the appropriate shard to get the value.
         int i = (*part_)(key, nshards_, -1, session.participants());
 
@@ -477,15 +480,40 @@ namespace strongstore
         // Add this shard to set of participants
         session.add_participant(i);
 
-        auto gcb1 = [gcb, session = std::ref(session)](int s, const std::string &k, const std::string &v, Timestamp ts)
+        auto gcb1 = [this, i, gcb, session = std::ref(session), tid](int s, const std::string &k, const std::string &v, Timestamp ts)
         {
-            session.get().set_executing();
-            gcb(s, k, v, ts);
+            auto &sess = session.get();
+            if (sess.transaction_id() != tid)
+            {
+                Debug("[%lu] Get reply: stale (current tid=%lu), sending abort to shard %d", tid, sess.transaction_id(), i);
+                sclients_[i]->Abort(tid, []() {}, []() {}, 0);
+                return;
+            }
+            if (sess.needs_aborts())
+            {
+                Debug("[%lu] Get reply: wound pending, converting to FAIL (key=%s)", tid, k.c_str());
+                sess.finish_get();
+                gcb(REPLY_FAIL, k, v, ts);
+            }
+            else
+            {
+                sess.finish_get();
+                gcb(s, k, v, ts);
+            }
         };
 
-        auto gtcb1 = [gtcb, session = std::ref(session)](int s, const std::string &k)
+        auto gtcb1 = [gtcb, session = std::ref(session), tid](int s, const std::string &k)
         {
-            session.get().set_executing();
+            auto &sess = session.get();
+            if (sess.transaction_id() != tid)
+            {
+                Debug("[%lu] Get timeout: stale (current tid=%lu), dropping", tid, sess.transaction_id());
+                return;
+            }
+            if (!sess.needs_aborts())
+            {
+                sess.set_executing();
+            }
             gtcb(s, k);
         };
 
@@ -510,8 +538,6 @@ namespace strongstore
             return;
         }
 
-        // ASSERT(session.executing());
-
         // Contact the appropriate shard to get the value.
         int i = (*part_)(key, nshards_, -1, session.participants());
 
@@ -520,15 +546,39 @@ namespace strongstore
         // Add this shard to set of participants
         session.add_participant(i);
 
-        auto gcb1 = [gcb, session = std::ref(session)](int s, const std::string &k, const std::string &v, Timestamp ts)
+        auto gcb1 = [this, i, gcb, session = std::ref(session), tid](int s, const std::string &k, const std::string &v, Timestamp ts)
         {
-            session.get().set_executing();
-            gcb(s, k, v, ts);
+            auto &sess = session.get();
+            if (sess.transaction_id() != tid)
+            {
+                Debug("[%lu] GetForUpdate reply: stale (current tid=%lu), sending abort to shard %d", tid, sess.transaction_id(), i);
+                sclients_[i]->Abort(tid, []() {}, []() {}, 0);
+                return;
+            }
+            if (sess.needs_aborts())
+            {
+                Debug("[%lu] GetForUpdate reply: wound pending, converting to FAIL (key=%s)", tid, k.c_str());
+                sess.finish_get();
+                gcb(REPLY_FAIL, k, v, ts);
+            }
+            else
+            {
+                sess.finish_get();
+                gcb(s, k, v, ts);
+            }
         };
 
-        auto gtcb1 = [gtcb, session = std::ref(session)](int s, const std::string &k)
+        auto gtcb1 = [gtcb, session = std::ref(session), tid](int s, const std::string &k)
         {
-            session.get().set_executing();
+            auto &sess = session.get();
+            if (sess.transaction_id() != tid)
+            {
+                return;
+            }
+            if (!sess.needs_aborts())
+            {
+                sess.set_executing();
+            }
             gtcb(s, k);
         };
 
@@ -546,14 +596,12 @@ namespace strongstore
 
         Debug("PUT [%lu : %s]", tid, key.c_str());
 
-        if (session.needs_aborts())
+        if (!session.executing())
         {
-            Debug("[%lu] Need to abort", tid);
+            Debug("[%lu] Put: session not executing (state=%d), returning FAIL", tid, session.state());
             pcb(REPLY_FAIL, "", "");
             return;
         }
-
-        ASSERT(session.executing());
 
         // Contact the appropriate shard to set the value.
         int i = (*part_)(key, nshards_, -1, session.participants());
@@ -587,14 +635,13 @@ namespace strongstore
 
         Debug("[%lu] COMMIT", tid);
 
-        if (session.needs_aborts())
+        if (!session.executing())
         {
             Debug("[%lu] Need to abort", tid);
             ccb(ABORTED_SYSTEM);
             return;
         }
 
-        // ASSERT(session.executing());
         session.set_committing();
 
         auto &min_read_ts = session.min_read_ts();
@@ -656,7 +703,7 @@ namespace strongstore
         auto search = pending_reqs_.find(req_id);
         if (search == pending_reqs_.end())
         {
-            Debug("[%lu] Transaction already finished", tid);
+            Debug("[%lu] CommitCallback: transaction already finished", tid);
             return;
         }
         PendingRequest *req = search->second;
@@ -669,7 +716,6 @@ namespace strongstore
             tstatus = COMMITTED;
             break;
         default:
-            // abort!
             Debug("[%lu] COMMIT ABORT", tid);
             tstatus = ABORTED_SYSTEM;
             break;
@@ -699,7 +745,14 @@ namespace strongstore
         auto &session = static_cast<StrongSession &>(s);
 
         auto tid = session.transaction_id();
-        Debug("[%lu] ABORT", tid);
+        Debug("[%lu] ABORT (state=%d)", tid, session.state());
+
+        if (session.state() == StrongSession::ABORTING)
+        {
+            Debug("[%lu] Abort: already aborting, calling acb direct", tid);
+            acb();
+            return;
+        }
 
         ASSERT(session.needs_aborts() || session.executing());
         session.set_aborting();
@@ -807,7 +860,7 @@ namespace strongstore
                                 std::placeholders::_1, std::placeholders::_2,
                                 std::placeholders::_3, std::placeholders::_4);
         auto roctcb = [&tid]() {
-            Notice("[%lu] ROCOMMIT timeout", tid);
+            Debug("[%lu] ROCOMMIT timeout", tid);
         }; // TODO: Handle timeout
 
         for (auto &s : sharded_keys)
