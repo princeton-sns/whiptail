@@ -93,19 +93,30 @@ void NCCServer::ReceiveMessage(const TransportAddress &remote,
 void NCCServer::HandleGet(const TransportAddress &remote, const NCCGet &msg) {
     uint64_t tx_id = msg.tx_id();
     Timestamp tx_ts(msg.tx_ts());
+    uint64_t client_id = msg.rid().client_id();
+    uint64_t client_req_id = msg.rid().client_req_id();
 
-    Debug("[%lu] HandleGet, ts=%lu.%lu", tx_id, tx_ts.getTimestamp(), tx_ts.getID());
+    Debug("[%lu] HandleGet, ts=%lu.%lu, client_id=%lu, req_id=%lu",
+          tx_id, tx_ts.getTimestamp(), tx_ts.getID(), client_id, client_req_id);
 
     TxnRecord &txn = transactions_[tx_id];
     txn.tx_id = tx_id;
     txn.tx_ts = tx_ts;
-    txn.get_responded = false;
-    txn.client_addr = remote.clone();
-    txn.get_msg.CopyFrom(msg);  // Store get message (not for replication, but for reference)
+    // Do NOT overwrite client_addr/get_msg/get_reply/get_responded in TxnRecord —
+    // those are per-request state now tracked in pending_get_requests_.
+
+    // Create per-request tracking entry
+    auto key = std::make_pair(client_id, client_req_id);
+    auto &pgr = pending_get_requests_[key];
+    pgr.tx_id = tx_id;
+    pgr.client_id = client_id;
+    pgr.client_req_id = client_req_id;
+    pgr.client_addr = remote.clone();
+    pgr.responded = false;
 
     // Get operation does NOT go through VR replication
     // Execute directly and return reply
-    ExecuteGet(msg, txn);
+    ExecuteGet(msg, txn, client_id, client_req_id);
 }
 
 void NCCServer::HandleExecute(const TransportAddress &remote, const NCCExecute &msg) {
@@ -134,9 +145,12 @@ void NCCServer::HandleExecute(const TransportAddress &remote, const NCCExecute &
     }
 }
 
-void NCCServer::ExecuteGet(const NCCGet &msg, TxnRecord &txn) {
-    auto is_replica = txn.client_addr == nullptr;
-    Debug("[%lu] ExecuteGet, is_replica=%s", txn.tx_id, is_replica ? "true" : "false");
+void NCCServer::ExecuteGet(const NCCGet &msg, TxnRecord &txn,
+                            uint64_t client_id, uint64_t client_req_id) {
+    auto pgr_key = std::make_pair(client_id, client_req_id);
+    auto is_replica = (pending_get_requests_.find(pgr_key) == pending_get_requests_.end());
+    Debug("[%lu] ExecuteGet, is_replica=%s, client_id=%lu, req_id=%lu",
+          txn.tx_id, is_replica ? "true" : "false", client_id, client_req_id);
 
     NCCGetReply reply;
     reply.mutable_rid()->set_client_id(msg.rid().client_id());
@@ -186,40 +200,56 @@ void NCCServer::ExecuteGet(const NCCGet &msg, TxnRecord &txn) {
     if (should_abort) {
         reply.set_status(STATUS_ABORT);
         txn.committed = false;
-        txn.get_reply = reply;
         if (!is_replica) {
-            SendGetReply(*txn.client_addr, reply);
+            auto pgr_it = pending_get_requests_.find(pgr_key);
+            if (pgr_it != pending_get_requests_.end()) {
+                SendGetReply(*pgr_it->second.client_addr, reply);
+                pending_get_requests_.erase(pgr_it);
+            }
         }
         return;
     }
 
-    // Save reply for Response Timing Control
-    txn.get_reply = reply;
+    // Save reply in per-request tracking (not in TxnRecord)
+    if (!is_replica) {
+        auto pgr_it = pending_get_requests_.find(pgr_key);
+        if (pgr_it != pending_get_requests_.end()) {
+            pgr_it->second.reply = reply;
+        }
+    }
+
     // RTC Debug Switch: ENABLE_RTC can be toggled in server.h
     if (ENABLE_RTC) {
         Debug("[%lu] RTC enabled for Get, adding to response queues", txn.tx_id);
-        
+
         // RTC enabled: Add to response queues and check dependencies
-        for (const string &key : txn.read_set) {
+        // Only add entries for the keys in THIS request, not the whole read_set
+        for (int i = 0; i < msg.read_keys_size(); i++) {
+            const string &key = msg.read_keys(i);
             PendingResponse pr;
             pr.tx_id = txn.tx_id;
             pr.key = key;
             pr.tw = txn.tx_ts;
             pr.type = ResponseType::GET;
+            pr.client_id = client_id;
+            pr.client_req_id = client_req_id;
             response_queues_[key].push(pr);
         }
 
         // Try to send response immediately if no dependencies
-        for (const string &key : txn.read_set) {
-            CheckAndSendResponse(key, is_replica);
+        for (int i = 0; i < msg.read_keys_size(); i++) {
+            CheckAndSendResponse(msg.read_keys(i), is_replica);
         }
     } else {
         // RTC disabled: Send response immediately for performance testing
         Debug("[%lu] RTC disabled, sending Get response immediately", txn.tx_id);
         if (!is_replica) {
-            SendGetReply(*txn.client_addr, reply);
+            auto pgr_it = pending_get_requests_.find(pgr_key);
+            if (pgr_it != pending_get_requests_.end()) {
+                SendGetReply(*pgr_it->second.client_addr, reply);
+                pending_get_requests_.erase(pgr_it);
+            }
         }
-        txn.get_responded = true;
     }
 }
 
@@ -324,35 +354,21 @@ void NCCServer::ExecuteTransaction(const NCCExecute &msg, TxnRecord &txn) {
         return;
     }
 
-    // Save reply for Response Timing Control
+    // Save reply and mark executed
     txn.execute_reply = reply;
     txn.executed = true;
-    // RTC Debug Switch: ENABLE_RTC can be toggled in server.h
-    if (ENABLE_RTC) {
-        Debug("[%lu] RTC enabled for Execute, adding to response queues", txn.tx_id);
-       
-        // RTC enabled: Add to response queues and check dependencies (only writes)
-        for (const auto &kv : txn.write_set) {
-            PendingResponse pr;
-            pr.tx_id = txn.tx_id;
-            pr.key = kv.first;
-            pr.tw = txn.tx_ts;
-            pr.type = ResponseType::EXEC;
-            response_queues_[kv.first].push(pr);
-        }
 
-        // Try to send response immediately if no dependencies
-        for (const auto &kv : txn.write_set) {
-            CheckAndSendResponse(kv.first, is_replica);
-        }
-    } else {
-        // RTC disabled: Send response immediately for performance testing
-        Debug("[%lu] RTC disabled, sending Execute response immediately", txn.tx_id);
-        if (!is_replica) {
-            SendExecuteReply(*txn.client_addr, reply);
-        }
-        txn.execute_responded = true;
+    // Execute responses are sent immediately (no RTC).
+    // RTC for Execute creates circular dependencies: tx A's Execute response
+    // is blocked by tx B's undecided write, while tx B's Execute response is
+    // blocked by tx A's undecided write. The safeguard check on the client
+    // side already handles correctness — delaying Execute responses only
+    // causes deadlocks with concurrent transactions.
+    Debug("[%lu] Sending Execute response immediately", txn.tx_id);
+    if (!is_replica) {
+        SendExecuteReply(*txn.client_addr, reply);
     }
+    txn.execute_responded = true;
 }
 
 bool NCCServer::CheckEarlyAbort(uint64_t tx_id, const Timestamp &tx_ts, const string &key) {
@@ -383,14 +399,20 @@ void NCCServer::CheckAndSendResponse(const string &key, bool is_replica) {
         if (AllPrecedingCommitted(key, pr.tx_id, pr.tw)) {
             Debug("[%lu] All preceding writes are committed for key %s, tw=%lu.%lu", 
                   pr.tx_id, key.c_str(), pr.tw.getTimestamp(), pr.tw.getID());
-            auto txn_it = transactions_.find(pr.tx_id);
-            if (txn_it != transactions_.end()) {
-                if (pr.type == ResponseType::GET && !txn_it->second.get_responded) {
+            if (pr.type == ResponseType::GET) {
+                // Look up per-request tracking for this specific GET
+                auto pgr_key = std::make_pair(pr.client_id, pr.client_req_id);
+                auto pgr_it = pending_get_requests_.find(pgr_key);
+                if (pgr_it != pending_get_requests_.end() && !pgr_it->second.responded) {
                     if (!is_replica) {
-                        SendGetReply(*txn_it->second.client_addr, txn_it->second.get_reply);
+                        SendGetReply(*pgr_it->second.client_addr, pgr_it->second.reply);
                     }
-                    txn_it->second.get_responded = true;
-                } else if (pr.type == ResponseType::EXEC && !txn_it->second.execute_responded) {
+                    pgr_it->second.responded = true;
+                    pending_get_requests_.erase(pgr_it);
+                }
+            } else if (pr.type == ResponseType::EXEC) {
+                auto txn_it = transactions_.find(pr.tx_id);
+                if (txn_it != transactions_.end() && !txn_it->second.execute_responded) {
                     if (!is_replica) {
                         SendExecuteReply(*txn_it->second.client_addr, txn_it->second.execute_reply);
                     }

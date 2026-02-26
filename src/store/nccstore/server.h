@@ -10,8 +10,10 @@
 #ifndef _NCC_SERVER_H_
 #define _NCC_SERVER_H_
 
+#include <map>
 #include <memory>
 #include <queue>
+#include <set>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -81,19 +83,61 @@ private:
                       get_responded(false), execute_responded(false), client_addr(nullptr) {}
     };
 
+    // Per-GET-request tracking for parallel GETs
+    struct PendingGetRequest {
+        uint64_t tx_id;
+        uint64_t client_id;
+        uint64_t client_req_id;
+        TransportAddress *client_addr;  // owned, must delete
+        proto::NCCGetReply reply;
+        bool responded;
+
+        PendingGetRequest() : tx_id(0), client_id(0), client_req_id(0),
+                              client_addr(nullptr), responded(false) {}
+        ~PendingGetRequest() { delete client_addr; }
+
+        // Non-copyable due to owned pointer
+        PendingGetRequest(const PendingGetRequest &) = delete;
+        PendingGetRequest &operator=(const PendingGetRequest &) = delete;
+        PendingGetRequest(PendingGetRequest &&other) noexcept
+            : tx_id(other.tx_id), client_id(other.client_id),
+              client_req_id(other.client_req_id),
+              client_addr(other.client_addr),
+              reply(std::move(other.reply)),
+              responded(other.responded) {
+            other.client_addr = nullptr;
+        }
+        PendingGetRequest &operator=(PendingGetRequest &&other) noexcept {
+            if (this != &other) {
+                delete client_addr;
+                tx_id = other.tx_id;
+                client_id = other.client_id;
+                client_req_id = other.client_req_id;
+                client_addr = other.client_addr;
+                reply = std::move(other.reply);
+                responded = other.responded;
+                other.client_addr = nullptr;
+            }
+            return *this;
+        }
+    };
+
     // Pending response for Response Timing Control
     enum class ResponseType {
         GET,
         EXEC
     };
-    
+
     struct PendingResponse {
         uint64_t tx_id;
         std::string key;
         Timestamp tw;  // timestamp of this operation
         ResponseType type;  // GET or EXEC
-        
-        PendingResponse() : tx_id(0), tw(0, 0), type(ResponseType::GET) {}
+        uint64_t client_id;      // for looking up PendingGetRequest
+        uint64_t client_req_id;  // for looking up PendingGetRequest
+
+        PendingResponse() : tx_id(0), tw(0, 0), type(ResponseType::GET),
+                            client_id(0), client_req_id(0) {}
     };
 
     // Message handlers
@@ -104,7 +148,8 @@ private:
     void HandleSmartRetry(const TransportAddress &remote, const proto::NCCSmartRetry &msg);
 
     // Core NCC algorithms
-    void ExecuteGet(const proto::NCCGet &msg, TxnRecord &txn);
+    void ExecuteGet(const proto::NCCGet &msg, TxnRecord &txn,
+                    uint64_t client_id, uint64_t client_req_id);
     void ExecuteTransaction(const proto::NCCExecute &msg, TxnRecord &txn);
     bool CheckEarlyAbort(uint64_t tx_id, const Timestamp &tx_ts, const std::string &key);
     void CheckAndSendResponse(const std::string &key, bool is_replica);
@@ -139,6 +184,10 @@ private:
     
     // Transaction state
     std::unordered_map<uint64_t, TxnRecord> transactions_;
+
+    // Per-GET-request tracking for parallel GETs
+    // Key: (client_id, client_req_id) pair
+    std::map<std::pair<uint64_t, uint64_t>, PendingGetRequest> pending_get_requests_;
     
     // Response queues per key (for Response Timing Control)
     std::unordered_map<std::string, std::queue<PendingResponse>> response_queues_;

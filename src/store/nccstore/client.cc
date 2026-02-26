@@ -168,8 +168,15 @@ void NCCClient::Get(Session &s, const string &key, ::get_callback gcb,
     vector<string> read_keys = {key};
     auto get_reply_cb = bind(&NCCClient::HandleGetReply, this, ref(session),
                             req_id, shard, placeholders::_1, placeholders::_2);
-    auto get_timeout_cb = [this, req_id, gtcb](int) {
-        
+    auto get_timeout_cb = [this, req_id](int status) {
+        auto it = pending_gets_.find(req_id);
+        if (it != pending_gets_.end()) {
+            const string &key = it->second.first;
+            ::get_callback gcb = it->second.second;
+            pending_gets_.erase(it);
+            Timestamp zero_ts(0, 0);
+            gcb(REPLY_FAIL, key, "", zero_ts);
+        }
     };
 
     shard_clients_[shard]->Get(tx_id, session.tx_ts(), read_keys,
@@ -449,7 +456,8 @@ void NCCClient::TrySmartRetry(NCCSession &session, uint64_t req_id) {
     for (const auto &kv : session.read_timestamps_) {
         proto::NCCReadResult read;
         read.set_key(kv.first);
-        read.set_value(session.reads_.at(kv.first));
+        auto reads_it = session.reads_.find(kv.first);
+        read.set_value(reads_it != session.reads_.end() ? reads_it->second : "");
         kv.second.first.serialize(read.mutable_tw());
         kv.second.second.serialize(read.mutable_tr());
         reads.push_back(read);
@@ -535,70 +543,33 @@ void NCCClient::HandleSmartRetryReply(NCCSession &session, uint64_t req_id,
 void NCCClient::SendCommitDecision(NCCSession &session, bool commit, uint64_t req_id) {
     uint64_t tx_id = session.transaction_id();
     uint64_t sid = session.id();
-    
-    int num_shards = session.participants().size();
-    
-    // Only set commit state if not already set (for cases where it was set earlier)
-    if (!session.commit_cb_) {
-        auto req_it = pending_requests_.find(req_id);
-        if (req_it != pending_requests_.end()) {
-            session.commit_cb_ = req_it->second->ccb;
-        }
-    }
-    
-    session.commit_outstanding_ = num_shards;
-    session.pending_commit_ = commit;
 
-    // make a copy of participants
+    // Copy participants before sending — the callback may reuse the session
     std::set<int> participants_copy = session.participants();
-    
-    Debug("[%lu] Sending commit decision: %s to %lu shards",
-          tx_id, commit ? "COMMIT" : "ABORT", num_shards);
 
-      auto session_it = sessions_.find(sid);
-            if (session_it == sessions_.end()) {
-                Warning("Commit reply for unknown session %lu", sid);
-                return;
-            }
-            
-            NCCSession &sess = session_it->second;
-            sess.commit_cb_ (::COMMITTED);
+    Debug("[%lu] Sending commit decision: %s to %d shards",
+          tx_id, commit ? "COMMIT" : "ABORT",
+          static_cast<int>(participants_copy.size()));
 
-    Debug("Before commit, participants size: %lu", session.participants().size());
+    // IMPORTANT: Send commit messages to shards BEFORE invoking the callback.
+    // The callback runs synchronously and may start the next transaction,
+    // whose Execute messages must arrive at servers AFTER these Commit messages.
+    // Otherwise the RTC queue blocks on undecided writes from this transaction.
     for (int shard : participants_copy) {
-        // auto ccb = [this, sid](int status) {
-        //       Debug("[%lu] Commit reply from shard, status=%d", sid, status);
-            
-        //     auto session_it = sessions_.find(sid);
-        //     if (session_it == sessions_.end()) {
-        //         Warning("Commit reply for unknown session %lu", sid);
-        //         return;
-        //     }
-            
-        //     NCCSession &sess = session_it->second;
-            
-        //     // Decrement counter
-        //     sess.commit_outstanding_--;
-            
-        //     if (sess.commit_outstanding_ == 0) {
-        //         // All commit replies received, invoke callback
-        //         if (sess.pending_commit_) {
-        //             sess.commit_cb_(::COMMITTED);
-        //         } else {
-        //             sess.commit_cb_(::ABORTED_SYSTEM);
-        //         }
-                
-        //         // Clean up commit state
-        //         sess.commit_cb_ = commit_callback();
-        //         return ;
-        //     }
-        //     return ;
-        // };
-        auto ccb = [](int){};
+        auto ccb = [](int) {};
         auto ctcb = [](int) {};
-
         shard_clients_[shard]->Commit(tx_id, commit, ccb, ctcb, 5000);
     }
+
+    // Now invoke the commit callback (may start next transaction synchronously)
+    auto session_it = sessions_.find(sid);
+    if (session_it == sessions_.end()) {
+        Warning("Commit reply for unknown session %lu", sid);
+        return;
+    }
+
+    NCCSession &sess = session_it->second;
+    sess.commit_cb_(commit ? ::COMMITTED : ::ABORTED_SYSTEM);
 }
 
 void NCCClient::Abort(Session &s, abort_callback acb,
