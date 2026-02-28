@@ -157,19 +157,10 @@ void NCCServer::ExecuteGet(const NCCGet &msg, TxnRecord &txn,
     reply.mutable_rid()->set_client_req_id(msg.rid().client_req_id());
     reply.set_status(STATUS_OK);
 
-    bool should_abort = false;
-
     // Execute reads
     for (int i = 0; i < msg.read_keys_size(); i++) {
         const string &key = msg.read_keys(i);
         txn.read_set.insert(key);
-
-        // Check for early abort
-        if (CheckEarlyAbort(txn.tx_id, txn.tx_ts, key)) {
-            Debug("[%lu] Early abort on read of key %s", txn.tx_id, key.c_str());
-            should_abort = true;
-            break;
-        }
 
         // Read the version (Algorithm 5.2: curr_ver <- DS[req.key].most_recent)
         auto result = store_.Read(key, txn.tx_ts);
@@ -197,19 +188,6 @@ void NCCServer::ExecuteGet(const NCCGet &msg, TxnRecord &txn,
         }
     }
 
-    if (should_abort) {
-        reply.set_status(STATUS_ABORT);
-        txn.committed = false;
-        if (!is_replica) {
-            auto pgr_it = pending_get_requests_.find(pgr_key);
-            if (pgr_it != pending_get_requests_.end()) {
-                SendGetReply(*pgr_it->second.client_addr, reply);
-                pending_get_requests_.erase(pgr_it);
-            }
-        }
-        return;
-    }
-
     // Save reply in per-request tracking (not in TxnRecord)
     if (!is_replica) {
         auto pgr_it = pending_get_requests_.find(pgr_key);
@@ -233,7 +211,7 @@ void NCCServer::ExecuteGet(const NCCGet &msg, TxnRecord &txn,
             pr.type = ResponseType::GET;
             pr.client_id = client_id;
             pr.client_req_id = client_req_id;
-            response_queues_[key].push(pr);
+            response_queues_[key].push_back(pr);
         }
 
         // Try to send response immediately if no dependencies
@@ -268,40 +246,22 @@ void NCCServer::ExecuteTransaction(const NCCExecute &msg, TxnRecord &txn) {
     reply.mutable_rid()->set_client_req_id(msg.rid().client_req_id());
     reply.set_status(STATUS_OK);
 
-    bool should_abort = false;
-
     // Execute reads (from previous Get operations) for replication
     // Read results are NOT returned to client, but reads need to be executed
     // to update tr timestamps and ensure data consistency
     for (const string &key : txn.read_set) {
-        // Check for early abort
-        if (CheckEarlyAbort(txn.tx_id, txn.tx_ts, key)) {
-            Debug("[%lu] Early abort on read of key %s during Execute", txn.tx_id, key.c_str());
-            should_abort = true;
-            break;
-        }
-
         // Read the version (Algorithm 5.2: curr_ver <- DS[req.key].most_recent)
         auto result = store_.Read(key, txn.tx_ts);
-        
+
         if (result.first) {
             // Found a version
             Timestamp tw = result.second.second;  // tw of the version read
-            
+
             // Algorithm 5.2: curr_ver.tr <- max{t, curr_ver.tr}
             // This ensures read timestamps are updated for replication consistency
             store_.UpdateReadTimestamp(key, tw, txn.tx_ts);
         }
         // Note: We don't add read results to reply - only writes are returned
-    }
-
-    if (should_abort) {
-        reply.set_status(STATUS_ABORT);
-        txn.committed = false;
-        if (!is_replica) {
-            SendExecuteReply(*txn.client_addr, reply);
-        }
-        return;
     }
 
     // Execute writes (non-blocking)
@@ -334,24 +294,12 @@ void NCCServer::ExecuteTransaction(const NCCExecute &msg, TxnRecord &txn) {
         // DS[req.key] <- DS[req.key] + new_ver
 
         store_.Write(key, value, tw);
+        txn.write_tw[key] = tw;  // Track actual tw for commit/abort
         // Algorithm 5.2: resp <- ["done", (tw, tr)]
         NCCWriteResult *write_result = reply.add_writes();
         write_result->set_key(key);
         tw.serialize(write_result->mutable_tw());
         tw.serialize(write_result->mutable_tr());  // tr = tw initially
-    }
-
-    if (should_abort) {
-        reply.set_status(STATUS_ABORT);
-        txn.committed = false;
-        // Remove all versions written by this transaction
-        for (const auto& kv : txn.write_set) {
-            store_.RemoveVersion(kv.first, txn.tx_ts);
-        }
-        if (!is_replica) {
-            SendExecuteReply(*txn.client_addr, reply);
-        }
-        return;
     }
 
     // Save reply and mark executed
@@ -376,8 +324,8 @@ bool NCCServer::CheckEarlyAbort(uint64_t tx_id, const Timestamp &tx_ts, const st
     auto undecided = store_.GetUndecidedVersions(key, Timestamp(0, 0));
     
     for (const auto &v : undecided) {
-        if (v.tw < tx_ts) {
-            // There's an earlier undecided write, must abort this transaction
+        if (v.tw > tx_ts) {
+            // There's a higher-timestamp undecided write, must abort (§5.2)
             return true;
         }
     }
@@ -388,44 +336,51 @@ bool NCCServer::CheckEarlyAbort(uint64_t tx_id, const Timestamp &tx_ts, const st
 void NCCServer::CheckAndSendResponse(const string &key, bool is_replica) {
     auto &queue = response_queues_[key];
 
-    Debug("Checking response queue for key %s, size=%d", key.c_str(), queue.size());
-    while (!queue.empty()) {
-        PendingResponse &pr = queue.front();
-        
-        Debug("[%lu] Checking if all preceding writes are committed for key %s, tw=%lu.%lu, type=%d", 
-              pr.tx_id, key.c_str(), pr.tw.getTimestamp(), pr.tw.getID(), 
-              static_cast<int>(pr.type));
-        // Check if all preceding writes are committed
-        if (AllPrecedingCommitted(key, pr.tx_id, pr.tw)) {
-            Debug("[%lu] All preceding writes are committed for key %s, tw=%lu.%lu", 
-                  pr.tx_id, key.c_str(), pr.tw.getTimestamp(), pr.tw.getID());
-            if (pr.type == ResponseType::GET) {
-                // Look up per-request tracking for this specific GET
-                auto pgr_key = std::make_pair(pr.client_id, pr.client_req_id);
-                auto pgr_it = pending_get_requests_.find(pgr_key);
-                if (pgr_it != pending_get_requests_.end() && !pgr_it->second.responded) {
-                    if (!is_replica) {
-                        SendGetReply(*pgr_it->second.client_addr, pgr_it->second.reply);
-                    }
-                    pgr_it->second.responded = true;
-                    pending_get_requests_.erase(pgr_it);
-                }
-            } else if (pr.type == ResponseType::EXEC) {
-                auto txn_it = transactions_.find(pr.tx_id);
-                if (txn_it != transactions_.end() && !txn_it->second.execute_responded) {
-                    if (!is_replica) {
-                        SendExecuteReply(*txn_it->second.client_addr, txn_it->second.execute_reply);
-                    }
-                    txn_it->second.execute_responded = true;
-                }
-            }
-            queue.pop();
-        } else {
-            // Can't send yet, wait for dependencies
-            Debug("[%lu] Can't send yet, wait for dependencies", pr.tx_id);
+    Debug("Checking response queue for key %s, size=%zu", key.c_str(), queue.size());
 
-            break;
+    // Algorithm 5.3: Skip past committed/aborted/sent-read heads
+    while (!queue.empty()) {
+        PendingResponse &head = queue.front();
+        if (head.q_status == QStatus::COMMITTED || head.q_status == QStatus::ABORTED) {
+            Debug("[%lu] Dequeuing %s entry from head of queue for key %s",
+                  head.tx_id,
+                  head.q_status == QStatus::COMMITTED ? "committed" : "aborted",
+                  key.c_str());
+            queue.pop_front();
+            continue;
         }
+        if (head.is_sent && head.type == ResponseType::GET) {
+            // Read responses are final — dequeue once sent
+            queue.pop_front();
+            continue;
+        }
+        break;  // Head is undecided and unsent (or a sent write waiting for commit)
+    }
+
+    if (queue.empty()) return;
+
+    // Algorithm 5.3: Send response for the first undecided head item
+    PendingResponse &head = queue.front();
+    if (!head.is_sent) {
+        Debug("[%lu] Sending response for undecided head of queue for key %s, tw=%lu.%lu",
+              head.tx_id, key.c_str(), head.tw.getTimestamp(), head.tw.getID());
+        if (head.type == ResponseType::GET) {
+            auto pgr_key = std::make_pair(head.client_id, head.client_req_id);
+            auto pgr_it = pending_get_requests_.find(pgr_key);
+            if (pgr_it != pending_get_requests_.end() && !pgr_it->second.responded) {
+                if (!is_replica) {
+                    SendGetReply(*pgr_it->second.client_addr, pgr_it->second.reply);
+                }
+                pgr_it->second.responded = true;
+                pending_get_requests_.erase(pgr_it);
+            }
+            // Read response sent — dequeue immediately
+            queue.pop_front();
+            // Continue processing the queue (next item may also be sendable)
+            CheckAndSendResponse(key, is_replica);
+            return;
+        }
+        head.is_sent = true;
     }
 }
 
@@ -502,9 +457,10 @@ void NCCServer::CommitTransaction(uint64_t tx_id) {
     // Mark all versions of this transaction as committed
     for (const auto& kv : txn_it->second.write_set) {
         const std::string& key = kv.first;
-        // Set status to committed for version with tw = txn.tx_ts
-        Debug("[%lu] Setting key %s version %lu.%lu as committed", tx_id, key.c_str(), txn_it->second.tx_ts.getTimestamp(), txn_it->second.tx_ts.getID());
-        store_.SetCommitted(key, txn_it->second.tx_ts);
+        // Set status to committed for version with actual tw (may differ from tx_ts)
+        const Timestamp &actual_tw = txn_it->second.write_tw[key];
+        Debug("[%lu] Setting key %s version %lu.%lu as committed", tx_id, key.c_str(), actual_tw.getTimestamp(), actual_tw.getID());
+        store_.SetCommitted(key, actual_tw);
 
         Debug("[%lu] Getting versions for key %s **********************************", tx_id, key.c_str());
         auto versions = store_.GetVersions(key);
@@ -516,6 +472,28 @@ void NCCServer::CommitTransaction(uint64_t tx_id) {
     }
 
     txn_it->second.committed = true;
+
+    // Algorithm 5.2: Update q_status for all queue entries belonging to this tx
+    for (const auto& kv : txn_it->second.write_set) {
+        auto q_it = response_queues_.find(kv.first);
+        if (q_it != response_queues_.end()) {
+            for (auto &pr : q_it->second) {
+                if (pr.tx_id == tx_id) {
+                    pr.q_status = QStatus::COMMITTED;
+                }
+            }
+        }
+    }
+    for (const string &key : txn_it->second.read_set) {
+        auto q_it = response_queues_.find(key);
+        if (q_it != response_queues_.end()) {
+            for (auto &pr : q_it->second) {
+                if (pr.tx_id == tx_id) {
+                    pr.q_status = QStatus::COMMITTED;
+                }
+            }
+        }
+    }
 
     Debug("[%lu] Transaction committed", tx_id);
 }
@@ -529,11 +507,33 @@ void NCCServer::AbortTransaction(uint64_t tx_id) {
     // Remove all versions of this transaction
     for (const auto& kv : txn_it->second.write_set) {
         const std::string& key = kv.first;
-        // Remove version with tw = txn.tx_ts
-        store_.RemoveVersion(key, txn_it->second.tx_ts);
+        // Remove version with actual tw (may differ from tx_ts)
+        store_.RemoveVersion(key, txn_it->second.write_tw[key]);
     }
 
     txn_it->second.committed = false;
+
+    // Algorithm 5.2: Update q_status for all queue entries belonging to this tx
+    for (const auto& kv : txn_it->second.write_set) {
+        auto q_it = response_queues_.find(kv.first);
+        if (q_it != response_queues_.end()) {
+            for (auto &pr : q_it->second) {
+                if (pr.tx_id == tx_id) {
+                    pr.q_status = QStatus::ABORTED;
+                }
+            }
+        }
+    }
+    for (const string &key : txn_it->second.read_set) {
+        auto q_it = response_queues_.find(key);
+        if (q_it != response_queues_.end()) {
+            for (auto &pr : q_it->second) {
+                if (pr.tx_id == tx_id) {
+                    pr.q_status = QStatus::ABORTED;
+                }
+            }
+        }
+    }
 
     Debug("[%lu] Transaction aborted", tx_id);
 }
@@ -677,6 +677,7 @@ bool NCCServer::SmartRetry(uint64_t tx_id, const Timestamp &new_ts,
         if (created_by_tx) {
             // Algorithm 5.4: ver.tw <- t'; ver.tr <- t'
             store_.UpdateVersionTimestamps(key, tw, new_ts, new_ts);
+            txn.write_tw[key] = new_ts;  // Update tracked tw for commit/abort
             Debug("[%lu] SmartRetry: updated version %s, tw=tr=%lu.%lu",
                   tx_id, key.c_str(), new_ts.getTimestamp(), new_ts.getID());
         } else {
@@ -713,6 +714,7 @@ bool NCCServer::SmartRetry(uint64_t tx_id, const Timestamp &new_ts,
 
         // Update version: ver.tw <- t'; ver.tr <- t'
         store_.UpdateVersionTimestamps(key, tw, new_ts, new_ts);
+        txn.write_tw[key] = new_ts;  // Update tracked tw for commit/abort
         Debug("[%lu] SmartRetry: updated write version %s, tw=tr=%lu.%lu",
               tx_id, key.c_str(), new_ts.getTimestamp(), new_ts.getID());
     }

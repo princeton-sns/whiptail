@@ -68,6 +68,7 @@ private:
         Timestamp tx_ts;
         std::set<std::string> read_set;
         std::map<std::string, std::string> write_set;
+        std::map<std::string, Timestamp> write_tw;  // key -> actual tw used in Write()
         bool executed;
         bool committed;
         bool is_committing;
@@ -128,15 +129,24 @@ private:
         EXEC
     };
 
+    enum class QStatus {
+        UNDECIDED,
+        COMMITTED,
+        ABORTED
+    };
+
     struct PendingResponse {
         uint64_t tx_id;
         std::string key;
         Timestamp tw;  // timestamp of this operation
         ResponseType type;  // GET or EXEC
+        QStatus q_status;   // Algorithm 5.3: per-entry status
+        bool is_sent;       // Algorithm 5.3: whether response already sent
         uint64_t client_id;      // for looking up PendingGetRequest
         uint64_t client_req_id;  // for looking up PendingGetRequest
 
         PendingResponse() : tx_id(0), tw(0, 0), type(ResponseType::GET),
+                            q_status(QStatus::UNDECIDED), is_sent(false),
                             client_id(0), client_req_id(0) {}
     };
 
@@ -190,7 +200,7 @@ private:
     std::map<std::pair<uint64_t, uint64_t>, PendingGetRequest> pending_get_requests_;
     
     // Response queues per key (for Response Timing Control)
-    std::unordered_map<std::string, std::queue<PendingResponse>> response_queues_;
+    std::unordered_map<std::string, std::deque<PendingResponse>> response_queues_;
 
     // Configuration
     const TrueTime &tt_;

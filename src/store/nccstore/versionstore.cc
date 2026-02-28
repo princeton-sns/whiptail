@@ -96,9 +96,9 @@ bool VersionedKVStore::SetCommitted(const std::string& key, const Timestamp& tw)
             version.status = COMMITTED;
             
             auto index_it = latest_committed_index_.find(key);
-            if (index_it == latest_committed_index_.end() || 
-                index_it->second < 0 || 
-                version.tw < tw) {
+            if (index_it == latest_committed_index_.end() ||
+                index_it->second < 0 ||
+                static_cast<int>(i) > index_it->second) {
                 latest_committed_index_[key] = i;
             }
         }
