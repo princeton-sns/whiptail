@@ -171,7 +171,7 @@ void NCCClient::Get(Session &s, const string &key, ::get_callback gcb,
     auto get_timeout_cb = [this, req_id](int status) {
         auto it = pending_gets_.find(req_id);
         if (it != pending_gets_.end()) {
-            const string &key = it->second.first;
+            const string key = it->second.first;
             ::get_callback gcb = it->second.second;
             pending_gets_.erase(it);
             Timestamp zero_ts(0, 0);
@@ -292,7 +292,7 @@ void NCCClient::HandleGetReply(NCCSession &session, uint64_t req_id,
         return;
     }
 
-    const string &key = it->second.first;
+    const string key = it->second.first;
     ::get_callback gcb = it->second.second;  // Use Client interface get_callback
     pending_gets_.erase(it);
 

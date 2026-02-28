@@ -453,7 +453,9 @@ void NCCServer::HandleCommit(const TransportAddress &remote, const NCCCommit &ms
 
     auto txn_it = transactions_.find(tx_id);
     if (txn_it == transactions_.end()) {
-        Warning("[%lu] Commit for unknown transaction", tx_id);
+        if (commit) {
+            Warning("[%lu] Commit for unknown transaction", tx_id);
+        }
         SendCommitReply(remote, tx_id, STATUS_OK);
         return;
         
