@@ -17,12 +17,14 @@ namespace retwis {
         Debug("ONE_SHOT_READS %lu", op_index);
         if (op_index == 0) {
             return BeginRO();
-        } else if (op_index < this->readOpsTxn + 1) {
+        } else if (op_index == 1) {
             std::unordered_set<std::string> keys_;
-            auto key = GetKey(op_index - 1);
-            keys_.insert(key);   
+            for (std::size_t i = 0; i < this->readOpsTxn; i++) {
+                keys_.insert(GetKey(i));
+            }
             return ROCommit(std::move(keys_));
-        } else 
+        } else {
             return Wait();
+        }
     }
 }
