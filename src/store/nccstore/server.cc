@@ -553,28 +553,51 @@ void NCCServer::HandleReadOnly(const TransportAddress &remote, const NCCReadOnly
     reply.mutable_rid()->set_client_id(msg.rid().client_id());
     reply.mutable_rid()->set_client_req_id(msg.rid().client_req_id());
     reply.set_status(STATUS_OK);
+    reply.set_ro_abort(false);
 
-    // Read all requested keys at snapshot timestamp
     for (int i = 0; i < msg.keys_size(); i++) {
         const string &key = msg.keys(i);
-        
+
+        // §5.5 tro check: if tro provided, check version at tro is still most recent
+        if (i < msg.tro_size()) {
+            Timestamp tro(msg.tro(i));
+            if (tro.getTimestamp() > 0) {
+                auto most_recent = store_.GetMostRecentVersion(key);
+                if (most_recent.first && most_recent.second.tw > tro) {
+                    // New write intervened since client's last write — ro_abort
+                    Debug("[%lu] RO abort: key=%s tro=%lu.%lu < most_recent_tw=%lu.%lu",
+                          tx_id, key.c_str(),
+                          tro.getTimestamp(), tro.getID(),
+                          most_recent.second.tw.getTimestamp(), most_recent.second.tw.getID());
+                    reply.set_ro_abort(true);
+                    SendReadOnlyReply(remote, reply);
+                    return;
+                }
+            }
+        }
+
+        // Basic protocol: read + refine tr
         auto result = store_.Read(key, snapshot_ts);
-        
+
         NCCReadResult *read_result = reply.add_reads();
         read_result->set_key(key);
-        
+
         if (result.first) {
-            // Found a version
+            Timestamp tw = result.second.second;
+            // §5.5: "refines its tr if needed"
+            store_.UpdateReadTimestamp(key, tw, snapshot_ts);
+
             read_result->set_value(result.second.first);
-            result.second.second.serialize(read_result->mutable_tw());
+            tw.serialize(read_result->mutable_tw());
+            // tr = max(snapshot_ts, tw) after refinement
+            Timestamp updated_tr = std::max(snapshot_ts, tw);
+            updated_tr.serialize(read_result->mutable_tr());
         } else {
-            // Key doesn't exist
             read_result->set_value("");
             Timestamp zero_ts(0, 0);
             zero_ts.serialize(read_result->mutable_tw());
+            snapshot_ts.serialize(read_result->mutable_tr());
         }
-        
-        snapshot_ts.serialize(read_result->mutable_tr());
     }
 
     SendReadOnlyReply(remote, reply);

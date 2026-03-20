@@ -62,6 +62,7 @@ message NCCReadOnly {
     required uint64 tx_id = 2;
     repeated string keys = 3;
     required TimestampMessage snapshot_ts = 4;
+    repeated TimestampMessage tro = 5;  // per-key tro, corresponds 1:1 with keys
 }
 
 // Read-only transaction reply
@@ -69,6 +70,7 @@ message NCCReadOnlyReply {
     required RequestIDMessage rid = 1;
     required int32 status = 2;
     repeated NCCReadResult reads = 3;
+    optional bool ro_abort = 4 [default = false];  // tro check failed
 }
 
 // Get request: client sends read operations to server (before Execute)

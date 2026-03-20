@@ -354,6 +354,12 @@ void NCCClient::HandleExecuteReply(NCCSession &session, uint64_t req_id,
             Timestamp tw(write_result.tw());
             Timestamp tr(write_result.tr());
             session.add_write_timestamp(write_result.key(), tw, tr);
+
+            // Update tro for this shard: track tw of writes
+            auto tro_it = tro_per_shard_.find(shard);
+            if (tro_it == tro_per_shard_.end() || tw > tro_it->second) {
+                tro_per_shard_[shard] = tw;
+            }
         }
     }
 
@@ -508,7 +514,7 @@ void NCCClient::HandleSmartRetryReply(NCCSession &session, uint64_t req_id,
         // All SmartRetry responses received
         if (!req->aborted) {
             // SmartRetry succeeded on all shards
-            Debug("[%lu] SmartRetry succeeded on all shards", 
+            Debug("[%lu] SmartRetry succeeded on all shards",
                   session.transaction_id());
 
             // Re-run safeguard check with updated timestamps
@@ -520,6 +526,19 @@ void NCCClient::HandleSmartRetryReply(NCCSession &session, uint64_t req_id,
                 return;
             }
 
+            if (req->is_read_only) {
+                // §5.5: RO transactions do not send commit/abort messages
+                if (commit) {
+                    session.set_committed(true);
+                    req->ccb(::COMMITTED);
+                } else {
+                    req->ccb(::ABORTED_SYSTEM);
+                }
+                delete req;
+                pending_requests_.erase(req_it);
+                return;
+            }
+
             // Store callback in session
             session.commit_cb_ = req->ccb;
 
@@ -528,10 +547,18 @@ void NCCClient::HandleSmartRetryReply(NCCSession &session, uint64_t req_id,
         } else {
             // SmartRetry failed
             Debug("[%lu] SmartRetry failed, aborting", session.transaction_id());
-            
+
+            if (req->is_read_only) {
+                // §5.5: RO transactions do not send commit/abort messages
+                req->ccb(::ABORTED_SYSTEM);
+                delete req;
+                pending_requests_.erase(req_it);
+                return;
+            }
+
             // Store callback in session
             session.commit_cb_ = req->ccb;
-            
+
             SendCommitDecision(session, false, req_id);
         }
 
@@ -601,14 +628,15 @@ void NCCClient::ROCommit(Session &s, const unordered_set<string> &keys,
 
     Debug("[%lu] ROCommit with %lu keys", tx_id, keys.size());
 
-    // Assign snapshot timestamp
-    Timestamp snapshot_ts{tt_.Now().latest(), client_id_};
+    // §5.5: use pre-assigned timestamp
+    const Timestamp &snapshot_ts = session.tx_ts();
 
     uint64_t req_id = last_req_id_++;
     PendingRequest *req = new PendingRequest(req_id);
     pending_requests_[req_id] = req;
     req->ccb = ccb;
     req->ctcb = ctcb;
+    req->is_read_only = true;
 
     // Organize keys by shard
     map<int, vector<string>> shard_keys;
@@ -621,17 +649,25 @@ void NCCClient::ROCommit(Session &s, const unordered_set<string> &keys,
 
     req->outstanding_responses = shard_keys.size();
 
-    // Send read-only request to each shard
+    // Send read-only request to each shard with per-key tro
     for (const auto &kv : shard_keys) {
         int shard = kv.first;
         const vector<string> &shard_key_list = kv.second;
+
+        // Build per-key tro vector for this shard
+        vector<Timestamp> tro_vec;
+        auto tro_it = tro_per_shard_.find(shard);
+        Timestamp shard_tro = (tro_it != tro_per_shard_.end()) ? tro_it->second : Timestamp(0, 0);
+        for (size_t i = 0; i < shard_key_list.size(); i++) {
+            tro_vec.push_back(shard_tro);
+        }
 
         auto rocb = bind(&NCCClient::HandleReadOnlyReply, this, ref(session),
                         req_id, shard, placeholders::_1, placeholders::_2);
         auto rotcb = [](int) {};
 
         shard_clients_[shard]->ReadOnly(tx_id, snapshot_ts, shard_key_list,
-                                        rocb, rotcb, timeout);
+                                        tro_vec, rocb, rotcb, timeout);
     }
 }
 
@@ -648,19 +684,56 @@ void NCCClient::HandleReadOnlyReply(NCCSession &session, uint64_t req_id,
 
     PendingRequest *req = req_it->second;
 
-    // Collect read results
-    for (int i = 0; i < reply.reads_size(); i++) {
-        const auto &read_result = reply.reads(i);
-        session.add_read(read_result.key(), read_result.value());
+    // §5.5: check ro_abort
+    if (reply.ro_abort()) {
+        Debug("[%lu] RO abort from shard %d", session.transaction_id(), shard);
+        req->aborted = true;
+    }
+
+    if (!req->aborted) {
+        // Collect read results and (tw, tr) timestamps
+        for (int i = 0; i < reply.reads_size(); i++) {
+            const auto &read_result = reply.reads(i);
+            session.add_read(read_result.key(), read_result.value());
+
+            Timestamp tw(read_result.tw());
+            Timestamp tr(read_result.tr());
+            session.add_read_timestamp(read_result.key(), tw, tr);
+        }
     }
 
     req->outstanding_responses--;
 
     if (req->outstanding_responses == 0) {
-        // All responses received
-        session.set_committed(true);
-        req->ccb(::COMMITTED);
+        if (req->aborted) {
+            // §5.5: RO abort — no commit/abort messages sent
+            Debug("[%lu] RO transaction aborted", session.transaction_id());
+            req->ccb(::ABORTED_SYSTEM);
+            delete req;
+            pending_requests_.erase(req_it);
+            return;
+        }
 
+        // §5.5: safeguard check
+        bool ok = SafeguardCheck(session);
+
+        if (!ok && req->smart_retry_attempts < 3) {
+            // §5.5: smart retry (no commit messages after)
+            Debug("[%lu] RO safeguard failed, attempting SmartRetry (attempt %d)",
+                  session.transaction_id(), req->smart_retry_attempts + 1);
+            TrySmartRetry(session, req_id);
+            return;
+        }
+
+        if (ok) {
+            // §5.5: "the client does not send any commit/abort messages"
+            session.set_committed(true);
+            req->ccb(::COMMITTED);
+        } else {
+            req->ccb(::ABORTED_SYSTEM);
+        }
+
+        delete req;
         pending_requests_.erase(req_it);
     }
 }

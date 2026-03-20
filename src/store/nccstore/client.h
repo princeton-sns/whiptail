@@ -153,9 +153,11 @@ private:
         int outstanding_responses;
         bool aborted;
         int smart_retry_attempts;
+        bool is_read_only;
 
-        PendingRequest(uint64_t rid) : req_id(rid), outstanding_responses(0), 
-                                       aborted(false), smart_retry_attempts(0) {}
+        PendingRequest(uint64_t rid) : req_id(rid), outstanding_responses(0),
+                                       aborted(false), smart_retry_attempts(0),
+                                       is_read_only(false) {}
     };
 
     // Safeguard check for natural consistency
@@ -199,6 +201,9 @@ private:
     std::unordered_map<uint64_t, PendingRequest *> pending_requests_;
     std::unordered_map<uint64_t, std::pair<std::string, ::get_callback>> pending_gets_;  // req_id -> (key, callback from Client interface)
     std::unordered_map<uint64_t, NCCSession> sessions_;  // Store sessions by id
+
+    // per-shard tro: tw of the most recent committed write on each shard
+    std::unordered_map<int, Timestamp> tro_per_shard_;
 
     Stats stats_;
     Latency_t op_lat_;

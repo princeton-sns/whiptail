@@ -72,6 +72,7 @@ public:
     void ReadOnly(uint64_t tx_id,
                   const Timestamp &snapshot_ts,
                   const std::vector<std::string> &keys,
+                  const std::vector<Timestamp> &tro,
                   readonly_callback rocb,
                   readonly_timeout_callback rotcb,
                   uint32_t timeout);

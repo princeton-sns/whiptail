@@ -157,6 +157,7 @@ void ShardClient::Commit(uint64_t tx_id,
 void ShardClient::ReadOnly(uint64_t tx_id,
                            const Timestamp &snapshot_ts,
                            const vector<string> &keys,
+                           const vector<Timestamp> &tro,
                            readonly_callback rocb,
                            readonly_timeout_callback rotcb,
                            uint32_t timeout) {
@@ -177,6 +178,10 @@ void ShardClient::ReadOnly(uint64_t tx_id,
 
     for (const string &key : keys) {
         readonly_.add_keys(key);
+    }
+
+    for (const Timestamp &t : tro) {
+        t.serialize(readonly_.add_tro());
     }
 
     // Send to closest replica in this shard
