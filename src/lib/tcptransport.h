@@ -33,137 +33,129 @@
 #ifndef _LIB_TCPTRANSPORT_H_
 #define _LIB_TCPTRANSPORT_H_
 
-#include "lib/configuration.h"
-#include "lib/transport.h"
-#include "lib/transportcommon.h"
+#include "third_party/whipbase/src/lib/configuration.h"
+#include "third_party/whipbase/src/lib/transport.h"
+#include "third_party/whipbase/src/lib/transportcommon.h"
 // #include "lib/latency.h"
 // #include "lib/threadpool.h"
 
 #include <event2/buffer.h>
 #include <event2/bufferevent.h>
 #include <event2/event.h>
+#include <netinet/in.h>
 
 #include <list>
 #include <map>
 #include <mutex>
-#include <netinet/in.h>
 #include <random>
 #include <unordered_map>
 
-class TCPTransportAddress : public TransportAddress
-{
-public:
-    TCPTransportAddress *clone() const;
-    sockaddr_in addr;
+class TCPTransportAddress : public TransportAddress {
+ public:
+  TCPTransportAddress* clone() const;
 
-private:
-    TCPTransportAddress(const sockaddr_in &addr);
+  sockaddr_in6 addr;
 
-    friend class TCPTransport;
-    friend bool operator==(const TCPTransportAddress &a,
-                           const TCPTransportAddress &b);
-    friend bool operator!=(const TCPTransportAddress &a,
-                           const TCPTransportAddress &b);
-    friend bool operator<(const TCPTransportAddress &a,
-                          const TCPTransportAddress &b);
+ private:
+  TCPTransportAddress(const sockaddr_in6& addr);
+
+  friend class TCPTransport;
+  friend bool operator==(const TCPTransportAddress& a,
+                         const TCPTransportAddress& b);
+  friend bool operator!=(const TCPTransportAddress& a,
+                         const TCPTransportAddress& b);
+  friend bool operator<(const TCPTransportAddress& a,
+                        const TCPTransportAddress& b);
 };
 
-class TCPTransport : public TransportCommon<TCPTransportAddress>
-{
-public:
-    TCPTransport(double dropRate = 0.0, double reogrderRate = 0.0,
-                 int dscp = 0, bool handleSignals = true);
-    virtual ~TCPTransport();
-    virtual void Register(TransportReceiver *receiver,
-                          const transport::Configuration &config,
-                          int groupIdx,
-                          int replicaIdx) override;
+class TCPTransport : public TransportCommon<TCPTransportAddress> {
+ public:
+  TCPTransport(double dropRate = 0.0, double reogrderRate = 0.0, int dscp = 0,
+               bool handleSignals = true);
+  virtual ~TCPTransport();
+  virtual void Register(TransportReceiver* receiver,
+                        const transport::Configuration& config, int groupIdx,
+                        int replicaIdx) override;
 
-    virtual void Run() override;
-    virtual void Stop() override;
-    virtual void Close(TransportReceiver *receiver) override;
-    virtual int Timer(uint64_t ms, timer_callback_t cb) override;
-    virtual int TimerMicro(uint64_t us, timer_callback_t cb) override;
-    virtual bool CancelTimer(int id) override;
-    virtual void CancelAllTimers() override;
-    virtual void Flush() override;
+  virtual void Run() override;
+  virtual void Stop() override;
+  virtual void Close(TransportReceiver* receiver) override;
+  virtual int Timer(uint64_t ms, timer_callback_t cb) override;
+  virtual int TimerMicro(uint64_t us, timer_callback_t cb) override;
+  virtual bool CancelTimer(int id) override;
+  virtual void CancelAllTimers() override;
+  virtual void Flush() override;
 
-    void DispatchTP(std::function<void *()> f, std::function<void(void *)> cb);
+  void DispatchTP(std::function<void*()> f, std::function<void(void*)> cb);
 
-    TCPTransportAddress
-    LookupAddress(const transport::Configuration &cfg,
-                  int replicaIdx);
+  TCPTransportAddress LookupAddress(const transport::Configuration& cfg,
+                                    int replicaIdx);
 
-    virtual TCPTransportAddress
-    LookupAddress(const transport::Configuration &config,
-                  int groupIdx,
-                  int replicaIdx) override;
+  virtual TCPTransportAddress LookupAddress(
+      const transport::Configuration& config, int groupIdx,
+      int replicaIdx) override;
 
-    TCPTransportAddress
-    LookupAddress(const transport::ReplicaAddress &addr);
+  TCPTransportAddress LookupAddress(const transport::ReplicaAddress& addr);
 
-private:
-    int TimerInternal(struct timeval &tv, timer_callback_t cb);
-    std::mutex mtx;
-    struct TCPTransportTimerInfo
-    {
-        TCPTransportTimerInfo(timer_callback_t &&cb) : cb(std::move(cb)) {}
-        timer_callback_t cb;
-        TCPTransport *transport;
-        event *ev;
-        int id;
-    };
-    struct TCPTransportTCPListener
-    {
-        TCPTransport *transport;
-        TransportReceiver *receiver;
-        int acceptFd;
-        int groupIdx;
-        int replicaIdx;
-        event *acceptEvent;
-        std::list<struct bufferevent *> connectionEvents;
-    };
-    event_base *libeventBase;
-    std::vector<event *> listenerEvents;
-    std::vector<event *> signalEvents;
-    std::map<int, TransportReceiver *> receivers; // fd -> receiver
-    std::map<TransportReceiver *, int> fds;       // receiver -> fd
-    int lastTimerId;
-    std::unordered_map<int, TCPTransportTimerInfo *> timers;
-    std::list<TCPTransportTCPListener *> tcpListeners;
-    std::map<std::pair<TCPTransportAddress, TransportReceiver *>, struct bufferevent *> tcpOutgoing;
-    std::map<struct bufferevent *, std::pair<TCPTransportAddress, TransportReceiver *>> tcpAddresses;
-    // Latency_t sockWriteLat;
-    // ThreadPool tp;
-    bool stopped;
+ private:
+  int TimerInternal(struct timeval& tv, timer_callback_t cb);
+  std::mutex mtx;
+  struct TCPTransportTimerInfo {
+    TCPTransportTimerInfo(timer_callback_t&& cb) : cb(std::move(cb)) {}
+    timer_callback_t cb;
+    TCPTransport* transport;
+    event* ev;
+    int id;
+  };
+  struct TCPTransportTCPListener {
+    TCPTransport* transport;
+    TransportReceiver* receiver;
+    int acceptFd;
+    int groupIdx;
+    int replicaIdx;
+    event* acceptEvent;
+    std::list<struct bufferevent*> connectionEvents;
+  };
+  event_base* libeventBase;
+  std::vector<event*> listenerEvents;
+  std::vector<event*> signalEvents;
+  std::map<int, TransportReceiver*> receivers;  // fd -> receiver
+  std::map<TransportReceiver*, int> fds;        // receiver -> fd
+  int lastTimerId;
+  std::unordered_map<int, TCPTransportTimerInfo*> timers;
+  std::list<TCPTransportTCPListener*> tcpListeners;
+  std::map<std::pair<TCPTransportAddress, TransportReceiver*>,
+           struct bufferevent*>
+      tcpOutgoing;
+  std::map<struct bufferevent*,
+           std::pair<TCPTransportAddress, TransportReceiver*>>
+      tcpAddresses;
+  // Latency_t sockWriteLat;
+  // ThreadPool tp;
+  bool stopped;
 
-    virtual bool SendMessageInternal(TransportReceiver *src,
-                                     const TCPTransportAddress &dst,
-                                     const Message &m) override;
-    virtual const TCPTransportAddress *
-    LookupMulticastAddress(const transport::Configuration *config) override
-    {
-        return nullptr;
-    };
+  virtual bool SendMessageInternal(TransportReceiver* src,
+                                   const TCPTransportAddress& dst,
+                                   const Message& m) override;
+  virtual const TCPTransportAddress* LookupMulticastAddress(
+      const transport::Configuration* config) override {
+    return nullptr;
+  };
 
-    void ConnectTCP(const std::pair<TCPTransportAddress, TransportReceiver *> &dstSrc);
-    void OnTimer(TCPTransportTimerInfo *info);
-    static void TimerCallback(evutil_socket_t fd,
-                              short what, void *arg);
-    static void LogCallback(int severity, const char *msg);
-    static void FatalCallback(int err);
-    static void SignalCallback(evutil_socket_t fd,
-                               short what, void *arg);
-    static void TCPAcceptCallback(evutil_socket_t fd, short what,
-                                  void *arg);
-    static void TCPReadableCallback(struct bufferevent *bev,
-                                    void *arg);
-    static void TCPEventCallback(struct bufferevent *bev,
-                                 short what, void *arg);
-    static void TCPIncomingEventCallback(struct bufferevent *bev,
-                                         short what, void *arg);
-    static void TCPOutgoingEventCallback(struct bufferevent *bev,
-                                         short what, void *arg);
+  void ConnectTCP(
+      const std::pair<TCPTransportAddress, TransportReceiver*>& dstSrc);
+  void OnTimer(TCPTransportTimerInfo* info);
+  static void TimerCallback(evutil_socket_t fd, short what, void* arg);
+  static void LogCallback(int severity, const char* msg);
+  static void FatalCallback(int err);
+  static void SignalCallback(evutil_socket_t fd, short what, void* arg);
+  static void TCPAcceptCallback(evutil_socket_t fd, short what, void* arg);
+  static void TCPReadableCallback(struct bufferevent* bev, void* arg);
+  static void TCPEventCallback(struct bufferevent* bev, short what, void* arg);
+  static void TCPIncomingEventCallback(struct bufferevent* bev, short what,
+                                       void* arg);
+  static void TCPOutgoingEventCallback(struct bufferevent* bev, short what,
+                                       void* arg);
 };
 
-#endif // _LIB_TCPTRANSPORT_H_
+#endif  // _LIB_TCPTRANSPORT_H_

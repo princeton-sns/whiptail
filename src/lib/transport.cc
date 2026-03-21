@@ -28,84 +28,62 @@
  *
  **********************************************************************/
 
-#include "lib/assert.h"
-#include "lib/transport.h"
+#include "third_party/whipbase/src/lib/transport.h"
 
-TransportReceiver::~TransportReceiver()
-{
+#include "third_party/whipbase/src/lib/assert.h"
+
+TransportReceiver::~TransportReceiver() {
   if (this->myAddress != nullptr) {
     delete this->myAddress;
   }
 }
 
-void
-TransportReceiver::SetAddress(const TransportAddress *addr)
-{
-    this->myAddress = addr;
+void TransportReceiver::SetAddress(const TransportAddress* addr) {
+  this->myAddress = addr;
 }
 
-const TransportAddress *
-TransportReceiver::GetAddress()
-{
-    return this->myAddress;
+const TransportAddress* TransportReceiver::GetAddress() {
+  return this->myAddress;
 }
 
-Timeout::Timeout(Transport *transport, uint64_t ms, timer_callback_t cb)
-    : transport(transport), ms(ms), cb(std::move(cb)),
-      timeoutCb(std::bind(&Timeout::OnTimeout, this))
-{
+Timeout::Timeout(Transport* transport, uint64_t ms, timer_callback_t cb)
+    : transport(transport),
+      ms(ms),
+      cb(std::move(cb)),
+      timeoutCb(std::bind(&Timeout::OnTimeout, this)) {
+  timerId = 0;
+}
+
+Timeout::~Timeout() { Stop(); }
+
+void Timeout::SetTimeout(uint64_t ms) {
+  ASSERT(!Active());
+  this->ms = ms;
+}
+
+uint64_t Timeout::Start() { return this->Reset(); }
+
+uint64_t Timeout::Reset() {
+  Stop();
+
+  timerId = transport->Timer(ms, cb);
+
+  return ms;
+}
+
+void Timeout::Stop() {
+  if (timerId > 0) {
+    transport->CancelTimer(timerId);
     timerId = 0;
+  }
 }
 
-Timeout::~Timeout()
-{
-    Stop();
-}
-
-void
-Timeout::SetTimeout(uint64_t ms)
-{
-    ASSERT(!Active());
-    this->ms = ms;
-}
-
-uint64_t
-Timeout::Start()
-{
-    return this->Reset();
-}
-
-
-uint64_t
-Timeout::Reset()
-{
-    Stop();
-
-    timerId = transport->Timer(ms, cb);
-
-    return ms;
-}
-
-void
-Timeout::Stop()
-{
-    if (timerId > 0) {
-        transport->CancelTimer(timerId);
-        timerId = 0;
-    }
-}
-
-bool
-Timeout::Active() const
-{
-    return (timerId != 0);
-}
+bool Timeout::Active() const { return (timerId != 0); }
 
 void Timeout::OnTimeout() {
-    timerId = 0;
-    Reset();
-    cb();
+  timerId = 0;
+  Reset();
+  cb();
 }
 
-void Transport::Flush() {
-}
+void Transport::Flush() {}
