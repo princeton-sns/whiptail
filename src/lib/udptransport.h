@@ -54,8 +54,9 @@ public:
     UDPTransportAddress *clone() const;
 
 private:
-    UDPTransportAddress(const sockaddr_in &addr);
-    sockaddr_in addr;
+    UDPTransportAddress(const sockaddr_storage &addr, socklen_t addrLen);
+    sockaddr_storage addr;
+    socklen_t addrLen;
     friend class UDPTransport;
     friend bool operator==(const UDPTransportAddress &a,
                            const UDPTransportAddress &b);
@@ -69,7 +70,8 @@ class UDPTransport : public TransportCommon<UDPTransportAddress>
 {
 public:
     UDPTransport(double dropRate = 0.0, double reorderRate = 0.0,
-                 int dscp = 0, bool handleSignals = true);
+                 int dscp = 0, bool handleSignals = true,
+                 int addressFamily = AF_INET);
     virtual ~UDPTransport();
     virtual void Register(TransportReceiver *receiver,
                           const transport::Configuration &config,
@@ -108,6 +110,7 @@ private:
         int fd;
     } reorderBuffer;
     int dscp;
+    int addressFamily_;
 
     event_base *libeventBase;
     std::vector<event *> listenerEvents;
@@ -151,7 +154,7 @@ private:
                                int groupIdx,
                                int replicaIdx);
     void OnReadable(int fd);
-    void ProcessPacket(int fd, sockaddr_in sender, socklen_t senderSize,
+    void ProcessPacket(int fd, sockaddr_storage sender, socklen_t senderSize,
                        char *buf, ssize_t sz);
     void OnTimer(UDPTransportTimerInfo *info);
     static void SocketCallback(evutil_socket_t fd,

@@ -57,10 +57,25 @@ const int SOCKET_BUF_SIZE = 1048576;
 
 using std::pair;
 
-TCPTransportAddress::TCPTransportAddress(const sockaddr_in &addr)
-    : addr(addr)
+static std::string AddrToString(const sockaddr_storage &addr) {
+    char buf[INET6_ADDRSTRLEN];
+    if (addr.ss_family == AF_INET) {
+        inet_ntop(AF_INET, &((const sockaddr_in*)&addr)->sin_addr, buf, sizeof(buf));
+    } else {
+        inet_ntop(AF_INET6, &((const sockaddr_in6*)&addr)->sin6_addr, buf, sizeof(buf));
+    }
+    return std::string(buf);
+}
+
+static uint16_t AddrPort(const sockaddr_storage &addr) {
+    if (addr.ss_family == AF_INET) return ntohs(((const sockaddr_in*)&addr)->sin_port);
+    return ntohs(((const sockaddr_in6*)&addr)->sin6_port);
+}
+
+TCPTransportAddress::TCPTransportAddress(const sockaddr_storage &addr,
+                                         socklen_t addrLen)
+    : addr(addr), addrLen(addrLen)
 {
-    memset((void *)addr.sin_zero, 0, sizeof(addr.sin_zero));
 }
 
 TCPTransportAddress *
@@ -72,7 +87,8 @@ TCPTransportAddress::clone() const
 
 bool operator==(const TCPTransportAddress &a, const TCPTransportAddress &b)
 {
-    return (memcmp(&a.addr, &b.addr, sizeof(a.addr)) == 0);
+    return (a.addrLen == b.addrLen &&
+            memcmp(&a.addr, &b.addr, a.addrLen) == 0);
 }
 
 bool operator!=(const TCPTransportAddress &a, const TCPTransportAddress &b)
@@ -82,7 +98,8 @@ bool operator!=(const TCPTransportAddress &a, const TCPTransportAddress &b)
 
 bool operator<(const TCPTransportAddress &a, const TCPTransportAddress &b)
 {
-    return (memcmp(&a.addr, &b.addr, sizeof(a.addr)) < 0);
+    if (a.addrLen != b.addrLen) return a.addrLen < b.addrLen;
+    return (memcmp(&a.addr, &b.addr, a.addrLen) < 0);
 }
 
 TCPTransportAddress
@@ -91,7 +108,7 @@ TCPTransport::LookupAddress(const transport::ReplicaAddress &addr)
     int res;
     struct addrinfo hints;
     memset(&hints, 0, sizeof(hints));
-    hints.ai_family = AF_INET;
+    hints.ai_family = addressFamily_;
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_protocol = 0;
     hints.ai_flags = 0;
@@ -102,12 +119,10 @@ TCPTransport::LookupAddress(const transport::ReplicaAddress &addr)
         Panic("Failed to resolve %s:%s: %s",
               addr.host.c_str(), addr.port.c_str(), gai_strerror(res));
     }
-    if (ai->ai_addr->sa_family != AF_INET)
-    {
-        Panic("getaddrinfo returned a non IPv4 address");
-    }
-    TCPTransportAddress out =
-        TCPTransportAddress(*((sockaddr_in *)ai->ai_addr));
+    sockaddr_storage ss;
+    memset(&ss, 0, sizeof(ss));
+    memcpy(&ss, ai->ai_addr, ai->ai_addrlen);
+    TCPTransportAddress out(ss, ai->ai_addrlen);
     freeaddrinfo(ai);
     return out;
 }
@@ -130,14 +145,11 @@ TCPTransport::LookupAddress(const transport::Configuration &config,
 }
 
 static void
-BindToPort(int fd, const string &host, const string &port)
+BindToPort(int fd, const string &host, const string &port, int addressFamily)
 {
-    struct sockaddr_in sin;
-
-    // look up its hostname and port number (which
-    // might be a service name)
     struct addrinfo hints;
-    hints.ai_family = AF_INET;
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = addressFamily;
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_protocol = 0;
     hints.ai_flags = AI_PASSIVE;
@@ -150,27 +162,27 @@ BindToPort(int fd, const string &host, const string &port)
         Panic("Failed to resolve host/port %s:%s: %s",
               host.c_str(), port.c_str(), gai_strerror(res));
     }
-    ASSERT(ai->ai_family == AF_INET);
     ASSERT(ai->ai_socktype == SOCK_STREAM);
-    if (ai->ai_addr->sa_family != AF_INET)
-    {
-        Panic("getaddrinfo returned a non IPv4 address");
-    }
-    sin = *(sockaddr_in *)ai->ai_addr;
 
+    sockaddr_storage ss;
+    memset(&ss, 0, sizeof(ss));
+    memcpy(&ss, ai->ai_addr, ai->ai_addrlen);
+    socklen_t addrLen = ai->ai_addrlen;
     freeaddrinfo(ai);
 
-    Debug("Binding to %s %d TCP", inet_ntoa(sin.sin_addr), htons(sin.sin_port));
+    Debug("Binding to %s %d TCP", AddrToString(ss).c_str(), AddrPort(ss));
 
-    if (bind(fd, (sockaddr *)&sin, sizeof(sin)) < 0)
+    if (bind(fd, (sockaddr *)&ss, addrLen) < 0)
     {
-        PPanic("Failed to bind to socket: %s:%d", inet_ntoa(sin.sin_addr),
-               htons(sin.sin_port));
+        PPanic("Failed to bind to socket: %s:%d", AddrToString(ss).c_str(),
+               AddrPort(ss));
     }
 }
 
 TCPTransport::TCPTransport(double dropRate, double reorderRate,
-                           int dscp, bool handleSignals)
+                           int dscp, bool handleSignals,
+                           int addressFamily)
+    : addressFamily_(addressFamily)
 {
     lastTimerId = 0;
 
@@ -236,12 +248,13 @@ TCPTransport::~TCPTransport()
 void TCPTransport::ConnectTCP(
     const std::pair<TCPTransportAddress, TransportReceiver *> &dstSrc)
 {
-    Debug("Opening new TCP connection to %s:%d", inet_ntoa(dstSrc.first.addr.sin_addr),
-          htons(dstSrc.first.addr.sin_port));
+    Debug("Opening new TCP connection to %s:%d",
+          AddrToString(dstSrc.first.addr).c_str(),
+          AddrPort(dstSrc.first.addr));
 
     // Create socket
     int fd;
-    if ((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+    if ((fd = socket(addressFamily_, SOCK_STREAM, 0)) < 0)
     {
         PPanic("Failed to create socket for outgoing TCP connection");
     }
@@ -293,7 +306,7 @@ void TCPTransport::ConnectTCP(
                       TCPOutgoingEventCallback, info);
     if (bufferevent_socket_connect(bev,
                                    (struct sockaddr *)&(dstSrc.first.addr),
-                                   sizeof(dstSrc.first.addr)) < 0)
+                                   dstSrc.first.addrLen) < 0)
     {
         bufferevent_free(bev);
 
@@ -312,21 +325,22 @@ void TCPTransport::ConnectTCP(
     }
 
     // Tell the receiver its address
-    struct sockaddr_in sin;
-    socklen_t sinsize = sizeof(sin);
-    if (getsockname(fd, (sockaddr *)&sin, &sinsize) < 0)
+    struct sockaddr_storage ss;
+    socklen_t sssize = sizeof(ss);
+    memset(&ss, 0, sizeof(ss));
+    if (getsockname(fd, (sockaddr *)&ss, &sssize) < 0)
     {
         PPanic("Failed to get socket name");
     }
-    TCPTransportAddress *addr = new TCPTransportAddress(sin);
+    TCPTransportAddress *addr = new TCPTransportAddress(ss, sssize);
     if (dstSrc.second->GetAddress() == nullptr)
     {
         dstSrc.second->SetAddress(addr);
     }
 
     Debug("Opened TCP connection to %s:%d from %s:%d",
-          inet_ntoa(dstSrc.first.addr.sin_addr), htons(dstSrc.first.addr.sin_port),
-          inet_ntoa(sin.sin_addr), htons(sin.sin_port));
+          AddrToString(dstSrc.first.addr).c_str(), AddrPort(dstSrc.first.addr),
+          AddrToString(ss).c_str(), AddrPort(ss));
 }
 
 void TCPTransport::Register(TransportReceiver *receiver,
@@ -334,7 +348,6 @@ void TCPTransport::Register(TransportReceiver *receiver,
                             int groupIdx, int replicaIdx)
 {
     ASSERT(replicaIdx < config.n);
-    struct sockaddr_in sin;
 
     // const transport::Configuration *canonicalConfig =
     RegisterConfiguration(receiver, config, groupIdx, replicaIdx);
@@ -347,7 +360,7 @@ void TCPTransport::Register(TransportReceiver *receiver,
 
     // Create socket
     int fd;
-    if ((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+    if ((fd = socket(addressFamily_, SOCK_STREAM, 0)) < 0)
     {
         PPanic("Failed to create socket to accept TCP connections");
     }
@@ -389,7 +402,7 @@ void TCPTransport::Register(TransportReceiver *receiver,
     // host/port
     const string &host = config.replica(groupIdx, replicaIdx).host;
     const string &port = config.replica(groupIdx, replicaIdx).port;
-    BindToPort(fd, host, port);
+    BindToPort(fd, host, port, addressFamily_);
 
     // Listen for connections
     if (listen(fd, 5) < 0)
@@ -412,19 +425,21 @@ void TCPTransport::Register(TransportReceiver *receiver,
     tcpListeners.push_back(info);
 
     // Tell the receiver its address
-    socklen_t sinsize = sizeof(sin);
-    if (getsockname(fd, (sockaddr *)&sin, &sinsize) < 0)
+    struct sockaddr_storage ss;
+    socklen_t sssize = sizeof(ss);
+    memset(&ss, 0, sizeof(ss));
+    if (getsockname(fd, (sockaddr *)&ss, &sssize) < 0)
     {
         PPanic("Failed to get socket name");
     }
-    TCPTransportAddress *addr = new TCPTransportAddress(sin);
+    TCPTransportAddress *addr = new TCPTransportAddress(ss, sssize);
     receiver->SetAddress(addr);
 
     // Update mappings
     receivers[fd] = receiver;
     fds[receiver] = fd;
 
-    Debug("Accepting connections on TCP port %hu", ntohs(sin.sin_port));
+    Debug("Accepting connections on TCP port %hu", AddrPort(ss));
 }
 
 bool TCPTransport::SendMessageInternal(TransportReceiver *src,
@@ -432,8 +447,8 @@ bool TCPTransport::SendMessageInternal(TransportReceiver *src,
                                        const Message &m)
 {
     Debug("Sending %s message over TCP to %s:%d",
-          m.GetTypeName().c_str(), inet_ntoa(dst.addr.sin_addr),
-          htons(dst.addr.sin_port));
+          m.GetTypeName().c_str(), AddrToString(dst.addr).c_str(),
+          AddrPort(dst.addr));
     auto dstSrc = std::make_pair(dst, src);
     auto kv = tcpOutgoing.find(dstSrc);
     // See if we have a connection open
@@ -684,8 +699,9 @@ void TCPTransport::TCPAcceptCallback(evutil_socket_t fd, short what, void *arg)
     if (what & EV_READ)
     {
         int newfd;
-        struct sockaddr_in sin;
+        struct sockaddr_storage sin;
         socklen_t sinLength = sizeof(sin);
+        memset(&sin, 0, sizeof(sin));
         struct bufferevent *bev;
 
         // Accept a connection
@@ -720,7 +736,7 @@ void TCPTransport::TCPAcceptCallback(evutil_socket_t fd, short what, void *arg)
             Panic("Failed to enable bufferevent");
         }
         info->connectionEvents.push_back(bev);
-        TCPTransportAddress client = TCPTransportAddress(sin);
+        TCPTransportAddress client = TCPTransportAddress(sin, sinLength);
 
         // transport->mtx.lock();
         auto dstSrc = std::make_pair(client, info->receiver);
@@ -730,7 +746,7 @@ void TCPTransport::TCPAcceptCallback(evutil_socket_t fd, short what, void *arg)
         // transport->mtx.unlock();
 
         Debug("Opened incoming TCP connection from %s:%d",
-              inet_ntoa(sin.sin_addr), htons(sin.sin_port));
+              AddrToString(sin).c_str(), AddrPort(sin));
     }
 }
 
@@ -847,7 +863,7 @@ void TCPTransport::TCPOutgoingEventCallback(struct bufferevent *bev,
     {
         Warning("Error on outgoing TCP connection to server: %s for %s:%d",
                 evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()),
-                inet_ntoa(addr.addr.sin_addr), htons(addr.addr.sin_port));
+                AddrToString(addr.addr).c_str(), AddrPort(addr.addr));
         bufferevent_free(bev);
 
         // transport->mtx.lock();

@@ -68,10 +68,10 @@ const uint64_t FRAG_MAGIC = 0x20101010;
 
 using std::pair;
 
-UDPTransportAddress::UDPTransportAddress(const sockaddr_in &addr)
-    : addr(addr)
+UDPTransportAddress::UDPTransportAddress(const sockaddr_storage &addr,
+                                         socklen_t addrLen)
+    : addr(addr), addrLen(addrLen)
 {
-    memset((void *)addr.sin_zero, 0, sizeof(addr.sin_zero));
 }
 
 UDPTransportAddress *
@@ -83,7 +83,8 @@ UDPTransportAddress::clone() const
 
 bool operator==(const UDPTransportAddress &a, const UDPTransportAddress &b)
 {
-    return (memcmp(&a.addr, &b.addr, sizeof(a.addr)) == 0);
+    return (a.addrLen == b.addrLen &&
+            memcmp(&a.addr, &b.addr, a.addrLen) == 0);
 }
 
 bool operator!=(const UDPTransportAddress &a, const UDPTransportAddress &b)
@@ -93,7 +94,8 @@ bool operator!=(const UDPTransportAddress &a, const UDPTransportAddress &b)
 
 bool operator<(const UDPTransportAddress &a, const UDPTransportAddress &b)
 {
-    return (memcmp(&a.addr, &b.addr, sizeof(a.addr)) < 0);
+    if (a.addrLen != b.addrLen) return a.addrLen < b.addrLen;
+    return (memcmp(&a.addr, &b.addr, a.addrLen) < 0);
 }
 
 UDPTransportAddress
@@ -101,7 +103,8 @@ UDPTransport::LookupAddress(const transport::ReplicaAddress &addr)
 {
     int res;
     struct addrinfo hints;
-    hints.ai_family = AF_INET;
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = addressFamily_;
     hints.ai_socktype = SOCK_DGRAM;
     hints.ai_protocol = 0;
     hints.ai_flags = 0;
@@ -111,12 +114,10 @@ UDPTransport::LookupAddress(const transport::ReplicaAddress &addr)
         Panic("Failed to resolve %s:%s: %s",
               addr.host.c_str(), addr.port.c_str(), gai_strerror(res));
     }
-    if (ai->ai_addr->sa_family != AF_INET)
-    {
-        Panic("getaddrinfo returned a non IPv4 address");
-    }
-    UDPTransportAddress out =
-        UDPTransportAddress(*((sockaddr_in *)ai->ai_addr));
+    sockaddr_storage ss;
+    memset(&ss, 0, sizeof(ss));
+    memcpy(&ss, ai->ai_addr, ai->ai_addrlen);
+    UDPTransportAddress out(ss, ai->ai_addrlen);
     freeaddrinfo(ai);
     return out;
 }
@@ -155,24 +156,51 @@ UDPTransport::LookupMulticastAddress(const transport::Configuration
     return addr;
 }
 
+static std::string UDPAddrToString(const sockaddr_storage &addr) {
+    char buf[INET6_ADDRSTRLEN];
+    if (addr.ss_family == AF_INET) {
+        inet_ntop(AF_INET, &((const sockaddr_in*)&addr)->sin_addr, buf, sizeof(buf));
+    } else {
+        inet_ntop(AF_INET6, &((const sockaddr_in6*)&addr)->sin6_addr, buf, sizeof(buf));
+    }
+    return std::string(buf);
+}
+
+static uint16_t UDPAddrPort(const sockaddr_storage &addr) {
+    if (addr.ss_family == AF_INET) return ntohs(((const sockaddr_in*)&addr)->sin_port);
+    return ntohs(((const sockaddr_in6*)&addr)->sin6_port);
+}
+
 static void
-BindToPort(int fd, const string &host, const string &port)
+BindToPort(int fd, const string &host, const string &port, int addressFamily)
 {
-    struct sockaddr_in sin;
+    struct sockaddr_storage ss;
+    socklen_t addrLen;
+    memset(&ss, 0, sizeof(ss));
 
     if ((host == "") && (port == "any"))
     {
         // Set up the sockaddr so we're OK with any UDP socket
-        memset(&sin, 0, sizeof(sin));
-        sin.sin_family = AF_INET;
-        sin.sin_port = 0;
+        if (addressFamily == AF_INET6) {
+            sockaddr_in6 *sin6 = (sockaddr_in6 *)&ss;
+            sin6->sin6_family = AF_INET6;
+            sin6->sin6_port = 0;
+            sin6->sin6_addr = in6addr_any;
+            addrLen = sizeof(sockaddr_in6);
+        } else {
+            sockaddr_in *sin = (sockaddr_in *)&ss;
+            sin->sin_family = AF_INET;
+            sin->sin_port = 0;
+            addrLen = sizeof(sockaddr_in);
+        }
     }
     else
     {
         // Otherwise, look up its hostname and port number (which
         // might be a service name)
         struct addrinfo hints;
-        hints.ai_family = AF_INET;
+        memset(&hints, 0, sizeof(hints));
+        hints.ai_family = addressFamily;
         hints.ai_socktype = SOCK_DGRAM;
         hints.ai_protocol = 0;
         hints.ai_flags = AI_PASSIVE;
@@ -184,28 +212,26 @@ BindToPort(int fd, const string &host, const string &port)
             Panic("Failed to resolve host/port %s:%s: %s",
                   host.c_str(), port.c_str(), gai_strerror(res));
         }
-        ASSERT(ai->ai_family == AF_INET);
         ASSERT(ai->ai_socktype == SOCK_DGRAM);
-        if (ai->ai_addr->sa_family != AF_INET)
-        {
-            Panic("getaddrinfo returned a non IPv4 address");
-        }
-        sin = *(sockaddr_in *)ai->ai_addr;
+        memcpy(&ss, ai->ai_addr, ai->ai_addrlen);
+        addrLen = ai->ai_addrlen;
 
         freeaddrinfo(ai);
     }
 
-    Notice("Binding to %s:%d", inet_ntoa(sin.sin_addr), htons(sin.sin_port));
+    Notice("Binding to %s:%d", UDPAddrToString(ss).c_str(), UDPAddrPort(ss));
 
-    if (bind(fd, (sockaddr *)&sin, sizeof(sin)) < 0)
+    if (bind(fd, (sockaddr *)&ss, addrLen) < 0)
     {
         PPanic("Failed to bind to socket");
     }
 }
 
 UDPTransport::UDPTransport(double dropRate, double reorderRate,
-                           int dscp, bool handleSignals)
-    : dropRate(dropRate), reorderRate(reorderRate), dscp(dscp)
+                           int dscp, bool handleSignals,
+                           int addressFamily)
+    : dropRate(dropRate), reorderRate(reorderRate), dscp(dscp),
+      addressFamily_(addressFamily)
 {
     lastTimerId = 0;
     lastFragMsgId = 0;
@@ -387,7 +413,8 @@ void UDPTransport::ListenOnMulticastPort(const transport::Configuration
         // Bind to the specified address
         BindToPort(fd,
                    canonicalConfig->multicast()->host,
-                   canonicalConfig->multicast()->port);
+                   canonicalConfig->multicast()->port,
+                   addressFamily_);
     }
 
     // Set up a libevent callback
@@ -413,14 +440,12 @@ void UDPTransport::Register(TransportReceiver *receiver,
                             int replicaIdx)
 {
     ASSERT(replicaIdx < config.n);
-    struct sockaddr_in sin;
-
     const transport::Configuration *canonicalConfig =
         RegisterConfiguration(receiver, config, groupIdx, replicaIdx);
 
     // Create socket
     int fd;
-    if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
+    if ((fd = socket(addressFamily_, SOCK_DGRAM, 0)) < 0)
     {
         PPanic("Failed to create socket to listen");
     }
@@ -442,8 +467,9 @@ void UDPTransport::Register(TransportReceiver *receiver,
     if (dscp != 0)
     {
         n = dscp << 2;
-        if (setsockopt(fd, IPPROTO_IP,
-                       IP_TOS, (char *)&n, sizeof(n)) < 0)
+        int proto = (addressFamily_ == AF_INET6) ? IPPROTO_IPV6 : IPPROTO_IP;
+        int opt = (addressFamily_ == AF_INET6) ? IPV6_TCLASS : IP_TOS;
+        if (setsockopt(fd, proto, opt, (char *)&n, sizeof(n)) < 0)
         {
             PWarning("Failed to set DSCP on socket");
         }
@@ -468,12 +494,12 @@ void UDPTransport::Register(TransportReceiver *receiver,
         // host/port
         const string &host = config.replica(groupIdx, replicaIdx).host;
         const string &port = config.replica(groupIdx, replicaIdx).port;
-        BindToPort(fd, host, port);
+        BindToPort(fd, host, port, addressFamily_);
     }
     else
     {
         // Registering a client. Bind to any available host/port
-        BindToPort(fd, "", "any");
+        BindToPort(fd, "", "any", addressFamily_);
     }
 
     // Set up a libevent callback
@@ -483,19 +509,21 @@ void UDPTransport::Register(TransportReceiver *receiver,
     listenerEvents.push_back(ev);
 
     // Tell the receiver its address
-    socklen_t sinsize = sizeof(sin);
-    if (getsockname(fd, (sockaddr *)&sin, &sinsize) < 0)
+    struct sockaddr_storage ss;
+    socklen_t sssize = sizeof(ss);
+    memset(&ss, 0, sizeof(ss));
+    if (getsockname(fd, (sockaddr *)&ss, &sssize) < 0)
     {
         PPanic("Failed to get socket name");
     }
-    UDPTransportAddress *addr = new UDPTransportAddress(sin);
+    UDPTransportAddress *addr = new UDPTransportAddress(ss, sssize);
     receiver->SetAddress(addr);
 
     // Update mappings
     receivers[fd] = receiver;
     fds[receiver] = fd;
 
-    Notice("Listening on UDP port %hu", ntohs(sin.sin_port));
+    Notice("Listening on UDP port %hu", UDPAddrPort(ss));
 
     // If we are registering a replica, check whether we need to set
     // up a socket to listen on the multicast port.
@@ -560,10 +588,11 @@ bool UDPTransport::_SendMessageInternal(TransportReceiver *src,
                                         void *meta_data)
 {
     Debug("Sending %s message over UDP to %s:%d",
-          m.GetTypeName().c_str(), inet_ntoa(dst.addr.sin_addr),
-          htons(dst.addr.sin_port));
+          m.GetTypeName().c_str(), UDPAddrToString(dst.addr).c_str(),
+          UDPAddrPort(dst.addr));
 
-    sockaddr_in sin = dynamic_cast<const UDPTransportAddress &>(dst).addr;
+    sockaddr_storage sin = dynamic_cast<const UDPTransportAddress &>(dst).addr;
+    socklen_t sinLen = dynamic_cast<const UDPTransportAddress &>(dst).addrLen;
 
     // Serialize message
     char *buf;
@@ -584,7 +613,7 @@ bool UDPTransport::_SendMessageInternal(TransportReceiver *src,
     if (msgLen <= MAX_UDP_MESSAGE_SIZE)
     {
         if (sendto(fd, buf, msgLen, 0,
-                   (sockaddr *)&sin, sizeof(sin)) < 0)
+                   (sockaddr *)&sin, sinLen) < 0)
         {
             PWarning("Failed to send message");
             goto fail;
@@ -703,8 +732,9 @@ void UDPTransport::OnReadable(int fd)
         ssize_t sz;
         char buf[BUFSIZE];
         char *msgbuf;
-        sockaddr_in sender;
+        sockaddr_storage sender;
         socklen_t senderSize = sizeof(sender);
+        memset(&sender, 0, sizeof(sender));
 
         sz = recvfrom(fd, buf, BUFSIZE, 0,
                       (struct sockaddr *)&sender, &senderSize);
@@ -730,9 +760,9 @@ void UDPTransport::OnReadable(int fd)
                 continue;
             }
             iph = (struct ip *)(buf + sizeof(struct ether_header));
-            sender.sin_family = AF_INET;
-            sender.sin_addr.s_addr = iph->ip_src.s_addr;
-            senderSize = sizeof(sender);
+            ((sockaddr_in *)&sender)->sin_family = AF_INET;
+            ((sockaddr_in *)&sender)->sin_addr.s_addr = iph->ip_src.s_addr;
+            senderSize = sizeof(sockaddr_in);
             sz -= headerLen;
             msgbuf += headerLen;
         }
@@ -741,10 +771,10 @@ void UDPTransport::OnReadable(int fd)
     } while (0);
 }
 
-void UDPTransport::ProcessPacket(int fd, sockaddr_in sender, socklen_t senderSize,
+void UDPTransport::ProcessPacket(int fd, sockaddr_storage sender, socklen_t senderSize,
                                  char *buf, ssize_t sz)
 {
-    UDPTransportAddress senderAddr(sender);
+    UDPTransportAddress senderAddr(sender, senderSize);
     string msgType, msg;
     void *meta_data = NULL;
 

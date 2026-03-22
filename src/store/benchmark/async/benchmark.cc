@@ -330,6 +330,7 @@ DEFINE_double(client_think_time, 1.0, "think time for closed and partly open loo
 DEFINE_double(client_stay_probability, 0.5, "session stay probability for partly open loop clients");
 DEFINE_double(mpl, 1, "multi-programming level for closed-loop clients");
 DEFINE_double(client_switch_probability, 0.0, "session switch service probability for multi-instance experiments");
+DEFINE_bool(ipv6, false, "use IPv6 instead of IPv4");
 
 /**
  * RW settings.
@@ -628,13 +629,15 @@ int main(int argc, char **argv)
         }
     }
 
+    int af = FLAGS_ipv6 ? AF_INET6 : AF_INET;
+
     switch (trans)
     {
     case TRANS_TCP:
-        tport = new TCPTransport(0.0, 0.0, 0, false);
+        tport = new TCPTransport(0.0, 0.0, 0, false, af);
         break;
     case TRANS_UDP:
-        tport = new UDPTransport(0.0, 0.0, 0, false);
+        tport = new UDPTransport(0.0, 0.0, 0, false, af);
         break;
     default:
         NOT_REACHABLE();

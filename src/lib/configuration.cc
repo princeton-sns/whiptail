@@ -176,9 +176,33 @@ namespace transport
                     Panic("'replica' configuration line requires an argument");
                 }
 
-                char *host = strtok(arg, ":");
-                char *port = strtok(NULL, ":");
-                char *interface = strtok(NULL, "");
+                char *host;
+                char *port;
+                char *interface;
+
+                if (arg[0] == '[') {
+                    // IPv6 bracket notation: [host]:port
+                    host = arg + 1;
+                    char *bracket = strchr(host, ']');
+                    if (!bracket) {
+                        Panic("Configuration line format: 'replica [ipv6host]:port'");
+                    }
+                    *bracket = '\0';
+                    port = bracket + 1;
+                    if (*port == ':') {
+                        port++;
+                    } else {
+                        Panic("Configuration line format: 'replica [ipv6host]:port'");
+                    }
+                    interface = strtok(port, ":");
+                    // interface is after the second ':'
+                    port = interface;
+                    interface = strtok(NULL, "");
+                } else {
+                    host = strtok(arg, ":");
+                    port = strtok(NULL, ":");
+                    interface = strtok(NULL, "");
+                }
 
                 if (!host || !port)
                 {

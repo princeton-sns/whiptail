@@ -54,10 +54,11 @@ class TCPTransportAddress : public TransportAddress
 {
 public:
     TCPTransportAddress *clone() const;
-    sockaddr_in addr;
+    sockaddr_storage addr;
+    socklen_t addrLen;
 
 private:
-    TCPTransportAddress(const sockaddr_in &addr);
+    TCPTransportAddress(const sockaddr_storage &addr, socklen_t addrLen);
 
     friend class TCPTransport;
     friend bool operator==(const TCPTransportAddress &a,
@@ -72,7 +73,8 @@ class TCPTransport : public TransportCommon<TCPTransportAddress>
 {
 public:
     TCPTransport(double dropRate = 0.0, double reogrderRate = 0.0,
-                 int dscp = 0, bool handleSignals = true);
+                 int dscp = 0, bool handleSignals = true,
+                 int addressFamily = AF_INET);
     virtual ~TCPTransport();
     virtual void Register(TransportReceiver *receiver,
                           const transport::Configuration &config,
@@ -136,6 +138,7 @@ private:
     // Latency_t sockWriteLat;
     // ThreadPool tp;
     bool stopped;
+    int addressFamily_;
 
     virtual bool SendMessageInternal(TransportReceiver *src,
                                      const TCPTransportAddress &dst,

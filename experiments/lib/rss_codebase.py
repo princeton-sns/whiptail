@@ -101,6 +101,9 @@ class RssCodebase:
         if 'message_transport_type' in config['replication_protocol_settings']:
             client_command += ' --trans_protocol %s' % config['replication_protocol_settings']['message_transport_type']
 
+        if 'ipv6' in config and config['ipv6']:
+            client_command += ' --ipv6'
+
         if 'client_debug_stats' in config and config['client_debug_stats']:
             client_command += ' --debug_stats'
 
@@ -252,6 +255,9 @@ class RssCodebase:
 
         if 'message_transport_type' in config['replication_protocol_settings']:
             replica_command += ' --trans_protocol %s' % config['replication_protocol_settings']['message_transport_type']
+
+        if 'ipv6' in config and config['ipv6']:
+            replica_command += ' --ipv6'
 
         if config['replication_protocol'] == 'strong':
             if 'strongmode' in config['replication_protocol_settings']:
@@ -465,9 +471,15 @@ class RssCodebase:
                             replica = "localhost"
 
                         port = server_ports[replica]
-                        print("replica {}:{}".format(replica, port), file=rcf)
-                        print("replica {}:{}".format(
-                            replica, port+1), file=scf)
+                        if 'ipv6' in config and config['ipv6'] and ':' in replica:
+                            # IPv6 address needs bracket notation
+                            print("replica [{}]:{}".format(replica, port), file=rcf)
+                            print("replica [{}]:{}".format(
+                                replica, port+1), file=scf)
+                        else:
+                            print("replica {}:{}".format(replica, port), file=rcf)
+                            print("replica {}:{}".format(
+                                replica, port+1), file=scf)
                         server_ports[replica] += 2
                 shard_idx += 1
 
