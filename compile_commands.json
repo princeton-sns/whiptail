@@ -1,0 +1,452 @@
+[
+{
+  "directory": "/users/lisirrx/whiptail/src/build/third_party/gflags",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -DNO_THREADS -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -I/users/lisirrx/whiptail/src/third_party/gflags/src -I/users/lisirrx/whiptail/src/build/third_party/gflags/include/gflags -std=gnu++14 -o CMakeFiles/gflags_nothreads_static.dir/src/gflags.cc.o -c /users/lisirrx/whiptail/src/third_party/gflags/src/gflags.cc",
+  "file": "/users/lisirrx/whiptail/src/third_party/gflags/src/gflags.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/third_party/gflags",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -DNO_THREADS -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -I/users/lisirrx/whiptail/src/third_party/gflags/src -I/users/lisirrx/whiptail/src/build/third_party/gflags/include/gflags -std=gnu++14 -o CMakeFiles/gflags_nothreads_static.dir/src/gflags_reporting.cc.o -c /users/lisirrx/whiptail/src/third_party/gflags/src/gflags_reporting.cc",
+  "file": "/users/lisirrx/whiptail/src/third_party/gflags/src/gflags_reporting.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/third_party/gflags",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -DNO_THREADS -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -I/users/lisirrx/whiptail/src/third_party/gflags/src -I/users/lisirrx/whiptail/src/build/third_party/gflags/include/gflags -std=gnu++14 -o CMakeFiles/gflags_nothreads_static.dir/src/gflags_completions.cc.o -c /users/lisirrx/whiptail/src/third_party/gflags/src/gflags_completions.cc",
+  "file": "/users/lisirrx/whiptail/src/third_party/gflags/src/gflags_completions.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/lib",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -std=gnu++14 -o CMakeFiles/Common.dir/configuration.cc.o -c /users/lisirrx/whiptail/src/lib/configuration.cc",
+  "file": "/users/lisirrx/whiptail/src/lib/configuration.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/lib",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -std=gnu++14 -o CMakeFiles/Common.dir/io_utils.cc.o -c /users/lisirrx/whiptail/src/lib/io_utils.cc",
+  "file": "/users/lisirrx/whiptail/src/lib/io_utils.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/lib",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -std=gnu++14 -o CMakeFiles/Common.dir/latency.cc.o -c /users/lisirrx/whiptail/src/lib/latency.cc",
+  "file": "/users/lisirrx/whiptail/src/lib/latency.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/lib",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -std=gnu++14 -o CMakeFiles/Common.dir/lookup3.cc.o -c /users/lisirrx/whiptail/src/lib/lookup3.cc",
+  "file": "/users/lisirrx/whiptail/src/lib/lookup3.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/lib",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -std=gnu++14 -o CMakeFiles/Common.dir/memory.cc.o -c /users/lisirrx/whiptail/src/lib/memory.cc",
+  "file": "/users/lisirrx/whiptail/src/lib/memory.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/lib",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -std=gnu++14 -o CMakeFiles/Common.dir/message.cc.o -c /users/lisirrx/whiptail/src/lib/message.cc",
+  "file": "/users/lisirrx/whiptail/src/lib/message.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/lib",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -std=gnu++14 -o CMakeFiles/Common.dir/persistent_register.cc.o -c /users/lisirrx/whiptail/src/lib/persistent_register.cc",
+  "file": "/users/lisirrx/whiptail/src/lib/persistent_register.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/lib",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -std=gnu++14 -o CMakeFiles/Common.dir/repltransport.cc.o -c /users/lisirrx/whiptail/src/lib/repltransport.cc",
+  "file": "/users/lisirrx/whiptail/src/lib/repltransport.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/lib",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -std=gnu++14 -o CMakeFiles/Common.dir/simtransport.cc.o -c /users/lisirrx/whiptail/src/lib/simtransport.cc",
+  "file": "/users/lisirrx/whiptail/src/lib/simtransport.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/lib",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -std=gnu++14 -o CMakeFiles/Common.dir/tcptransport.cc.o -c /users/lisirrx/whiptail/src/lib/tcptransport.cc",
+  "file": "/users/lisirrx/whiptail/src/lib/tcptransport.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/lib",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -std=gnu++14 -o CMakeFiles/Common.dir/transport.cc.o -c /users/lisirrx/whiptail/src/lib/transport.cc",
+  "file": "/users/lisirrx/whiptail/src/lib/transport.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/lib",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -std=gnu++14 -o CMakeFiles/Common.dir/udptransport.cc.o -c /users/lisirrx/whiptail/src/lib/udptransport.cc",
+  "file": "/users/lisirrx/whiptail/src/lib/udptransport.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/lib",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -std=gnu++14 -o CMakeFiles/Common.dir/latency-format.pb.cc.o -c /users/lisirrx/whiptail/src/build/lib/latency-format.pb.cc",
+  "file": "/users/lisirrx/whiptail/src/build/lib/latency-format.pb.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/rss",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src/rss/../include -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -std=gnu++14 -o CMakeFiles/rss.dir/lib.cc.o -c /users/lisirrx/whiptail/src/rss/lib.cc",
+  "file": "/users/lisirrx/whiptail/src/rss/lib.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/replication/common",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -std=gnu++14 -o CMakeFiles/ReplicationCommon.dir/client.cc.o -c /users/lisirrx/whiptail/src/replication/common/client.cc",
+  "file": "/users/lisirrx/whiptail/src/replication/common/client.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/replication/common",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -std=gnu++14 -o CMakeFiles/ReplicationCommon.dir/log.cc.o -c /users/lisirrx/whiptail/src/replication/common/log.cc",
+  "file": "/users/lisirrx/whiptail/src/replication/common/log.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/replication/common",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -std=gnu++14 -o CMakeFiles/ReplicationCommon.dir/replica.cc.o -c /users/lisirrx/whiptail/src/replication/common/replica.cc",
+  "file": "/users/lisirrx/whiptail/src/replication/common/replica.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/replication/common",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -std=gnu++14 -o CMakeFiles/ReplicationCommon.dir/request.pb.cc.o -c /users/lisirrx/whiptail/src/build/replication/common/request.pb.cc",
+  "file": "/users/lisirrx/whiptail/src/build/replication/common/request.pb.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/replication/ir",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -std=gnu++14 -o CMakeFiles/ReplicationIR.dir/client.cc.o -c /users/lisirrx/whiptail/src/replication/ir/client.cc",
+  "file": "/users/lisirrx/whiptail/src/replication/ir/client.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/replication/ir",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -std=gnu++14 -o CMakeFiles/ReplicationIR.dir/record.cc.o -c /users/lisirrx/whiptail/src/replication/ir/record.cc",
+  "file": "/users/lisirrx/whiptail/src/replication/ir/record.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/replication/ir",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -std=gnu++14 -o CMakeFiles/ReplicationIR.dir/replica.cc.o -c /users/lisirrx/whiptail/src/replication/ir/replica.cc",
+  "file": "/users/lisirrx/whiptail/src/replication/ir/replica.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/replication/ir",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -std=gnu++14 -o CMakeFiles/ReplicationIR.dir/request.pb.cc.o -c /users/lisirrx/whiptail/src/build/replication/ir/request.pb.cc",
+  "file": "/users/lisirrx/whiptail/src/build/replication/ir/request.pb.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/replication/ir",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -std=gnu++14 -o CMakeFiles/ReplicationIR.dir/ir-proto.pb.cc.o -c /users/lisirrx/whiptail/src/build/replication/ir/ir-proto.pb.cc",
+  "file": "/users/lisirrx/whiptail/src/build/replication/ir/ir-proto.pb.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/replication/vr",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -std=gnu++14 -o CMakeFiles/ReplicationVR.dir/client.cc.o -c /users/lisirrx/whiptail/src/replication/vr/client.cc",
+  "file": "/users/lisirrx/whiptail/src/replication/vr/client.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/replication/vr",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -std=gnu++14 -o CMakeFiles/ReplicationVR.dir/replica.cc.o -c /users/lisirrx/whiptail/src/replication/vr/replica.cc",
+  "file": "/users/lisirrx/whiptail/src/replication/vr/replica.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/replication/vr",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -std=gnu++14 -o CMakeFiles/ReplicationVR.dir/request.pb.cc.o -c /users/lisirrx/whiptail/src/build/replication/vr/request.pb.cc",
+  "file": "/users/lisirrx/whiptail/src/build/replication/vr/request.pb.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/replication/vr",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -std=gnu++14 -o CMakeFiles/ReplicationVR.dir/vr-proto.pb.cc.o -c /users/lisirrx/whiptail/src/build/replication/vr/vr-proto.pb.cc",
+  "file": "/users/lisirrx/whiptail/src/build/replication/vr/vr-proto.pb.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -I/users/lisirrx/whiptail/src/rss/../include -std=gnu++14 -o CMakeFiles/server.dir/server.cc.o -c /users/lisirrx/whiptail/src/store/server.cc",
+  "file": "/users/lisirrx/whiptail/src/store/server.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/common",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -std=gnu++14 -o CMakeFiles/StoreCommon.dir/common.cc.o -c /users/lisirrx/whiptail/src/store/common/common.cc",
+  "file": "/users/lisirrx/whiptail/src/store/common/common.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/common",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -std=gnu++14 -o CMakeFiles/StoreCommon.dir/partitioner.cc.o -c /users/lisirrx/whiptail/src/store/common/partitioner.cc",
+  "file": "/users/lisirrx/whiptail/src/store/common/partitioner.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/common",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -std=gnu++14 -o CMakeFiles/StoreCommon.dir/pinginitiator.cc.o -c /users/lisirrx/whiptail/src/store/common/pinginitiator.cc",
+  "file": "/users/lisirrx/whiptail/src/store/common/pinginitiator.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/common",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -std=gnu++14 -o CMakeFiles/StoreCommon.dir/promise.cc.o -c /users/lisirrx/whiptail/src/store/common/promise.cc",
+  "file": "/users/lisirrx/whiptail/src/store/common/promise.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/common",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -std=gnu++14 -o CMakeFiles/StoreCommon.dir/stats.cc.o -c /users/lisirrx/whiptail/src/store/common/stats.cc",
+  "file": "/users/lisirrx/whiptail/src/store/common/stats.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/common",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -std=gnu++14 -o CMakeFiles/StoreCommon.dir/timestamp.cc.o -c /users/lisirrx/whiptail/src/store/common/timestamp.cc",
+  "file": "/users/lisirrx/whiptail/src/store/common/timestamp.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/common",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -std=gnu++14 -o CMakeFiles/StoreCommon.dir/tracer.cc.o -c /users/lisirrx/whiptail/src/store/common/tracer.cc",
+  "file": "/users/lisirrx/whiptail/src/store/common/tracer.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/common",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -std=gnu++14 -o CMakeFiles/StoreCommon.dir/transaction.cc.o -c /users/lisirrx/whiptail/src/store/common/transaction.cc",
+  "file": "/users/lisirrx/whiptail/src/store/common/transaction.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/common",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -std=gnu++14 -o CMakeFiles/StoreCommon.dir/truetime.cc.o -c /users/lisirrx/whiptail/src/store/common/truetime.cc",
+  "file": "/users/lisirrx/whiptail/src/store/common/truetime.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/common",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -std=gnu++14 -o CMakeFiles/StoreCommon.dir/common-proto.pb.cc.o -c /users/lisirrx/whiptail/src/build/store/common/common-proto.pb.cc",
+  "file": "/users/lisirrx/whiptail/src/build/store/common/common-proto.pb.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/common/backend",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -std=gnu++14 -o CMakeFiles/StoreCommonBackend.dir/kvstore.cc.o -c /users/lisirrx/whiptail/src/store/common/backend/kvstore.cc",
+  "file": "/users/lisirrx/whiptail/src/store/common/backend/kvstore.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/common/backend",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -std=gnu++14 -o CMakeFiles/StoreCommonBackend.dir/lockserver.cc.o -c /users/lisirrx/whiptail/src/store/common/backend/lockserver.cc",
+  "file": "/users/lisirrx/whiptail/src/store/common/backend/lockserver.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/common/backend",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -std=gnu++14 -o CMakeFiles/StoreCommonBackend.dir/messageserver.cc.o -c /users/lisirrx/whiptail/src/store/common/backend/messageserver.cc",
+  "file": "/users/lisirrx/whiptail/src/store/common/backend/messageserver.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/common/backend",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -std=gnu++14 -o CMakeFiles/StoreCommonBackend.dir/pingserver.cc.o -c /users/lisirrx/whiptail/src/store/common/backend/pingserver.cc",
+  "file": "/users/lisirrx/whiptail/src/store/common/backend/pingserver.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/common/backend",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -std=gnu++14 -o CMakeFiles/StoreCommonBackend.dir/txnstore.cc.o -c /users/lisirrx/whiptail/src/store/common/backend/txnstore.cc",
+  "file": "/users/lisirrx/whiptail/src/store/common/backend/txnstore.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/common/backend",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -std=gnu++14 -o CMakeFiles/StoreCommonBackend.dir/versionstore.cc.o -c /users/lisirrx/whiptail/src/store/common/backend/versionstore.cc",
+  "file": "/users/lisirrx/whiptail/src/store/common/backend/versionstore.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/common/frontend",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -I/users/lisirrx/whiptail/src/rss/../include -std=gnu++14 -o CMakeFiles/StoreCommonFrontend.dir/bufferclient.cc.o -c /users/lisirrx/whiptail/src/store/common/frontend/bufferclient.cc",
+  "file": "/users/lisirrx/whiptail/src/store/common/frontend/bufferclient.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/common/frontend",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -I/users/lisirrx/whiptail/src/rss/../include -std=gnu++14 -o CMakeFiles/StoreCommonFrontend.dir/transaction_utils.cc.o -c /users/lisirrx/whiptail/src/store/common/frontend/transaction_utils.cc",
+  "file": "/users/lisirrx/whiptail/src/store/common/frontend/transaction_utils.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/strongstore",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -I/users/lisirrx/whiptail/src/rss/../include -std=gnu++14 -o CMakeFiles/StoreStrong.dir/client.cc.o -c /users/lisirrx/whiptail/src/store/strongstore/client.cc",
+  "file": "/users/lisirrx/whiptail/src/store/strongstore/client.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/strongstore",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -I/users/lisirrx/whiptail/src/rss/../include -std=gnu++14 -o CMakeFiles/StoreStrong.dir/locktable.cc.o -c /users/lisirrx/whiptail/src/store/strongstore/locktable.cc",
+  "file": "/users/lisirrx/whiptail/src/store/strongstore/locktable.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/strongstore",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -I/users/lisirrx/whiptail/src/rss/../include -std=gnu++14 -o CMakeFiles/StoreStrong.dir/networkconfig.cc.o -c /users/lisirrx/whiptail/src/store/strongstore/networkconfig.cc",
+  "file": "/users/lisirrx/whiptail/src/store/strongstore/networkconfig.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/strongstore",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -I/users/lisirrx/whiptail/src/rss/../include -std=gnu++14 -o CMakeFiles/StoreStrong.dir/occ_server.cc.o -c /users/lisirrx/whiptail/src/store/strongstore/occ_server.cc",
+  "file": "/users/lisirrx/whiptail/src/store/strongstore/occ_server.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/strongstore",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -I/users/lisirrx/whiptail/src/rss/../include -std=gnu++14 -o CMakeFiles/StoreStrong.dir/occstore.cc.o -c /users/lisirrx/whiptail/src/store/strongstore/occstore.cc",
+  "file": "/users/lisirrx/whiptail/src/store/strongstore/occstore.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/strongstore",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -I/users/lisirrx/whiptail/src/rss/../include -std=gnu++14 -o CMakeFiles/StoreStrong.dir/preparedtransaction.cc.o -c /users/lisirrx/whiptail/src/store/strongstore/preparedtransaction.cc",
+  "file": "/users/lisirrx/whiptail/src/store/strongstore/preparedtransaction.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/strongstore",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -I/users/lisirrx/whiptail/src/rss/../include -std=gnu++14 -o CMakeFiles/StoreStrong.dir/replicaclient.cc.o -c /users/lisirrx/whiptail/src/store/strongstore/replicaclient.cc",
+  "file": "/users/lisirrx/whiptail/src/store/strongstore/replicaclient.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/strongstore",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -I/users/lisirrx/whiptail/src/rss/../include -std=gnu++14 -o CMakeFiles/StoreStrong.dir/server.cc.o -c /users/lisirrx/whiptail/src/store/strongstore/server.cc",
+  "file": "/users/lisirrx/whiptail/src/store/strongstore/server.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/strongstore",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -I/users/lisirrx/whiptail/src/rss/../include -std=gnu++14 -o CMakeFiles/StoreStrong.dir/shardclient.cc.o -c /users/lisirrx/whiptail/src/store/strongstore/shardclient.cc",
+  "file": "/users/lisirrx/whiptail/src/store/strongstore/shardclient.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/strongstore",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -I/users/lisirrx/whiptail/src/rss/../include -std=gnu++14 -o CMakeFiles/StoreStrong.dir/transactionstore.cc.o -c /users/lisirrx/whiptail/src/store/strongstore/transactionstore.cc",
+  "file": "/users/lisirrx/whiptail/src/store/strongstore/transactionstore.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/strongstore",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -I/users/lisirrx/whiptail/src/rss/../include -std=gnu++14 -o CMakeFiles/StoreStrong.dir/waitdie.cc.o -c /users/lisirrx/whiptail/src/store/strongstore/waitdie.cc",
+  "file": "/users/lisirrx/whiptail/src/store/strongstore/waitdie.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/strongstore",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -I/users/lisirrx/whiptail/src/rss/../include -std=gnu++14 -o CMakeFiles/StoreStrong.dir/woundwait.cc.o -c /users/lisirrx/whiptail/src/store/strongstore/woundwait.cc",
+  "file": "/users/lisirrx/whiptail/src/store/strongstore/woundwait.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/strongstore",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -I/users/lisirrx/whiptail/src/rss/../include -std=gnu++14 -o CMakeFiles/StoreStrong.dir/common-proto.pb.cc.o -c /users/lisirrx/whiptail/src/build/store/strongstore/common-proto.pb.cc",
+  "file": "/users/lisirrx/whiptail/src/build/store/strongstore/common-proto.pb.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/strongstore",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -I/users/lisirrx/whiptail/src/rss/../include -std=gnu++14 -o CMakeFiles/StoreStrong.dir/strong-proto.pb.cc.o -c /users/lisirrx/whiptail/src/build/store/strongstore/strong-proto.pb.cc",
+  "file": "/users/lisirrx/whiptail/src/build/store/strongstore/strong-proto.pb.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/nccstore",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -I/users/lisirrx/whiptail/src/rss/../include -std=gnu++14 -o CMakeFiles/StoreNCC.dir/client.cc.o -c /users/lisirrx/whiptail/src/store/nccstore/client.cc",
+  "file": "/users/lisirrx/whiptail/src/store/nccstore/client.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/nccstore",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -I/users/lisirrx/whiptail/src/rss/../include -std=gnu++14 -o CMakeFiles/StoreNCC.dir/replicaclient.cc.o -c /users/lisirrx/whiptail/src/store/nccstore/replicaclient.cc",
+  "file": "/users/lisirrx/whiptail/src/store/nccstore/replicaclient.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/nccstore",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -I/users/lisirrx/whiptail/src/rss/../include -std=gnu++14 -o CMakeFiles/StoreNCC.dir/server.cc.o -c /users/lisirrx/whiptail/src/store/nccstore/server.cc",
+  "file": "/users/lisirrx/whiptail/src/store/nccstore/server.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/nccstore",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -I/users/lisirrx/whiptail/src/rss/../include -std=gnu++14 -o CMakeFiles/StoreNCC.dir/shardclient.cc.o -c /users/lisirrx/whiptail/src/store/nccstore/shardclient.cc",
+  "file": "/users/lisirrx/whiptail/src/store/nccstore/shardclient.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/nccstore",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -I/users/lisirrx/whiptail/src/rss/../include -std=gnu++14 -o CMakeFiles/StoreNCC.dir/versionstore.cc.o -c /users/lisirrx/whiptail/src/store/nccstore/versionstore.cc",
+  "file": "/users/lisirrx/whiptail/src/store/nccstore/versionstore.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/nccstore",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -I/users/lisirrx/whiptail/src/rss/../include -std=gnu++14 -o CMakeFiles/StoreNCC.dir/common-proto.pb.cc.o -c /users/lisirrx/whiptail/src/build/store/nccstore/common-proto.pb.cc",
+  "file": "/users/lisirrx/whiptail/src/build/store/nccstore/common-proto.pb.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/nccstore",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -I/users/lisirrx/whiptail/src/rss/../include -std=gnu++14 -o CMakeFiles/StoreNCC.dir/ncc-proto.pb.cc.o -c /users/lisirrx/whiptail/src/build/store/nccstore/ncc-proto.pb.cc",
+  "file": "/users/lisirrx/whiptail/src/build/store/nccstore/ncc-proto.pb.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/benchmark/async",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -I/users/lisirrx/whiptail/src/rss/../include -std=gnu++14 -o CMakeFiles/benchmark.dir/bench_client.cc.o -c /users/lisirrx/whiptail/src/store/benchmark/async/bench_client.cc",
+  "file": "/users/lisirrx/whiptail/src/store/benchmark/async/bench_client.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/benchmark/async",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -I/users/lisirrx/whiptail/src/rss/../include -std=gnu++14 -o CMakeFiles/benchmark.dir/benchmark.cc.o -c /users/lisirrx/whiptail/src/store/benchmark/async/benchmark.cc",
+  "file": "/users/lisirrx/whiptail/src/store/benchmark/async/benchmark.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/benchmark/async/common",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -std=gnu++14 -o CMakeFiles/BenchmarkCommon.dir/key_selector.cc.o -c /users/lisirrx/whiptail/src/store/benchmark/async/common/key_selector.cc",
+  "file": "/users/lisirrx/whiptail/src/store/benchmark/async/common/key_selector.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/benchmark/async/common",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -std=gnu++14 -o CMakeFiles/BenchmarkCommon.dir/uniform_key_selector.cc.o -c /users/lisirrx/whiptail/src/store/benchmark/async/common/uniform_key_selector.cc",
+  "file": "/users/lisirrx/whiptail/src/store/benchmark/async/common/uniform_key_selector.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/benchmark/async/common",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -std=gnu++14 -o CMakeFiles/BenchmarkCommon.dir/zipf_key_selector.cc.o -c /users/lisirrx/whiptail/src/store/benchmark/async/common/zipf_key_selector.cc",
+  "file": "/users/lisirrx/whiptail/src/store/benchmark/async/common/zipf_key_selector.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/benchmark/async/retwis",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -I/users/lisirrx/whiptail/src/rss/../include -std=gnu++14 -o CMakeFiles/BenchmarkRetwis.dir/add_user.cc.o -c /users/lisirrx/whiptail/src/store/benchmark/async/retwis/add_user.cc",
+  "file": "/users/lisirrx/whiptail/src/store/benchmark/async/retwis/add_user.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/benchmark/async/retwis",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -I/users/lisirrx/whiptail/src/rss/../include -std=gnu++14 -o CMakeFiles/BenchmarkRetwis.dir/follow.cc.o -c /users/lisirrx/whiptail/src/store/benchmark/async/retwis/follow.cc",
+  "file": "/users/lisirrx/whiptail/src/store/benchmark/async/retwis/follow.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/benchmark/async/retwis",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -I/users/lisirrx/whiptail/src/rss/../include -std=gnu++14 -o CMakeFiles/BenchmarkRetwis.dir/get_timeline.cc.o -c /users/lisirrx/whiptail/src/store/benchmark/async/retwis/get_timeline.cc",
+  "file": "/users/lisirrx/whiptail/src/store/benchmark/async/retwis/get_timeline.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/benchmark/async/retwis",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -I/users/lisirrx/whiptail/src/rss/../include -std=gnu++14 -o CMakeFiles/BenchmarkRetwis.dir/one_shot_reads.cc.o -c /users/lisirrx/whiptail/src/store/benchmark/async/retwis/one_shot_reads.cc",
+  "file": "/users/lisirrx/whiptail/src/store/benchmark/async/retwis/one_shot_reads.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/benchmark/async/retwis",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -I/users/lisirrx/whiptail/src/rss/../include -std=gnu++14 -o CMakeFiles/BenchmarkRetwis.dir/one_shot_rw.cc.o -c /users/lisirrx/whiptail/src/store/benchmark/async/retwis/one_shot_rw.cc",
+  "file": "/users/lisirrx/whiptail/src/store/benchmark/async/retwis/one_shot_rw.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/benchmark/async/retwis",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -I/users/lisirrx/whiptail/src/rss/../include -std=gnu++14 -o CMakeFiles/BenchmarkRetwis.dir/one_shot_writes.cc.o -c /users/lisirrx/whiptail/src/store/benchmark/async/retwis/one_shot_writes.cc",
+  "file": "/users/lisirrx/whiptail/src/store/benchmark/async/retwis/one_shot_writes.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/benchmark/async/retwis",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -I/users/lisirrx/whiptail/src/rss/../include -std=gnu++14 -o CMakeFiles/BenchmarkRetwis.dir/post_tweet.cc.o -c /users/lisirrx/whiptail/src/store/benchmark/async/retwis/post_tweet.cc",
+  "file": "/users/lisirrx/whiptail/src/store/benchmark/async/retwis/post_tweet.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/benchmark/async/retwis",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -I/users/lisirrx/whiptail/src/rss/../include -std=gnu++14 -o CMakeFiles/BenchmarkRetwis.dir/retwis_client.cc.o -c /users/lisirrx/whiptail/src/store/benchmark/async/retwis/retwis_client.cc",
+  "file": "/users/lisirrx/whiptail/src/store/benchmark/async/retwis/retwis_client.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/benchmark/async/retwis",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -I/users/lisirrx/whiptail/src/rss/../include -std=gnu++14 -o CMakeFiles/BenchmarkRetwis.dir/retwis_transaction.cc.o -c /users/lisirrx/whiptail/src/store/benchmark/async/retwis/retwis_transaction.cc",
+  "file": "/users/lisirrx/whiptail/src/store/benchmark/async/retwis/retwis_transaction.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/benchmark/async/ycsbt",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -I/users/lisirrx/whiptail/src/rss/../include -std=gnu++14 -o CMakeFiles/BenchmarkYcsbt.dir/ycsbt_client.cc.o -c /users/lisirrx/whiptail/src/store/benchmark/async/ycsbt/ycsbt_client.cc",
+  "file": "/users/lisirrx/whiptail/src/store/benchmark/async/ycsbt/ycsbt_client.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/benchmark/async/ycsbt",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src -I/users/lisirrx/whiptail/src/build -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -I/users/lisirrx/whiptail/src/rss/../include -std=gnu++14 -o CMakeFiles/BenchmarkYcsbt.dir/ycsbt_transaction.cc.o -c /users/lisirrx/whiptail/src/store/benchmark/async/ycsbt/ycsbt_transaction.cc",
+  "file": "/users/lisirrx/whiptail/src/store/benchmark/async/ycsbt/ycsbt_transaction.cc"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/benchmark/async/ycsbt/ycsbt",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -std=gnu++14 -o CMakeFiles/workload_ycsbt.dir/CoreWorkloadT.cpp.o -c /users/lisirrx/whiptail/src/store/benchmark/async/ycsbt/ycsbt/CoreWorkloadT.cpp",
+  "file": "/users/lisirrx/whiptail/src/store/benchmark/async/ycsbt/ycsbt/CoreWorkloadT.cpp"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/benchmark/async/ycsbt/ycsb",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -std=gnu++14 -o CMakeFiles/workload_ycsb.dir/CoreWorkload.cpp.o -c /users/lisirrx/whiptail/src/store/benchmark/async/ycsbt/ycsb/CoreWorkload.cpp",
+  "file": "/users/lisirrx/whiptail/src/store/benchmark/async/ycsbt/ycsb/CoreWorkload.cpp"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/benchmark/async/ycsbt/random",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -std=gnu++14 -o CMakeFiles/workload_random.dir/truncated_zipfian.cpp.o -c /users/lisirrx/whiptail/src/store/benchmark/async/ycsbt/random/truncated_zipfian.cpp",
+  "file": "/users/lisirrx/whiptail/src/store/benchmark/async/ycsbt/random/truncated_zipfian.cpp"
+},
+{
+  "directory": "/users/lisirrx/whiptail/src/build/store/benchmark/async/ycsbt/random",
+  "command": "/usr/bin/c++ -DGFLAGS_IS_A_DLL=0 -I/users/lisirrx/whiptail/src/third_party/json/single_include -I/users/lisirrx/whiptail/src/build/third_party/gflags/include -std=gnu++14 -o CMakeFiles/workload_random.dir/walker.cpp.o -c /users/lisirrx/whiptail/src/store/benchmark/async/ycsbt/random/walker.cpp",
+  "file": "/users/lisirrx/whiptail/src/store/benchmark/async/ycsbt/random/walker.cpp"
+}
+]

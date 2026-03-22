@@ -37,6 +37,7 @@
 #include <event2/thread.h>
 #include <fcntl.h>
 #include <google/protobuf/message.h>
+#include <net/if.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
@@ -122,8 +123,17 @@ TCPTransport::LookupAddress(const transport::ReplicaAddress &addr)
     sockaddr_storage ss;
     memset(&ss, 0, sizeof(ss));
     memcpy(&ss, ai->ai_addr, ai->ai_addrlen);
-    TCPTransportAddress out(ss, ai->ai_addrlen);
+    socklen_t addrLen = ai->ai_addrlen;
     freeaddrinfo(ai);
+
+    if (addressFamily_ == AF_INET6) {
+        sockaddr_in6 *sin6 = (sockaddr_in6 *)&ss;
+        if (IN6_IS_ADDR_LINKLOCAL(&sin6->sin6_addr) && sin6->sin6_scope_id == 0) {
+            sin6->sin6_scope_id = if_nametoindex(ipv6Interface_.c_str());
+        }
+    }
+
+    TCPTransportAddress out(ss, addrLen);
     return out;
 }
 
@@ -145,7 +155,7 @@ TCPTransport::LookupAddress(const transport::Configuration &config,
 }
 
 static void
-BindToPort(int fd, const string &host, const string &port, int addressFamily)
+BindToPort(int fd, const string &host, const string &port, int addressFamily, const string &ipv6Interface)
 {
     struct addrinfo hints;
     memset(&hints, 0, sizeof(hints));
@@ -170,6 +180,13 @@ BindToPort(int fd, const string &host, const string &port, int addressFamily)
     socklen_t addrLen = ai->ai_addrlen;
     freeaddrinfo(ai);
 
+    if (addressFamily == AF_INET6) {
+        sockaddr_in6 *sin6 = (sockaddr_in6 *)&ss;
+        if (IN6_IS_ADDR_LINKLOCAL(&sin6->sin6_addr) && sin6->sin6_scope_id == 0) {
+            sin6->sin6_scope_id = if_nametoindex(ipv6Interface.c_str());
+        }
+    }
+
     Debug("Binding to %s %d TCP", AddrToString(ss).c_str(), AddrPort(ss));
 
     if (bind(fd, (sockaddr *)&ss, addrLen) < 0)
@@ -181,8 +198,8 @@ BindToPort(int fd, const string &host, const string &port, int addressFamily)
 
 TCPTransport::TCPTransport(double dropRate, double reorderRate,
                            int dscp, bool handleSignals,
-                           int addressFamily)
-    : addressFamily_(addressFamily)
+                           int addressFamily, const std::string &ipv6Interface)
+    : addressFamily_(addressFamily), ipv6Interface_(ipv6Interface)
 {
     lastTimerId = 0;
 
@@ -338,7 +355,7 @@ void TCPTransport::ConnectTCP(
         dstSrc.second->SetAddress(addr);
     }
 
-    Debug("Opened TCP connection to %s:%d from %s:%d",
+    Notice("Opened TCP connection to %s:%d from %s:%d",
           AddrToString(dstSrc.first.addr).c_str(), AddrPort(dstSrc.first.addr),
           AddrToString(ss).c_str(), AddrPort(ss));
 }
@@ -402,7 +419,7 @@ void TCPTransport::Register(TransportReceiver *receiver,
     // host/port
     const string &host = config.replica(groupIdx, replicaIdx).host;
     const string &port = config.replica(groupIdx, replicaIdx).port;
-    BindToPort(fd, host, port, addressFamily_);
+    BindToPort(fd, host, port, addressFamily_, ipv6Interface_);
 
     // Listen for connections
     if (listen(fd, 5) < 0)

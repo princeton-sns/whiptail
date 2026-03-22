@@ -71,7 +71,7 @@ class UDPTransport : public TransportCommon<UDPTransportAddress>
 public:
     UDPTransport(double dropRate = 0.0, double reorderRate = 0.0,
                  int dscp = 0, bool handleSignals = true,
-                 int addressFamily = AF_INET);
+                 int addressFamily = AF_INET, const std::string &ipv6Interface = "eth0");
     virtual ~UDPTransport();
     virtual void Register(TransportReceiver *receiver,
                           const transport::Configuration &config,
@@ -111,6 +111,7 @@ private:
     } reorderBuffer;
     int dscp;
     int addressFamily_;
+    std::string ipv6Interface_;
 
     event_base *libeventBase;
     std::vector<event *> listenerEvents;

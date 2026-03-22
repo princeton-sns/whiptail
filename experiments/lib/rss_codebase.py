@@ -103,6 +103,11 @@ class RssCodebase:
 
         if 'ipv6' in config and config['ipv6']:
             client_command += ' --ipv6'
+            if 'ipv6_interface' in config:
+                from utils.eval_util import get_ipv6_interface
+                interface = get_ipv6_interface(config, client)
+                if interface:
+                    client_command += ' --ipv6_interface %s' % interface
 
         if 'client_debug_stats' in config and config['client_debug_stats']:
             client_command += ' --debug_stats'
@@ -258,6 +263,12 @@ class RssCodebase:
 
         if 'ipv6' in config and config['ipv6']:
             replica_command += ' --ipv6'
+            if 'ipv6_interface' in config:
+                from utils.eval_util import get_ipv6_interface
+                replica = config["shards"][shard_idx][replica_idx]
+                interface = get_ipv6_interface(config, replica)
+                if interface:
+                    replica_command += ' --ipv6_interface %s' % interface
 
         if config['replication_protocol'] == 'strong':
             if 'strongmode' in config['replication_protocol_settings']:

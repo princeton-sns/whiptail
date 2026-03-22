@@ -74,7 +74,7 @@ class TCPTransport : public TransportCommon<TCPTransportAddress>
 public:
     TCPTransport(double dropRate = 0.0, double reogrderRate = 0.0,
                  int dscp = 0, bool handleSignals = true,
-                 int addressFamily = AF_INET);
+                 int addressFamily = AF_INET, const std::string &ipv6Interface = "eth0");
     virtual ~TCPTransport();
     virtual void Register(TransportReceiver *receiver,
                           const transport::Configuration &config,
@@ -139,6 +139,7 @@ private:
     // ThreadPool tp;
     bool stopped;
     int addressFamily_;
+    std::string ipv6Interface_;
 
     virtual bool SendMessageInternal(TransportReceiver *src,
                                      const TCPTransportAddress &dst,

@@ -23,6 +23,27 @@ def get_region(config, server):
     raise ValueError("{} not in any region".format(server))
 
 
+def get_ipv6_interface(config, server):
+    """Resolve IPv6 interface for a server based on region.
+
+    Supports both dict format (per-region) and string format (backward compat).
+    """
+    ipv6_interface = config.get('ipv6_interface')
+    if not ipv6_interface:
+        return None
+
+    # Backward compatibility: if string, return as-is
+    if isinstance(ipv6_interface, str):
+        return ipv6_interface
+
+    # Dict format: try server name first, then region, then default
+    if server in ipv6_interface:
+        return ipv6_interface[server]
+
+    region = get_region(config, server)
+    return ipv6_interface.get(region, ipv6_interface.get('default'))
+
+
 def get_regions(config):
     return set([get_region(config, s) for s in config["clients"] + config["server_names"]])
 

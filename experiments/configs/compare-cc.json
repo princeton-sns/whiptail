@@ -2,9 +2,56 @@
   "experiment_independent_vars": [
     [
       "cc"
+    ],
+    [
+      "client_total",
+      "client_processes_per_client_node",
+      "clients"
     ]
   ],
-  "cc":["ncc","2pl"],
+  "cc":["2pl"],
+  "ipv6": false,
+  "ipv6_interface": {
+    "us-east-1-1": "enp5s0f0",
+    "us-east-1-0": "eno4",
+    "us-east-1-2": "eno4",
+    "us-east-1-3": "eno4",
+    "us-east-1-5": "eno4",
+    "us-east-1-10": "eno4",
+    "us-east-1-4": "eno4",
+    "us-east-1-6": "eno4",
+    "us-east-1-9": "enp5s0f0",
+    "us-east-1-7": "eno4",
+    "us-east-1-11": "eno4",
+    "us-east-1-8": "eno4",
+    "us-east-1-12": "eno4",
+    "us-east-1-13": "eno4",
+    "us-east-1-14": "eno4",
+    "us-east-1-15": "eno4",
+    "us-east-1-17": "eno4",
+    "us-east-1-16": "eno4",
+    "us-east-1-19": "eno4",
+    "us-east-1-18": "eno4",
+    "us-west-1-0": "eno4",
+    "us-east-1-22": "eno4",
+    "us-east-1-20": "eno4",
+    "us-east-1-21": "eno4",
+    "us-west-1-1": "eno4",
+    "us-west-1-2": "eno4",
+    "eu-west-1-0": "enp5s0f0",
+    "us-east-1-23": "enp5s0f0",
+    "eu-west-1-1": "eno4",
+    "client-0-0": "eno4",
+    "client-1-0": "eno4",
+    "client-2-0": "eno4",
+    "client-3-0": "eno4",
+    "client-4-0": "eno4",
+    "client-5-0": "eno4",
+    "client-7-0": "eno4",
+    "client-6-0": "eno4",
+    "client-8-0": "eno4",
+    "client-9-0": "eno4"
+  },
   "client_num_ops_txn": 1,
   "replication_protocol": "strong",
   "client_protocol_mode": "span-lock",
@@ -46,7 +93,7 @@
   "client_debug_stats": true,
   "server_debug_stats": true,
   "server_load_time": 5,
-  "client_experiment_length": 35,
+  "client_experiment_length": 60,
   "client_rand_sleep": 0,
   "client_ramp_up": 5,
   "client_ramp_down": 5,
@@ -82,7 +129,15 @@
       "us-east-1-21",
       "us-east-1-22",
       "us-east-1-23",
-      "client-0-0"
+      "client-0-0",
+      "client-3-0",
+      "client-4-0",
+      "client-5-0",
+      "client-6-0",
+      "client-7-0",
+      "client-8-0",
+      "client-9-0"
+    
     ],
     "eu-west-1": [
       "eu-west-1-0",
@@ -149,34 +204,32 @@
       "eu-west-1-1"
     ]
   ],
-  "client_total": 3,
-  "client_processes_per_client_node": 1,
+  "client_total": [20],
+  "client_processes_per_client_node": [2],
   "client_threads_per_process": 1,
   "clients": [
-    "client-0-0",
-    "client-1-0",
-    "client-2-0"
+    ["client-0-0","client-1-0","client-2-0","client-3-0","client-4-0","client-5-0","client-6-0","client-7-0","client-8-0","client-9-0"]
   ],
   "server_port": 7087,
   "truetime_error": 0,
   "client_num_keys": 1000000,
   "benchmark_name": "retwis",
   "bench_mode": "closed",
-  "mpl": 10,
+  "mpl": 1,
   "client_key_selector": "zipf",
-  "client_zipf_coefficient": 1.2,
+  "client_zipf_coefficient": 0.99,
   "client_arrival_rate": 1,
   "client_stay_probability": 1.0,
   "client_switch_probability": 0.0,
   "client_think_time": 0,
   "nb_time_alpha": 1.0,
-  "write_ops_txn": 10,
-  "read_ops_txn": 10,
+  "write_ops_txn": 1,
+  "read_ops_txn": 1,
   "mixed_write_ops_txn": 5,
   "mixed_read_ops_txn": 5,
-  "read_percent": 20,
-  "write_percent": 20,
-  "mixed_rw_percent": 60,
+  "read_percent": 0,
+  "write_percent": 0,
+  "mixed_rw_percent": 100,
   "network_latency_window": 0,
   "sent_redundancy": 1,
   "loop_queue_interval_us": 150,
@@ -186,7 +239,7 @@
   "client_max_attempts": -1,
   "client_max_backoff": 2500,
   "client_message_timeout": 60000,
-  "run_locally": true,
+  "run_locally": false,
   "replication_protocol_settings": {
     "message_transport_type": "tcp"
   },
@@ -204,57 +257,8 @@
   "server_host_format_str": "%s%s%s",
   "client_host_format_str": "%s%s%s",
   "project_name": "",
-  "region_rtt_latencies": {
-    "us-east-1": {
-      "us-east-1": 0,
-      "eu-west-1": 73,
-      "ap-northeast-1": 160,
-      "us-west-1": 63,
-      "eu-central-1": 87,
-      "ap-southeast-2": 199
-    },
-    "eu-west-1": {
-      "us-east-1": 73,
-      "eu-west-1": 0,
-      "ap-northeast-1": 220,
-      "us-west-1": 145,
-      "eu-central-1": 26,
-      "ap-southeast-2": 255
-    },
-    "ap-northeast-1": {
-      "us-east-1": 160,
-      "eu-west-1": 220,
-      "ap-northeast-1": 0,
-      "us-west-1": 115,
-      "eu-central-1": 243,
-      "ap-southeast-2": 106
-    },
-    "us-west-1": {
-      "us-east-1": 63,
-      "eu-west-1": 145,
-      "ap-northeast-1": 115,
-      "us-west-1": 0,
-      "eu-central-1": 148,
-      "ap-southeast-2": 139
-    },
-    "eu-central-1": {
-      "us-east-1": 87,
-      "eu-west-1": 26,
-      "ap-northeast-1": 243,
-      "us-west-1": 148,
-      "eu-central-1": 0,
-      "ap-southeast-2": 177
-    },
-    "ap-southeast-2": {
-      "us-east-1": 199,
-      "eu-west-1": 255,
-      "ap-northeast-1": 106,
-      "us-west-1": 139,
-      "eu-central-1": 177,
-      "ap-southeast-2": 0
-    }
-  },
-  "server_emulate_wan": false,
+  
+  "server_emulate_wan": true,
   "plots": [
     {
       "name": "tput-p50",
@@ -396,14 +400,14 @@
   "output_latency_scale": 1,
   "src_commit_hash": "HEAD",
   "stats_file_name": "stats.json",
-  "base_local_exp_directory": "/workspaces/whiptail/experiments/results",
-  "base_mounted_fs_path": "/mnt/extra",
-  "base_remote_bin_directory_nfs": "/workspaces/whiptail",
-  "base_remote_exp_directory": "/mnt/extra/experiments",
+  "base_local_exp_directory": "/users/lisirrx/whiptail/experiments/results",
+  "base_mounted_fs_path": "/users/lisirrx/extra",
+  "base_remote_bin_directory_nfs": "/users/lisirrx/whiptail",
+  "base_remote_exp_directory": "/users/lisirrx/extra/experiments",
   "bin_directory_name": "bin",
   "client_bin_name": "benchmark",
   "client_name_format_str": "%s",
-  "emulab_user": "root",
+  "emulab_user": "lisirrx",
   "max_bandwidth": "10gibps",
   "max_file_descriptors": 1000000,
   "max_retries": 0,
@@ -411,7 +415,7 @@
   "out_directory_name": "out",
   "server_bin_name": "server",
   "fig_workspace": "microsecondparty",
-  "src_directory": "/workspaces/whiptail/src",
+  "src_directory": "/users/lisirrx/whiptail/src",
   "make_collect_bins": [
     "store/benchmark/async/benchmark",
     "store/server"
@@ -446,5 +450,55 @@
   "client_gc_debug_trace": false,
   "client_cpuprofile": false,
   "server_gc_debug_trace": false,
-  "use_master": false
+  "use_master": false,
+  "region_rtt_latencies": {
+    "us-east-1": {
+      "us-east-1": 0,
+      "eu-west-1": 73,
+      "ap-northeast-1": 160,
+      "us-west-1": 63,
+      "eu-central-1": 87,
+      "ap-southeast-2": 199
+    },
+    "eu-west-1": {
+      "us-east-1": 73,
+      "eu-west-1": 0,
+      "ap-northeast-1": 220,
+      "us-west-1": 145,
+      "eu-central-1": 26,
+      "ap-southeast-2": 255
+    },
+    "ap-northeast-1": {
+      "us-east-1": 160,
+      "eu-west-1": 220,
+      "ap-northeast-1": 0,
+      "us-west-1": 115,
+      "eu-central-1": 243,
+      "ap-southeast-2": 106
+    },
+    "us-west-1": {
+      "us-east-1": 63,
+      "eu-west-1": 145,
+      "ap-northeast-1": 115,
+      "us-west-1": 0,
+      "eu-central-1": 148,
+      "ap-southeast-2": 139
+    },
+    "eu-central-1": {
+      "us-east-1": 87,
+      "eu-west-1": 26,
+      "ap-northeast-1": 243,
+      "us-west-1": 148,
+      "eu-central-1": 0,
+      "ap-southeast-2": 177
+    },
+    "ap-southeast-2": {
+      "us-east-1": 199,
+      "eu-west-1": 255,
+      "ap-northeast-1": 106,
+      "us-west-1": 139,
+      "eu-central-1": 177,
+      "ap-southeast-2": 0
+    }
+  }
 }

@@ -1628,10 +1628,12 @@ namespace strongstore
             }
             else if (s == PREPARING || s == PREPARED)
             {
-                // Debug("[%lu] Already prepared", transaction_id);
+                Debug("[%lu] Already prepared/committing %d", transaction_id, s);
+                // Idempotent - PREPARE arrived after transaction already progressed
             }
             else
             {
+                Notice("[%lu] Unexpected transaction state %d", transaction_id, s);
                 NOT_REACHABLE();
             }
         }

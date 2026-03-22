@@ -331,6 +331,7 @@ DEFINE_double(client_stay_probability, 0.5, "session stay probability for partly
 DEFINE_double(mpl, 1, "multi-programming level for closed-loop clients");
 DEFINE_double(client_switch_probability, 0.0, "session switch service probability for multi-instance experiments");
 DEFINE_bool(ipv6, false, "use IPv6 instead of IPv4");
+DEFINE_string(ipv6_interface, "eth0", "network interface for IPv6 link-local addresses");
 
 /**
  * RW settings.
@@ -634,10 +635,10 @@ int main(int argc, char **argv)
     switch (trans)
     {
     case TRANS_TCP:
-        tport = new TCPTransport(0.0, 0.0, 0, false, af);
+        tport = new TCPTransport(0.0, 0.0, 0, false, af, FLAGS_ipv6_interface);
         break;
     case TRANS_UDP:
-        tport = new UDPTransport(0.0, 0.0, 0, false, af);
+        tport = new UDPTransport(0.0, 0.0, 0, false, af, FLAGS_ipv6_interface);
         break;
     default:
         NOT_REACHABLE();

@@ -217,6 +217,7 @@ DEFINE_validator(strong_consistency, &ValidateStrongConsistency);
 DEFINE_uint64(clock_error, 0, "maximum error for clock");
 DEFINE_string(stats_file, "", "path to file for server stats");
 DEFINE_bool(ipv6, false, "use IPv6 instead of IPv4");
+DEFINE_string(ipv6_interface, "eth0", "network interface for IPv6 link-local addresses");
 
 /**
  * Benchmark settings.
@@ -356,10 +357,10 @@ int main(int argc, char **argv)
     switch (trans)
     {
     case TRANS_TCP:
-        tport = new TCPTransport(0.0, 0.0, 0, false, af);
+        tport = new TCPTransport(0.0, 0.0, 0, false, af, FLAGS_ipv6_interface);
         break;
     case TRANS_UDP:
-        tport = new UDPTransport(0.0, 0.0, 0, false, af);
+        tport = new UDPTransport(0.0, 0.0, 0, false, af, FLAGS_ipv6_interface);
         break;
     default:
         NOT_REACHABLE();

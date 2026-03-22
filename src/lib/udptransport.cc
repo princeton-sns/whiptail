@@ -117,8 +117,17 @@ UDPTransport::LookupAddress(const transport::ReplicaAddress &addr)
     sockaddr_storage ss;
     memset(&ss, 0, sizeof(ss));
     memcpy(&ss, ai->ai_addr, ai->ai_addrlen);
-    UDPTransportAddress out(ss, ai->ai_addrlen);
+    socklen_t addrLen = ai->ai_addrlen;
     freeaddrinfo(ai);
+
+    if (addressFamily_ == AF_INET6) {
+        sockaddr_in6 *sin6 = (sockaddr_in6 *)&ss;
+        if (IN6_IS_ADDR_LINKLOCAL(&sin6->sin6_addr) && sin6->sin6_scope_id == 0) {
+            sin6->sin6_scope_id = if_nametoindex(ipv6Interface_.c_str());
+        }
+    }
+
+    UDPTransportAddress out(ss, addrLen);
     return out;
 }
 
@@ -172,7 +181,7 @@ static uint16_t UDPAddrPort(const sockaddr_storage &addr) {
 }
 
 static void
-BindToPort(int fd, const string &host, const string &port, int addressFamily)
+BindToPort(int fd, const string &host, const string &port, int addressFamily, const string &ipv6Interface)
 {
     struct sockaddr_storage ss;
     socklen_t addrLen;
@@ -219,6 +228,13 @@ BindToPort(int fd, const string &host, const string &port, int addressFamily)
         freeaddrinfo(ai);
     }
 
+    if (addressFamily == AF_INET6) {
+        sockaddr_in6 *sin6 = (sockaddr_in6 *)&ss;
+        if (IN6_IS_ADDR_LINKLOCAL(&sin6->sin6_addr) && sin6->sin6_scope_id == 0) {
+            sin6->sin6_scope_id = if_nametoindex(ipv6Interface.c_str());
+        }
+    }
+
     Notice("Binding to %s:%d", UDPAddrToString(ss).c_str(), UDPAddrPort(ss));
 
     if (bind(fd, (sockaddr *)&ss, addrLen) < 0)
@@ -229,9 +245,9 @@ BindToPort(int fd, const string &host, const string &port, int addressFamily)
 
 UDPTransport::UDPTransport(double dropRate, double reorderRate,
                            int dscp, bool handleSignals,
-                           int addressFamily)
+                           int addressFamily, const std::string &ipv6Interface)
     : dropRate(dropRate), reorderRate(reorderRate), dscp(dscp),
-      addressFamily_(addressFamily)
+      addressFamily_(addressFamily), ipv6Interface_(ipv6Interface)
 {
     lastTimerId = 0;
     lastFragMsgId = 0;
@@ -414,7 +430,8 @@ void UDPTransport::ListenOnMulticastPort(const transport::Configuration
         BindToPort(fd,
                    canonicalConfig->multicast()->host,
                    canonicalConfig->multicast()->port,
-                   addressFamily_);
+                   addressFamily_,
+                   ipv6Interface_);
     }
 
     // Set up a libevent callback
@@ -494,12 +511,12 @@ void UDPTransport::Register(TransportReceiver *receiver,
         // host/port
         const string &host = config.replica(groupIdx, replicaIdx).host;
         const string &port = config.replica(groupIdx, replicaIdx).port;
-        BindToPort(fd, host, port, addressFamily_);
+        BindToPort(fd, host, port, addressFamily_, ipv6Interface_);
     }
     else
     {
         // Registering a client. Bind to any available host/port
-        BindToPort(fd, "", "any", addressFamily_);
+        BindToPort(fd, "", "any", addressFamily_, ipv6Interface_);
     }
 
     // Set up a libevent callback
